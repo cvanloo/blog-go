@@ -203,7 +203,7 @@ func (lx *Lexer) LexHtmlTagEnd() {
 }
 
 func (lx *Lexer) LexParagraph() {
-	for {
+	for !lx.IsEOF() {
 		if lx.Peek(1) == "#" || lx.Peek(1) == "<" || lx.Peek(3) == "```" || lx.Peek(2) == "\n\n" {
 			break
 		}
@@ -227,7 +227,7 @@ func (lx *Lexer) LexCodeBlockStart() {
 }
 
 func (lx *Lexer) SkipWhitespace() {
-	for unicode.IsSpace(([]rune(lx.Peek(1))[0])) {
+	for !lx.IsEOF() && unicode.IsSpace(([]rune(lx.Peek(1))[0])) {
 		lx.Next(1)
 	}
 	lx.Skip()
@@ -238,13 +238,21 @@ func (lx *Lexer) IsEOF() bool {
 }
 
 func (lx *Lexer) Peek(n int) string {
-	return string(lx.Source[lx.Pos:lx.Pos+n])
+	if lx.IsEOF() {
+		return ""
+	}
+	m := min(lx.Pos+n, len(lx.Source))
+	return string(lx.Source[lx.Pos:m])
 }
 
 func (lx *Lexer) Next(n int) string {
+	if lx.IsEOF() {
+		return ""
+	}
 	start := lx.Pos
-	lx.Pos += n
-	return string(lx.Source[start:start+n])
+	m := min(n, len(lx.Source) - start)
+	lx.Pos += m
+	return string(lx.Source[start:start+m])
 }
 
 func (lx *Lexer) Until(search string) (string, bool) {
