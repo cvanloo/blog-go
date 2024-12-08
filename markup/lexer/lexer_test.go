@@ -144,7 +144,7 @@ var testExpected = []expectToken{
 		Token: lexer.Token {
 			Type: lexer.TokenParagraph,
 		},
-		Text: "This is the abstract content.",
+		Text: "This is the abstract content.\n",
 	},
 	{
 		Token: lexer.Token {
@@ -163,16 +163,14 @@ var testExpected = []expectToken{
 			Type: lexer.TokenParagraph,
 		},
 		Text: `First section, first paragraph.
-This line is still part of the same paragraph.
-`,
+This line is still part of the same paragraph.`,
 	},
 	{
 		Token: lexer.Token {
 			Type: lexer.TokenParagraph,
 		},
 		Text: `This line is a new paragraph,
-and so is this one.
-`,
+and so is this one.`,
 	},
 	{
 		Token: lexer.Token {
@@ -184,8 +182,7 @@ and so is this one.
 		Token: lexer.Token {
 			Type: lexer.TokenParagraph,
 		},
-		Text: `Second section, second paragraph.
-`,
+		Text: `Second section, second paragraph.`,
 	},
 	{
 		Token: lexer.Token {
@@ -197,8 +194,7 @@ and so is this one.
 		Token: lexer.Token {
 			Type: lexer.TokenParagraph,
 		},
-		Text: `Here is some code:
-`,
+		Text: `Here is some code:`,
 	},
 	{
 		Token: lexer.Token {
@@ -228,8 +224,7 @@ and so is this one.
 		Token: lexer.Token {
 			Type: lexer.TokenParagraph,
 		},
-		Text: `...And here is the same thing, but different:
-`,
+		Text: `...And here is the same thing, but different:`,
 	},
 	{
 		Token: lexer.Token {
@@ -327,7 +322,7 @@ func TestLexer(t *testing.T) {
 			t.Errorf("wrong token type at index: %d, expected: %s, got: %s", i, e.Type, tok.Type)
 		}
 		if e.Text != "" && tok.Text() != e.Text {
-			t.Errorf("error at index: %d, token: %s, expected: %s, got: %s", i, tok.Type, e.Text, tok.Text())
+			t.Errorf("error at index: %d, token: %s, expected: `%s`, got: `%s`", i, tok.Type, e.Text, tok.Text())
 		}
 	}
 }

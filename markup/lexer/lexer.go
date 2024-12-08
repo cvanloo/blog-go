@@ -332,5 +332,5 @@ func (t Token) Text() string {
 }
 
 func (t Token) String() string {
-	return fmt.Sprintf("%s:+%d: %s: %s", t.lx.Filename, t.Pos, t.Type, t.Text())
+	return fmt.Sprintf("%s:+%d: %s: `%s`", t.lx.Filename, t.Pos, t.Type, t.Text())
 }
