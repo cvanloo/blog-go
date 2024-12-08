@@ -210,9 +210,13 @@ func (lx *Lexer) LexCodeBlockStart() {
 }
 
 func (lx *Lexer) LexParagraph() {
-	lx.Error(errors.New("LexParagraph: not implemented"))
-	lx.Next(1)
-	lx.Skip()
+	for {
+		if lx.Peek(1) == "#" || lx.Peek(1) == "<" || lx.Peek(3) == "```" || lx.Peek(2) == "\n\n" {
+			break
+		}
+		lx.Next(1)
+	}
+	lx.Emit(TokenParagraph)
 }
 
 func (lx *Lexer) SkipWhitespace() {
