@@ -1,14 +1,12 @@
 package lexer_test
 
 import (
-	"bytes"
 	"testing"
 
 	"github.com/cvanloo/blog-go/markup/lexer"
 )
 
-const testBlog = `
----
+const testBlog = `---
 author: Colin van~Loo
 tags: meta test parser lexer golang
 template: blog-post
@@ -289,9 +287,8 @@ and so is this one.
 }
 
 func TestLexer(t *testing.T) {
-	src := bytes.NewBufferString(testBlog)
 	lx := lexer.New()
-	if err := lx.LexSource("*bytes.Buffer(testBlog)", src); err != nil {
+	if err := lx.LexSource("testBlog", testBlog); err != nil {
 		t.Fatal(err)
 	}
 	if len(lx.Errors) > 0 {
