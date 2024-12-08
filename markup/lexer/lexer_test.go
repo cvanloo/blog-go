@@ -311,13 +311,13 @@ func TestLexer(t *testing.T) {
 			c := len(lx.Tokens) - len(testExpected)
 			t.Errorf("lexer produced too many tokens: +%d", c)
 			for i := range c {
-				t.Errorf("unexpected token: %s", lx.Tokens[len(lx.Tokens)-1+i])
+				t.Errorf("unexpected token: %s", lx.Tokens[len(lx.Tokens)-1+i].Type)
 			}
 		} else {
 			c := len(testExpected) - len(lx.Tokens)
 			t.Errorf("lexer produced too few tokens: -%d", c)
 			for i := range c {
-				t.Errorf("missing token: %s", testExpected[len(testExpected)-1+i])
+				t.Errorf("missing token: %s", testExpected[len(testExpected)-1+i].Type)
 			}
 		}
 	}

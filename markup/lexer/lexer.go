@@ -66,7 +66,9 @@ func (lx *Lexer) LexSource(filename, source string) error {
 func (lx *Lexer) LexStart() {
 	defer func() {
 		r := recover()
-		lx.Error(fmt.Errorf("%v", r))
+		if r != nil {
+			lx.Error(fmt.Errorf("%v", r))
+		}
 	}()
 	lx.SkipWhitespace()
 	if lx.Peek(3) == "---" {
@@ -80,8 +82,8 @@ func (lx *Lexer) LexStart() {
 }
 
 func (lx *Lexer) LexContent() {
+	lx.SkipWhitespace()
 	for !lx.IsEOF() {
-		lx.SkipWhitespace()
 		/*if lx.Peek(3) == "---" {
 			lx.Next(3)
 			lx.LexHorizontalRuler()
@@ -105,7 +107,9 @@ func (lx *Lexer) LexContent() {
 		} else {
 			lx.LexParagraph()
 		}
+		lx.SkipWhitespace()
 	}
+	lx.Emit(TokenEOF)
 }
 
 func (lx *Lexer) LexMetaKeyValues() {
