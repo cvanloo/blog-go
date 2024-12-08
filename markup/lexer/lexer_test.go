@@ -290,6 +290,9 @@ and so is this one.
 func TestLexer(t *testing.T) {
 	lx := lexer.New()
 	if err := lx.LexSource("testBlog", testBlog); err != nil {
+		for _, tok := range lx.Tokens {
+			t.Log(tok)
+		}
 		t.Errorf("got %d errors, first error is: %s", len(lx.Errors), err)
 		for i, err := range lx.Errors {
 			t.Errorf("error %d: %s", i, err)

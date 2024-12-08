@@ -96,7 +96,11 @@ func (lx *Lexer) LexContent() {
 			lx.SkipWhitespace()
 			lx.LexSectionHeader(sectionLevel)
 		} else if lx.Peek(1) == "<" {
-			lx.LexHtmlTagStart()
+			if lx.Peek(2) == "</" {
+				lx.LexHtmlTagEnd()
+			} else {
+				lx.LexHtmlTagStart()
+			}
 		} else if lx.Peek(3) == "```" {
 			lx.LexCodeBlockStart()
 		} else {
@@ -144,34 +148,58 @@ func (lx *Lexer) LexHtmlTagStart() {
 	// skip past <
 	lx.Next(1)
 	lx.Skip()
-	for {
-		n := lx.Peek(1)
-		if unicode.IsSpace([]rune(n)[0]) {
-			if lx.Pos - lx.Consumed <= 0 {
-				lx.Error(fmt.Errorf("expected html tag name"))
-			}
-			lx.Emit(TokenHtmlTagStart)
-			lx.LexHtmlTagAttrs()
-			lx.Expect(">")
-			lx.Skip()
-			break
-		}
-		if n == ">" {
-			if lx.Pos - lx.Consumed <= 0 {
-				lx.Error(fmt.Errorf("expected html tag name"))
-			}
-			lx.Emit(TokenHtmlTagStart)
-			lx.Next(1)
-			lx.Skip()
-			break
-		}
+	if tagName := lx.NextASCII(); tagName == "" {
+		lx.Error(fmt.Errorf("expected html tag name"))
+	}
+	lx.Emit(TokenHtmlTagStart)
+	lx.SkipWhitespace()
+	if lx.Peek(1) == ">" {
 		lx.Next(1)
+		lx.Skip()
+	} else {
+		lx.LexHtmlTagAttrs()
+		lx.Expect(">")
+		lx.Skip()
 	}
 }
 
 func (lx *Lexer) LexHtmlTagAttrs() {
-	lx.Error(errors.New("LexHtmlTagAttrs: not implemented"))
-	lx.Next(1)
+	lx.SkipWhitespace()
+	for lx.Peek(1) != ">" {
+		if attrKey := lx.NextASCII(); attrKey == "" {
+			lx.Error(fmt.Errorf("expected attribute or >, got: %s", lx.Peek(1)))
+			break
+		}
+		lx.Emit(TokenHtmlTagAttrKey)
+		lx.SkipWhitespace()
+		if lx.Peek(1) == "=" {
+			lx.Next(1)
+			lx.SkipWhitespace()
+			lx.Expect("\"")
+			lx.Skip()
+			val, ok := lx.Until("\"")
+			if !ok {
+				lx.Error(fmt.Errorf("expected value delimited by double quotes, got: %s", val))
+			}
+			lx.Emit(TokenHtmlTagAttrVal)
+			// skip past "
+			lx.Next(1)
+			lx.Skip()
+		}
+		lx.SkipWhitespace()
+	}
+}
+
+func (lx *Lexer) LexHtmlTagEnd() {
+	// skip past </
+	lx.Next(2)
+	lx.Skip()
+	if tagName := lx.NextASCII(); tagName == "" {
+		lx.Error(fmt.Errorf("expected html tag name"))
+	}
+	lx.Emit(TokenHtmlTagEnd)
+	lx.SkipWhitespace()
+	lx.Expect(">")
 	lx.Skip()
 }
 
@@ -221,6 +249,18 @@ func (lx *Lexer) Until(search string) (string, bool) {
 			return lx.Source[lpos:lx.Pos], false
 		}
 	}
+}
+
+func (lx *Lexer) NextASCII() string {
+	lpos := lx.Pos
+	for !lx.IsEOF() {
+		r := []rune(lx.Peek(1))[0]
+		if !((r >= 'A' && r <= 'Z') || (r >= 'a' && r <= 'z')) {
+			break
+		}
+		lx.Next(1)
+	}
+	return string(lx.Source[lpos:lx.Pos])
 }
 
 func (lx *Lexer) Skip() {
