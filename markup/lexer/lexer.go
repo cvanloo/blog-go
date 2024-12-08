@@ -74,9 +74,8 @@ func (lx *Lexer) LexStart() {
 		lx.Next(3)
 		lx.Emit(TokenMetaStart)
 		lx.LexMetaKeyValues()
-		if lx.Expect("---") {
-			lx.Emit(TokenMetaEnd)
-		}
+		lx.Expect("---")
+		lx.Emit(TokenMetaEnd)
 	}
 	lx.LexContent()
 }
@@ -109,15 +108,24 @@ func (lx *Lexer) LexContent() {
 }
 
 func (lx *Lexer) LexMetaKeyValues() {
-	lx.Error(errors.New("LexMetaKeyValues: not implemented"))
+	lx.SkipWhitespace()
 	for lx.Peek(3) != "---" {
-		_, ok := lx.Until(":")
+		key, ok := lx.Until(":")
 		if !ok {
+			lx.Error(fmt.Errorf("expected key-value pair, got: %s", key))
 			break
 		}
-		lx.Skip()
+		lx.Emit(TokenMetaKey)
 		lx.Next(1)
 		lx.Skip()
+		lx.SkipWhitespace()
+		val, ok := lx.Until("\n")
+		if !ok {
+			lx.Error(fmt.Errorf("expected key-value pair, got: %s", val))
+			break
+		}
+		lx.Emit(TokenMetaVal)
+		lx.SkipWhitespace()
 	}
 }
 
@@ -135,20 +143,27 @@ func (lx *Lexer) LexSectionHeader(level int) {
 
 func (lx *Lexer) LexHtmlTagStart() {
 	lx.Error(errors.New("LexHtmlTagStart: not implemented"))
+	lx.Next(1)
+	lx.Skip()
 }
 
 func (lx *Lexer) LexCodeBlockStart() {
 	lx.Error(errors.New("LexCodeBlockStart: not implemented"))
+	lx.Next(1)
+	lx.Skip()
 }
 
 func (lx *Lexer) LexParagraph() {
 	lx.Error(errors.New("LexParagraph: not implemented"))
+	lx.Next(1)
+	lx.Skip()
 }
 
 func (lx *Lexer) SkipWhitespace() {
 	for unicode.IsSpace(([]rune(lx.Peek(1))[0])) {
 		lx.Next(1)
 	}
+	lx.Skip()
 }
 
 func (lx *Lexer) IsEOF() bool {
