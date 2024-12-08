@@ -1,7 +1,6 @@
 package lexer
 
 import (
-	"errors"
 	"fmt"
 	"unicode"
 )
@@ -203,12 +202,6 @@ func (lx *Lexer) LexHtmlTagEnd() {
 	lx.Skip()
 }
 
-func (lx *Lexer) LexCodeBlockStart() {
-	lx.Error(errors.New("LexCodeBlockStart: not implemented"))
-	lx.Next(1)
-	lx.Skip()
-}
-
 func (lx *Lexer) LexParagraph() {
 	for {
 		if lx.Peek(1) == "#" || lx.Peek(1) == "<" || lx.Peek(3) == "```" || lx.Peek(2) == "\n\n" {
@@ -217,6 +210,20 @@ func (lx *Lexer) LexParagraph() {
 		lx.Next(1)
 	}
 	lx.Emit(TokenParagraph)
+}
+
+func (lx *Lexer) LexCodeBlockStart() {
+	// skip past ```
+	lx.Next(3)
+	lx.Skip()
+	lx.NextASCII()
+	lx.Emit(TokenCodeBlockStart)
+	lx.SkipWhitespace()
+	lx.Until("```")
+	lx.Emit(TokenParagraph)
+	lx.Emit(TokenCodeBlockEnd)
+	lx.Next(3)
+	lx.Skip()
 }
 
 func (lx *Lexer) SkipWhitespace() {
