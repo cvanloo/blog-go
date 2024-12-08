@@ -279,11 +279,12 @@ func (lx *Lexer) Emit(tokenType TokenType) {
 
 func (lx *Lexer) Expect(expected string) bool {
 	lpos := lx.Pos
-	got := lx.Next(len(expected))
+	got := lx.Peek(len(expected))
 	if got != expected {
 		lx.ErrorPos(lpos, fmt.Errorf("expected: %s, got: %s", expected, got))
 		return false
 	}
+	lx.Next(len(expected))
 	return true
 }
 
