@@ -10,7 +10,7 @@ type (
 	Lexer struct {
 		Filename string
 		Source string
-		Pos int
+		Pos, Consumed int
 		Tokens []Token
 		Errors []error
 	}
@@ -20,6 +20,7 @@ type (
 		Inner error
 	}
 	Token struct {
+		lx *Lexer
 		Type TokenType
 		Pos, Len int
 	}
@@ -56,41 +57,80 @@ func New() *Lexer {
 func (lx *Lexer) LexSource(filename, source string) error {
 	lx.Filename = filename
 	lx.Source = source
-	lx.Lex()
+	lx.LexStart()
 	if len(lx.Errors) > 0 {
 		return lx.Errors[0]
 	}
 	return nil
 }
 
-func (lx *Lexer) Lex() {
+func (lx *Lexer) LexStart() {
+	defer func() {
+		r := recover()
+		lx.Error(fmt.Errorf("%v", r))
+	}()
 	lx.SkipWhitespace()
-	if lx.Pos == 0 && lx.Peek(3) == "---" {
-		lx.LexMetaHeader()
-	} else if lx.Peek(1) == "#" {
-		sectionLevel := 0
-		for lx.Peek(1) == "#" {
-			sectionLevel += 1
-			lx.Next(1)
+	if lx.Peek(3) == "---" {
+		lx.Next(3)
+		lx.Emit(TokenMetaStart)
+		lx.LexMetaKeyValues()
+		if lx.Expect("---") {
+			lx.Emit(TokenMetaEnd)
 		}
-		if lx.Expect(" ") {
-			lx.LexSectionHeader(sectionLevel)
+	}
+	lx.LexContent()
+}
+
+func (lx *Lexer) LexContent() {
+	for !lx.IsEOF() {
+		lx.SkipWhitespace()
+		/*if lx.Peek(3) == "---" {
+			lx.Next(3)
+			lx.LexHorizontalRuler()
+		} else */
+		if lx.Peek(1) == "#" {
+			sectionLevel := 0
+			for lx.Peek(1) == "#" {
+				sectionLevel += 1
+				lx.Next(1)
+			}
+			if lx.Expect(" ") {
+				lx.Skip()
+				lx.LexSectionHeader(sectionLevel)
+			}
+		} else if lx.Peek(1) == "<" {
+			lx.LexHtmlTagStart()
+		} else if lx.Peek(3) == "```" {
+			lx.LexCodeBlockStart()
+		} else {
+			lx.LexParagraph()
 		}
-	} else if lx.Peek(1) == "<" {
-		lx.LexHtmlTagStart()
-	} else if lx.Peek(3) == "```" {
-		lx.LexCodeBlockStart()
-	} else {
-		lx.LexParagraph()
 	}
 }
 
-func (lx *Lexer) LexMetaHeader() {
-	lx.Error(errors.New("LexMetaHeader: not implemented"))
+func (lx *Lexer) LexMetaKeyValues() {
+	lx.Error(errors.New("LexMetaKeyValues: not implemented"))
+	for lx.Peek(3) != "---" {
+		_, ok := lx.Until(":")
+		if !ok {
+			break
+		}
+		lx.Skip()
+		lx.Next(1)
+		lx.Skip()
+	}
 }
 
 func (lx *Lexer) LexSectionHeader(level int) {
-	lx.Error(errors.New("LexSectionHeader: not implemented"))
+	lx.Until("\n")
+	switch level {
+	default:
+		lx.Error(fmt.Errorf("invalid section level: %d", level))
+	case 1:
+		lx.Emit(TokenSection1)
+	case 2:
+		lx.Emit(TokenSection2)
+	}
 }
 
 func (lx *Lexer) LexHtmlTagStart() {
@@ -111,6 +151,10 @@ func (lx *Lexer) SkipWhitespace() {
 	}
 }
 
+func (lx *Lexer) IsEOF() bool {
+	return lx.Pos >= len(lx.Source)
+}
+
 func (lx *Lexer) Peek(n int) string {
 	return string(lx.Source[lx.Pos:lx.Pos+n])
 }
@@ -119,6 +163,35 @@ func (lx *Lexer) Next(n int) string {
 	start := lx.Pos
 	lx.Pos += n
 	return string(lx.Source[start:start+n])
+}
+
+func (lx *Lexer) Until(search string) (string, bool) {
+	lpos := lx.Pos
+	for {
+		if len(lx.Source) - lx.Pos >= len(search) {
+			if lx.Peek(len(search)) == search {
+				return lx.Source[lpos:lx.Pos], true
+			} else {
+				lx.Next(1)
+			}
+		} else {
+			return lx.Source[lpos:lx.Pos], false
+		}
+	}
+}
+
+func (lx *Lexer) Skip() {
+	lx.Consumed = lx.Pos
+}
+
+func (lx *Lexer) Emit(tokenType TokenType) {
+	lx.Tokens = append(lx.Tokens, Token{
+		lx: lx,
+		Type: tokenType,
+		Pos: lx.Consumed,
+		Len: lx.Pos - lx.Consumed,
+	})
+	lx.Consumed = lx.Pos
 }
 
 func (lx *Lexer) Expect(expected string) bool {
@@ -148,9 +221,9 @@ func (lx *Lexer) Error(err error) {
 }
 
 func (t Token) Text() string {
-	return "not implemented"
+	return t.lx.Source[t.Pos:t.Pos+t.Len]
 }
 
 func (t Token) String() string {
-	return "not implemented"
+	return fmt.Sprintf("%s:+%d: %s: %s", t.lx.Filename, t.Pos, t.Type, t.Text())
 }

@@ -6,7 +6,8 @@ import (
 	"github.com/cvanloo/blog-go/markup/lexer"
 )
 
-const testBlog = `---
+const testBlog = `
+---
 author: Colin van~Loo
 tags: meta test parser lexer golang
 template: blog-post
@@ -289,10 +290,11 @@ and so is this one.
 func TestLexer(t *testing.T) {
 	lx := lexer.New()
 	if err := lx.LexSource("testBlog", testBlog); err != nil {
-		t.Fatal(err)
-	}
-	if len(lx.Errors) > 0 {
-		t.Errorf("expected zero errors, got: %d errors", len(lx.Errors))
+		t.Errorf("got %d errors, first error is: %s", len(lx.Errors), err)
+		for i, err := range lx.Errors {
+			t.Errorf("error %d: %s", i, err)
+		}
+		t.FailNow()
 	}
 	if len(lx.Tokens) != len(testExpected) {
 		t.Errorf("expected %d tokens, got %d tokens", len(lx.Tokens), len(testExpected))
