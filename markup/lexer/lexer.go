@@ -93,10 +93,8 @@ func (lx *Lexer) LexContent() {
 				sectionLevel += 1
 				lx.Next(1)
 			}
-			if lx.Expect(" ") {
-				lx.Skip()
-				lx.LexSectionHeader(sectionLevel)
-			}
+			lx.SkipWhitespace()
+			lx.LexSectionHeader(sectionLevel)
 		} else if lx.Peek(1) == "<" {
 			lx.LexHtmlTagStart()
 		} else if lx.Peek(3) == "```" {
@@ -116,6 +114,7 @@ func (lx *Lexer) LexMetaKeyValues() {
 			break
 		}
 		lx.Emit(TokenMetaKey)
+		// skip past :
 		lx.Next(1)
 		lx.Skip()
 		lx.SkipWhitespace()
@@ -142,7 +141,36 @@ func (lx *Lexer) LexSectionHeader(level int) {
 }
 
 func (lx *Lexer) LexHtmlTagStart() {
-	lx.Error(errors.New("LexHtmlTagStart: not implemented"))
+	// skip past <
+	lx.Next(1)
+	lx.Skip()
+	for {
+		n := lx.Peek(1)
+		if unicode.IsSpace([]rune(n)[0]) {
+			if lx.Pos - lx.Consumed <= 0 {
+				lx.Error(fmt.Errorf("expected html tag name"))
+			}
+			lx.Emit(TokenHtmlTagStart)
+			lx.LexHtmlTagAttrs()
+			lx.Expect(">")
+			lx.Skip()
+			break
+		}
+		if n == ">" {
+			if lx.Pos - lx.Consumed <= 0 {
+				lx.Error(fmt.Errorf("expected html tag name"))
+			}
+			lx.Emit(TokenHtmlTagStart)
+			lx.Next(1)
+			lx.Skip()
+			break
+		}
+		lx.Next(1)
+	}
+}
+
+func (lx *Lexer) LexHtmlTagAttrs() {
+	lx.Error(errors.New("LexHtmlTagAttrs: not implemented"))
 	lx.Next(1)
 	lx.Skip()
 }
