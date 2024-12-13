@@ -398,13 +398,13 @@ func (b *Blog) CopyrightYear() string {
 func (b *Blog) ObfuscatedEmail() template.HTML {
 	const (
 		janetStart = `janet -e '(print (string/from-bytes (splice (map (fn [c] (if (<= 97 c 122) (+ 97 (mod (+ c -97 13) 26)) c)) &quot;`
-		janetEnd = `&quot;))))`
+		janetEnd = `&quot;))))'`
 	)
 	rot13 := func(text string) string {
 		out := []rune(text)
 		for i, r := range out {
 			if r >= 'a' && r <= 'z' {
-				out[i] = ((r - 97 - 13) % 26) + 97
+				out[i] = ((r - 'a' + 13) % 26) + 'a'
 			}
 		}
 		return string(out)
