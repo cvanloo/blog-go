@@ -145,10 +145,6 @@ func (b *Blog) FediCreator() string {
 	return "@attaboy@tech.lgbt" // @todo
 }
 
-func (b *Blog) FullTitle() string {
-	return fmt.Sprintf("%s&mdash;%s", b.Title, b.AltTitle)
-}
-
 func (b *Blog) FirstSectionID() string {
 	return b.Sections[0].ID()
 }
@@ -232,9 +228,7 @@ func (p Paragraph) Render() (template.HTML, error) {
 }
 
 func (t Text) Render() (template.HTML, error) {
-	bs := &bytes.Buffer{}
-	err := pages.Execute(bs, "text.gohtml", t)
-	return template.HTML(bs.String()), err
+	return template.HTML(t), nil
 }
 
 func (l Link) Render() (template.HTML, error) {
@@ -308,19 +302,13 @@ func (a Author) String() string {
 }
 
 func (b Bold) Render() (template.HTML, error) {
-	bs := &bytes.Buffer{}
-	err := pages.Execute(bs, "bold.gohtml", b)
-	return template.HTML(bs.String()), err
+	return template.HTML(fmt.Sprintf("<b>%s</b>", b)), nil
 }
 
 func (i Italic) Render() (template.HTML, error) {
-	bs := &bytes.Buffer{}
-	err := pages.Execute(bs, "italic.gohtml", i)
-	return template.HTML(bs.String()), err
+	return template.HTML(fmt.Sprintf("<em>%s</em>", i)), nil
 }
 
 func (m Mono) Render() (template.HTML, error) {
-	bs := &bytes.Buffer{}
-	err := pages.Execute(bs, "mono.gohtml", m)
-	return template.HTML(bs.String()), err
+	return template.HTML(fmt.Sprintf("<code>%s</code>", m)), nil
 }
