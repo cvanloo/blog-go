@@ -5,12 +5,12 @@
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <meta name="language" content="{{.Lang}}">
         <meta name="site_name" property="og:site_name" content="save-lisp-and-die">
-        <meta name="title" property="og:title" content="{{.Title}}&mdash;{{.AltTitle}}">
+        <meta name="title" property="og:title" content="{{Render .Title}}&mdash;{{Render .AltTitle}}">
         <meta name="type" property="og:type" content="article">
-        <meta name="description" property="og:description" content="{{.AbstractShort}}">
+        <meta name="description" property="og:description" content="{{Render .AbstractShort}}">
         <meta name="published_time" property="article:published_time" content="{{.PublishedFull}}">
         {{if .Published.HasRevision}}<meta name="modified_time" property="article:modified_time" content="{{.RevisedFull}}">{{end}}
-        <meta name="author" property="article:author" content="{{.Author}}">
+        <meta name="author" property="article:author" content="{{Render .Author.Name}}">
         {{range .Tags}}<meta name="tag" property="article:tag" content="{{.}}">
         {{end}}<link rel="stylesheet" href="/styles.css" title="Default Style">
         <link rel="alternate stylesheet" href="/secret.css" title="Secret Style">
@@ -18,10 +18,10 @@
         <link rel="alternate" type="application/rss+xml" href="/rss.xml">
         <link rel="alternate" type="application/atom+xml" href="/atom.xml">
         <link rel="canonical" href="{{.Canonical}}">
-        <link rel="me" href="{{.RelMe}}">
-        <meta name="fediverse:creator" content="{{.FediCreator}}">
+        <link rel="me" href="{{Render .Author.RelMe}}">
+        <meta name="fediverse:creator" content="{{Render .Author.FediCreator}}">
         <link rel="webmention" href="/api/webmention">
-        <title>{{.Title}}&mdash;{{.AltTitle}}</title>
+        <title>{{Render .Title}}&mdash;{{Render .AltTitle}}</title>
         <script src="/js/toc.js"></script>
     </head>
     <body>
@@ -51,8 +51,8 @@
             </header>
             <article>
                 <div class="title">
-                    <h1 id="content">{{.Title}}</h1>
-                    <p class="tagline">{{.AltTitle}}</p>
+                    <h1 id="content">{{Render .Title}}</h1>
+                    <p class="tagline">{{Render .AltTitle}}</p>
                     <aside id="content-info">
                         <div class="info-line">
                             <p><small>{{.Published}}</small></p>
@@ -69,13 +69,13 @@
                 {{if .HasPrev}}
                     <div class="series-prev">
                         <p>← Previous in Series</p>
-                        <a href="{{.Prev.Link}}">{{.Prev.Title}}</a>
+                        <a href="{{.Prev.Link}}">{{Render .Prev.Title}}</a>
                     </div>
                 {{end}}
                 {{if .HasNext}}
                     <div class="series-next">
                         <p>Next in Series →</p>
-                        <a href="{{.Next.Link}}">{{.Next.Title}}</a>
+                        <a href="{{.Next.Link}}">{{Render .Next.Title}}</a>
                     </div>
                 {{end}}
                 </div>
@@ -90,9 +90,9 @@
                 {{if .HasAbstract}}
                 <section id="Abstract">
                     <h2><a href="#Abstract">Abstract</a></h2>
-                    {{range .Abstract}}
-                    {{Render .}}
-                    {{end}}
+                    <p>
+                    {{Render .Abstract}}
+                    </p>
                 </section>
                 {{end}}
                 {{range .Sections}}
@@ -106,9 +106,9 @@
                     <div id="reading-section">
                         {{range .Articles}}
                         <div class="reading-item">
-                            <a href="{{.Link}}" target="_blank">{{.Title}}</a>
-                            <p><small>{{.FormatDate}}, by <a href="{{.AuthorLink}}" target="_blank">{{.Author}}</a></small></p>
-                            <p>{{.Abstract}}</p>
+                            <a href="{{.Link}}" target="_blank">{{Render .Title}}</a>
+                            <p><small>{{.FormatDate}}, by <a href="{{.AuthorLink}}" target="_blank">{{Render .Author}}</a></small></p>
+                            <p>{{Render .Abstract}}</p>
                         </div>
                         {{end}}
                     </div>
@@ -119,7 +119,7 @@
             <footer>
                 <p id="eof">STOP)))))</p>
                 <!-- @todo: link to copyleft licence? -->
-                <address>&copy; {{.CopyrightYear}} <a href="mailto:{{.ObfuscatedEmail}}">{{.Author}}</a></address>
+                <address>&copy; {{.CopyrightYear}} <a href="mailto:{{.ObfuscatedEmail}}">{{Render .Author.Name}}</a></address>
                 <span class="credits">
                   <a href="/about#credits">Font Licenses</a>
                   <a href="/about">About</a>

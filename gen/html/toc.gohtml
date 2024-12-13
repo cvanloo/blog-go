@@ -5,7 +5,7 @@
         <li><a href="#">(Back to Top)</a></li>
         {{block "section-listing" .Sections}}
         {{range .}}
-        <li><a href="#{{.ID}}">{{.Heading}}</a></li>
+        <li><a href="#{{.ID}}">{{Render .Heading}}</a></li>
         {{if .HasNextLevel}}
         <ul>
             {{template "section-listing" .NextLevel}}

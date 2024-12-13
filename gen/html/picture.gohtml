@@ -2,9 +2,9 @@
     <picture>
         <source srcset="/assets/{{.Name}}.jxl" type="image/jxl">
         <source srcset="/assets/{{.Name}}.avif" type="image/avif">
-        <img src="/assets/{{.Name}}.jpg" title="{{.Title}}" alt="{{.Alt}}">
+        <img src="/assets/{{Render .Name}}.jpg" title="{{Render .Title}}" alt="{{Render .Alt}}">
     </picture>
     <figcaption>
-        {{.Title}}
+        {{Render .Title}}
     </figcaption>
 </figure>

@@ -5,13 +5,13 @@
            aria-label="show sidenote">
     <label for="sidenote__checkbox--{{.ID}}"
            aria-describedby="sidenote-{{.ID}}"
-           title="{{.Content}}"
-           class="sidenote__button">{{.Word}}
+           title="{{Render .Content}}"
+           class="sidenote__button">{{Render .Word}}
     </label>
     <small id="sidenote-{{.ID}}"
            class="sidenote__content">
         <span class="sidenote__content-parenthesis">(sidenote:</span>
-        {{.Content}}
+        {{Render .Content}}
         <span class="sidenote__content-parenthesis">)</span>
     </small>
 </span>
