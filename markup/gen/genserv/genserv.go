@@ -6,7 +6,7 @@ import (
 	"mime"
 	//"log"
 
-	. "github.com/cvanloo/blog-go/gen"
+	. "github.com/cvanloo/blog-go/markup/gen"
 	. "github.com/cvanloo/blog-go/assert"
 )
 

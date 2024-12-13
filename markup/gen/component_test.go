@@ -3,7 +3,7 @@ package gen_test
 import (
 	"time"
 	"fmt"
-	. "github.com/cvanloo/blog-go/gen"
+	. "github.com/cvanloo/blog-go/markup/gen"
 )
 
 func must[T any](t T, err error) T {

@@ -5,7 +5,6 @@ COPY go.mod ./
 RUN go mod download && go mod verify
 COPY cmd ./cmd
 COPY assert ./assert
-COPY gen ./gen
 COPY markup ./markup
 COPY public ./public
 COPY .env ./.env
