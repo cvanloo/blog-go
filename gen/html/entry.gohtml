@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <meta name="language" content="{{.Lang}}">
+        <meta name="site_name" property="og:site_name" content="save-lisp-and-die">
+        <meta name="title" property="og:title" content="{{.FullTitle}}">
+        <meta name="type" property="og:type" content="article">
+        <meta name="description" property="og:description" content="{{.AbstractShort}}">
+        <meta name="published_time" property="article:published_time" content="{{.PublishedFull}}">
+        {{if .Published.HasRevision}}
+        <meta name="modified_time" property="article:modified_time" content="{{.RevisedFull}}">
+        {{end}}
+        <meta name="author" property="article:author" content="{{.Author}}">
+        {{range .Tags}}
+        <meta name="tag" property="article:tag" content="{{.}}">
+        {{end}}
+        <link rel="stylesheet" href="/styles.css" title="Default Style">
+        <link rel="alternate stylesheet" href="/secret.css" title="Secret Style">
+        <link rel="icon" type="image/png" href="favicon.png">
+        <link rel="alternate" type="application/rss+xml" href="/rss.xml">
+        <link rel="alternate" type="application/atom+xml" href="/atom.xml">
+        <link rel="canonical" href="{{.Canonical}}">
+        <link rel="me" href="{{.RelMe}}">
+        <meta name="fediverse:creator" content="{{.FediCreator}}">
+        <link rel="webmention" href="/api/webmention">
+        <title>{{.FullTitle}}</title>
+        <script src="/js/toc.js"></script>
+    </head>
+    <body>
+        <div class="skip-navigation">
+            <p>Skip to:</p>
+            <a href="#content">Content</a>
+            <a href="#{{.FirstSectionID}}">{{.FirstSectionName}}</a>
+            <a href="#eof">EOF</a>
+        </div>
+        <main>
+            <header>
+                <nav id="topbar">
+                    <code>(save-lisp-and-die</code>
+                    <a class="item" href="/"><code>:home</code></a>
+                    <a class="item" href="/about"><code>:about</code></a>
+                    <div class="dropdown item">
+                        <input id="feed-dropdown" type="checkbox">
+                        <label for="feed-dropdown"><code class="link-like">:feed</code></label>
+                        <span class="dropdown-itemlist">
+                            <!-- white-space: pre as an ugly work-around to aligning on the : -->
+                            <a href="/feed.rss"><code style="white-space: pre;">:rss </code></a>
+                            <a href="/feed.atom"><code>:atom</code></a>
+                        </span>
+                    </div>
+                    <code>)</code>
+                </nav>
+            </header>
+            <article>
+                <div class="title">
+                    <h1 id="content">{{.Title}}</h1>
+                    <p class="tagline">{{.AltTitle}}</p>
+                    <aside id="content-info">
+                        <div class="info-line">
+                            <p><small>{{.Published}}</small></p>
+                            <p><small>~{{.EstReading}}′</small></p>
+                        </div>
+                        <div class="info-line taglist">
+                        {{range .Tags}}
+                            <p><a href="/search/:{{.}}">:{{.}}</a></p>
+                        {{end}}
+                        </div>
+                    </aside>
+                </div>
+                {{if .IsPartOfSeries}}
+                {{with .Series}}
+                <div id="series">
+                {{if .HasPrev}}
+                    <div class="series-prev">
+                        <p>← Previous in Series</p>
+                        <a href="{{.Prev.Link}}">{{.Prev.Title}}</a>
+                    </div>
+                {{end}}
+                {{if .HasNext}}
+                    <div class="series-next">
+                        <p>Next in Series →</p>
+                        <a href="{{.Next.Link}}">{{.Next.Title}}</a>
+                    </div>
+                {{end}}
+                </div>
+                {{end}}
+                {{end}}
+                {{if .ShowLongTimeSinceRevisedWarning}}
+                <div id="long-time-since-revised">
+                    <p>This post is more than 3 years old.<br>Information may be out of date and my opinions on the topic have likely changed.</p>
+                </div>
+                {{end}}
+                {{Render .TOC}}
+                {{if .HasAbstract}}
+                <section id="Abstract">
+                    <h2><a href="#Abstract">Abstract</a></h2>
+                    {{range .Abstract}}
+                    {{Render .}}
+                    {{end}}
+                </section>
+                {{end}}
+                {{range .Sections}}
+                {{Render .}}
+                {{end}}
+                {{if .ShowRelevantSection}}
+                {{with .Relevant}}
+                <div id="currently-reading">
+                    <hr>
+                    <h2>{{.Heading}}</h2>
+                    <div id="reading-section">
+                        {{range .Articles}}
+                        <div class="reading-item">
+                            <a href="{{.Link}}" target="_blank">{{.Title}}</a>
+                            <p><small>{{.FormatDate}}, by <a href="{{.AuthorLink}}" target="_blank">{{.Author}}</a></small></p>
+                            <p>{{.Abstract}}</p>
+                        </div>
+                        {{end}}
+                    </div>
+                </div>
+                {{end}}
+                {{end}}
+            </article>
+            <footer>
+                <p id="eof">STOP)))))</p>
+                <!-- @todo: link to copyleft licence? -->
+                <address>&copy; {{.CopyrightYear}} <a href="mailto:{{.ObfuscatedEmail}}">{{.Author}}</a></address>
+                <span class="credits">
+                  <a href="/about#credits">Font Licenses</a>
+                  <a href="/about">About</a>
+                  <a href="/feed.rss">RSS</a>
+                  <a href="/feed.atom">Atom</a>
+                </span>
+            </footer>
+        </main>
+    </body>
+</html>

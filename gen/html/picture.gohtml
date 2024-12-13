@@ -1,0 +1,10 @@
+<figure>
+    <picture>
+        <source srcset="/assets/{{.Name}}.jxl" type="image/jxl">
+        <source srcset="/assets/{{.Name}}.avif" type="image/avif">
+        <img src="/assets/{{.Name}}.jpg" title="{{.Title}}" alt="{{.Alt}}">
+    </picture>
+    <figcaption>
+        {{.Title}}
+    </figcaption>
+</figure>

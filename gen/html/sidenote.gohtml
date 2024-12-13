@@ -1,0 +1,17 @@
+<span class="sidenote">
+    <input type="checkbox"
+           id="sidenote__checkbox--{{.ID}}"
+           class="sidenote__checkbox"
+           aria-label="show sidenote">
+    <label for="sidenote__checkbox--{{.ID}}"
+           aria-describedby="sidenote-{{.ID}}"
+           title="{{.Content}}"
+           class="sidenote__button">{{.Word}}
+    </label>
+    <small id="sidenote-{{.ID}}"
+           class="sidenote__content">
+        <span class="sidenote__content-parenthesis">(sidenote:</span>
+        {{.Content}}
+        <span class="sidenote__content-parenthesis">)</span>
+    </small>
+</span>

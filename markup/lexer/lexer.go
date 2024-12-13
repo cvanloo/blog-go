@@ -30,19 +30,21 @@ type TokenType int
 
 const (
 	TokenEOF TokenType = iota
-	TokenMetaStart
+	TokenMetaBegin
 	TokenMetaKey
 	TokenMetaVal
 	TokenMetaEnd
-	TokenHtmlTagStart
+	TokenHtmlTagOpen
 	TokenHtmlTagAttrKey
 	TokenHtmlTagAttrVal
-	TokenHtmlTagEnd
-	TokenParagraph
+	TokenHtmlTagClose
+	TokenParagraphBegin
+	TokenParagraphEnd
 	TokenSection1
 	TokenSection2
-	TokenCodeBlockStart
+	TokenCodeBlockBegin
 	TokenCodeBlockEnd
+	TokenText
 )
 
 func (err LexerError) Error() string {
@@ -73,7 +75,7 @@ func (lx *Lexer) LexStart() {
 	lx.SkipWhitespace()
 	if lx.Peek(3) == "---" {
 		lx.Next(3)
-		lx.Emit(TokenMetaStart)
+		lx.Emit(TokenMetaBegin)
 		lx.LexMetaKeyValues()
 		lx.Expect("---")
 		lx.Emit(TokenMetaEnd)
@@ -154,7 +156,7 @@ func (lx *Lexer) LexHtmlTagStart() {
 	if tagName := lx.NextASCII(); tagName == "" {
 		lx.Error(fmt.Errorf("expected html tag name"))
 	}
-	lx.Emit(TokenHtmlTagStart)
+	lx.Emit(TokenHtmlTagOpen)
 	lx.SkipWhitespace()
 	if lx.Peek(1) == ">" {
 		lx.Next(1)
@@ -200,20 +202,32 @@ func (lx *Lexer) LexHtmlTagEnd() {
 	if tagName := lx.NextASCII(); tagName == "" {
 		lx.Error(fmt.Errorf("expected html tag name"))
 	}
-	lx.Emit(TokenHtmlTagEnd)
+	lx.Emit(TokenHtmlTagClose)
 	lx.SkipWhitespace()
 	lx.Expect(">")
 	lx.Skip()
 }
 
 func (lx *Lexer) LexParagraph() {
+	lx.Skip()
+	lx.Emit(TokenParagraphBegin)
 	for !lx.IsEOF() {
-		if lx.Peek(1) == "#" || lx.Peek(1) == "<" || lx.Peek(3) == "```" || lx.Peek(2) == "\n\n" {
+		if lx.Peek(1) == "<" {
+			lx.Emit(TokenText)
+			if lx.Peek(2) == "</" {
+				lx.LexHtmlTagEnd()
+			} else {
+				lx.LexHtmlTagStart()
+			}
+			continue
+		}
+		if lx.Peek(1) == "#" || lx.Peek(1) == "\n\n" || lx.Peek(3) == "```" {
+			lx.Emit(TokenText)
+			lx.Emit(TokenParagraphEnd)
 			break
 		}
 		lx.Next(1)
 	}
-	lx.Emit(TokenParagraph)
 }
 
 func (lx *Lexer) LexCodeBlockStart() {
@@ -221,10 +235,10 @@ func (lx *Lexer) LexCodeBlockStart() {
 	lx.Next(3)
 	lx.Skip()
 	lx.NextASCII()
-	lx.Emit(TokenCodeBlockStart)
+	lx.Emit(TokenCodeBlockBegin)
 	lx.SkipWhitespace()
 	lx.Until("```")
-	lx.Emit(TokenParagraph)
+	lx.Emit(TokenText)
 	lx.Emit(TokenCodeBlockEnd)
 	lx.Next(3)
 	lx.Skip()

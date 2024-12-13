@@ -66,7 +66,7 @@ type expectToken struct {
 var testExpected = []expectToken{
 	{
 		Token: lexer.Token{
-			Type: lexer.TokenMetaStart,
+			Type: lexer.TokenMetaBegin,
 		},
 	},
 	{
@@ -136,19 +136,29 @@ var testExpected = []expectToken{
 	},
 	{
 		Token: lexer.Token {
-			Type: lexer.TokenHtmlTagStart,
+			Type: lexer.TokenHtmlTagOpen,
 		},
 		Text: "Abstract",
 	},
 	{
 		Token: lexer.Token {
-			Type: lexer.TokenParagraph,
+			Type: lexer.TokenParagraphBegin,
+		},
+	},
+	{
+		Token: lexer.Token {
+			Type: lexer.TokenText,
 		},
 		Text: "This is the abstract content.\n",
 	},
 	{
 		Token: lexer.Token {
-			Type: lexer.TokenHtmlTagEnd,
+			Type: lexer.TokenParagraphEnd,
+		},
+	},
+	{
+		Token: lexer.Token {
+			Type: lexer.TokenHtmlTagClose,
 		},
 		Text: "Abstract",
 	},
@@ -160,17 +170,37 @@ var testExpected = []expectToken{
 	},
 	{
 		Token: lexer.Token {
-			Type: lexer.TokenParagraph,
+			Type: lexer.TokenParagraphBegin,
+		},
+	},
+	{
+		Token: lexer.Token {
+			Type: lexer.TokenText,
 		},
 		Text: `First section, first paragraph.
 This line is still part of the same paragraph.`,
 	},
 	{
 		Token: lexer.Token {
-			Type: lexer.TokenParagraph,
+			Type: lexer.TokenParagraphEnd,
+		},
+	},
+	{
+		Token: lexer.Token {
+			Type: lexer.TokenParagraphBegin,
+		},
+	},
+	{
+		Token: lexer.Token {
+			Type: lexer.TokenText,
 		},
 		Text: `This line is a new paragraph,
 and so is this one.`,
+	},
+	{
+		Token: lexer.Token {
+			Type: lexer.TokenParagraphEnd,
+		},
 	},
 	{
 		Token: lexer.Token {
@@ -180,9 +210,19 @@ and so is this one.`,
 	},
 	{
 		Token: lexer.Token {
-			Type: lexer.TokenParagraph,
+			Type: lexer.TokenParagraphBegin,
+		},
+	},
+	{
+		Token: lexer.Token {
+			Type: lexer.TokenText,
 		},
 		Text: `Second section, second paragraph.`,
+	},
+	{
+		Token: lexer.Token {
+			Type: lexer.TokenParagraphEnd,
+		},
 	},
 	{
 		Token: lexer.Token {
@@ -192,19 +232,29 @@ and so is this one.`,
 	},
 	{
 		Token: lexer.Token {
-			Type: lexer.TokenParagraph,
+			Type: lexer.TokenParagraphBegin,
+		},
+	},
+	{
+		Token: lexer.Token {
+			Type: lexer.TokenText,
 		},
 		Text: `Here is some code:`,
 	},
 	{
 		Token: lexer.Token {
-			Type: lexer.TokenCodeBlockStart,
+			Type: lexer.TokenParagraphEnd,
+		},
+	},
+	{
+		Token: lexer.Token {
+			Type: lexer.TokenCodeBlockBegin,
 		},
 		Text: "go",
 	},
 	{
 		Token: lexer.Token {
-			Type: lexer.TokenParagraph,
+			Type: lexer.TokenText,
 		},
 		Text: `func pointOfNoReturn(n int) (r int) {
 	defer func() {
@@ -222,13 +272,23 @@ and so is this one.`,
 	},
 	{
 		Token: lexer.Token {
-			Type: lexer.TokenParagraph,
+			Type: lexer.TokenParagraphBegin,
+		},
+	},
+	{
+		Token: lexer.Token {
+			Type: lexer.TokenText,
 		},
 		Text: `...And here is the same thing, but different:`,
 	},
 	{
 		Token: lexer.Token {
-			Type: lexer.TokenHtmlTagStart,
+			Type: lexer.TokenParagraphEnd,
+		},
+	},
+	{
+		Token: lexer.Token {
+			Type: lexer.TokenHtmlTagOpen,
 		},
 		Text: "Code",
 	},
@@ -258,7 +318,7 @@ and so is this one.`,
 	},
 	{
 		Token: lexer.Token {
-			Type: lexer.TokenParagraph,
+			Type: lexer.TokenText,
 		},
 		Text: `func pointOfNoReturn(n int) (r int) {
 	defer func() {
@@ -271,7 +331,7 @@ and so is this one.`,
 	},
 	{
 		Token: lexer.Token {
-			Type: lexer.TokenHtmlTagEnd,
+			Type: lexer.TokenHtmlTagClose,
 		},
 		Text: "Code",
 	},

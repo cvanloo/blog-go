@@ -1,0 +1,17 @@
+<div id="toc">
+    <input id="toc-checkbox" type="checkbox">
+    <label for="toc-checkbox">Table of Contents</label>
+    <ul>
+        <li><a href="#">(Back to Top)</a></li>
+        {{block "section-listing" .Sections}}
+        {{range .}}
+        <li><a href="#{{.ID}}">{{.Heading}}</a></li>
+        {{if .HasNextLevel}}
+        <ul>
+            {{template "section-listing" .NextLevel}}
+        </ul>
+        {{end}}
+        {{end}}
+        {{end}}
+    </ul>
+</div>
