@@ -13,6 +13,19 @@ tags: meta test parser lexer golang
 template: blog-post
 title: This is a Test Title
 alt-title: This is a test alt-title
+url-path: test
+rel-me: https://tech.lgbt/@attaboy
+fedi-creator: @attaboy@tech.lgbt
+lang: en
+published: 2019-11-15
+revised: 2020-05-06
+est-reading: 5
+series: You're oh so meta
+series-prev: Lorem Ipsum
+series-prev-link: /lorem
+series-next: Lorem Epsum
+series-next-link: /epsum
+enable-revision-warning: true
 ---
 
 <Abstract>
@@ -25,7 +38,7 @@ First section, first paragraph.
 This line is still part of the same paragraph.
 
 This line is a new paragraph,
-and so is this one.
+and this is still part of it.
 
 # Section 2
 
@@ -35,7 +48,7 @@ Second section, second paragraph.
 
 Here is some code:
 
-`+"```"+`go
+`+"```"+`go https://gist.github.com/cvanloo/a2801dc42ab25ddd7a0b50fe1e13ca0a L:1-7
 func pointOfNoReturn(n int) (r int) {
 	defer func() {
 		e := recover()
@@ -45,9 +58,9 @@ func pointOfNoReturn(n int) (r int) {
 }
 `+"```"+`
 
-...And here is the same thing, but different:
+...And here is the same "thing," but different:
 
-<Code Lang="Go" Source="gist.github.com/this-link-doesnt-actually-exist#L39-95">
+<Code Lang="Go" Source="https://gist.github.com/cvanloo/a2801dc42ab25ddd7a0b50fe1e13ca0a#file-no_return-go-L1-L7">
 func pointOfNoReturn(n int) (r int) {
 	defer func() {
 		e := recover()
@@ -56,6 +69,17 @@ func pointOfNoReturn(n int) (r int) {
 	panic(n - 1)
 }
 </Code>
+
+## Section 2.2
+
+There is a link [here](https://example.com/), what should *I* do with it? **Click** ***it***, or what?
+
+![Cat in a Bag](cat_in_a_bag "Image of a cat looking out of a pink bag.")
+
+---
+
+> かわいい
+> -- Author Name, Where From
 `
 
 type expectToken struct {

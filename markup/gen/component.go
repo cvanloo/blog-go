@@ -188,7 +188,7 @@ func (b Bold) Render() (template.HTML, error) {
 }
 
 func (b Bold) Text() string {
-	return fmt.Sprintf("<b>%s</b>", b)
+	return fmt.Sprintf("<strong>%s</strong>", b) // @todo: strong or b?
 }
 
 func (i Italic) Render() (template.HTML, error) {

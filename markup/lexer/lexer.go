@@ -14,7 +14,7 @@ type (
 		Errors []error
 	}
 	LexerError struct {
-		Filename string
+		lx *Lexer
 		Pos int
 		Inner error
 	}
@@ -32,9 +32,9 @@ const (
 	TokenEOF TokenType = iota
 	TokenMetaBegin
 	TokenMetaKey
-	TokenMetaVal
+	//TokenMetaVal // value ends when meta ends or when new key begins
 	TokenMetaEnd
-	TokenHtmlTagOpen
+	TokenHtmlTagOpen // no paragraphs inside, only TokenText, etc. (but of course can do <p></p> explicitly)
 	TokenHtmlTagAttrKey
 	TokenHtmlTagAttrVal
 	TokenHtmlTagClose
@@ -42,13 +42,36 @@ const (
 	TokenParagraphEnd
 	TokenSection1
 	TokenSection2
+	TokenMono
 	TokenCodeBlockBegin
+	TokenCodeBlockLang
+	TokenCodeBlockSource
+	TokenCodeBlockLineFirst
+	TokenCodeBlockLineLast
 	TokenCodeBlockEnd
 	TokenText
+	TokenEmphasis
+	TokenStrong
+	TokenEmphasisStrong
+	TokenLinkHref
+	TokenLinkText
+	TokenAmpSpecial
+	TokenEscaped // @todo: https://www.markdownguide.org/basic-syntax/#characters-you-can-escape
+	TokenBlockquoteBegin
+	TokenBlockquoteAttribution
+	TokenBlockquoteEnd
+	TokenEnquoteBegin
+	TokenEnquoteEnd
+	TokenImage
+	TokenImageTitle
+	TokenImagePath
+	TokenImageAlt
+	TokenHorizontalRule
+	// @todo: sidenote
 )
 
 func (err LexerError) Error() string {
-	return fmt.Sprintf("%s:+%d: %s", err.Filename, err.Pos, err.Inner)
+	return fmt.Sprintf("%s:+%d: %s", err.lx.Filename, err.Pos, err.Inner)
 }
 
 func New() *Lexer {
@@ -327,7 +350,7 @@ func (lx *Lexer) Expect(expected string) bool {
 
 func (lx *Lexer) ErrorPos(pos int, err error) {
 	lx.Errors = append(lx.Errors, LexerError{
-		Filename: lx.Filename,
+		lx: lx,
 		Pos: pos,
 		Inner: err,
 	})
@@ -335,7 +358,7 @@ func (lx *Lexer) ErrorPos(pos int, err error) {
 
 func (lx *Lexer) Error(err error) {
 	lx.Errors = append(lx.Errors, LexerError{
-		Filename: lx.Filename,
+		lx: lx,
 		Pos: lx.Pos,
 		Inner: err,
 	})
@@ -347,4 +370,8 @@ func (t Token) Text() string {
 
 func (t Token) String() string {
 	return fmt.Sprintf("%s:+%d: %s: `%s`", t.lx.Filename, t.Pos, t.Type, t.Text())
+}
+
+func (t Token) Location() string {
+	return fmt.Sprintf("%s:+%d", t.lx.Filename, t.Pos)
 }
