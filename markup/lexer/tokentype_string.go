@@ -34,22 +34,21 @@ func _() {
 	_ = x[TokenLinkHref-23]
 	_ = x[TokenLinkText-24]
 	_ = x[TokenAmpSpecial-25]
-	_ = x[TokenEscaped-26]
-	_ = x[TokenBlockquoteBegin-27]
-	_ = x[TokenBlockquoteAttribution-28]
-	_ = x[TokenBlockquoteEnd-29]
-	_ = x[TokenEnquoteBegin-30]
-	_ = x[TokenEnquoteEnd-31]
-	_ = x[TokenImage-32]
-	_ = x[TokenImageTitle-33]
-	_ = x[TokenImagePath-34]
-	_ = x[TokenImageAlt-35]
-	_ = x[TokenHorizontalRule-36]
+	_ = x[TokenBlockquoteBegin-26]
+	_ = x[TokenBlockquoteAttribution-27]
+	_ = x[TokenBlockquoteEnd-28]
+	_ = x[TokenEnquoteBegin-29]
+	_ = x[TokenEnquoteEnd-30]
+	_ = x[TokenImage-31]
+	_ = x[TokenImageTitle-32]
+	_ = x[TokenImagePath-33]
+	_ = x[TokenImageAlt-34]
+	_ = x[TokenHorizontalRule-35]
 }
 
-const _TokenType_name = "EOFMetaBeginMetaKeyMetaEndHtmlTagOpenHtmlTagAttrKeyHtmlTagAttrValHtmlTagCloseParagraphBeginParagraphEndSection1Section2MonoCodeBlockBeginCodeBlockLangCodeBlockSourceCodeBlockLineFirstCodeBlockLineLastCodeBlockEndTextEmphasisStrongEmphasisStrongLinkHrefLinkTextAmpSpecialEscapedBlockquoteBeginBlockquoteAttributionBlockquoteEndEnquoteBeginEnquoteEndImageImageTitleImagePathImageAltHorizontalRule"
+const _TokenType_name = "EOFMetaBeginMetaKeyMetaEndHtmlTagOpenHtmlTagAttrKeyHtmlTagAttrValHtmlTagCloseParagraphBeginParagraphEndSection1Section2MonoCodeBlockBeginCodeBlockLangCodeBlockSourceCodeBlockLineFirstCodeBlockLineLastCodeBlockEndTextEmphasisStrongEmphasisStrongLinkHrefLinkTextAmpSpecialBlockquoteBeginBlockquoteAttributionBlockquoteEndEnquoteBeginEnquoteEndImageImageTitleImagePathImageAltHorizontalRule"
 
-var _TokenType_index = [...]uint16{0, 3, 12, 19, 26, 37, 51, 65, 77, 91, 103, 111, 119, 123, 137, 150, 165, 183, 200, 212, 216, 224, 230, 244, 252, 260, 270, 277, 292, 313, 326, 338, 348, 353, 363, 372, 380, 394}
+var _TokenType_index = [...]uint16{0, 3, 12, 19, 26, 37, 51, 65, 77, 91, 103, 111, 119, 123, 137, 150, 165, 183, 200, 212, 216, 224, 230, 244, 252, 260, 270, 285, 306, 319, 331, 341, 346, 356, 365, 373, 387}
 
 func (i TokenType) String() string {
 	if i < 0 || i >= TokenType(len(_TokenType_index)-1) {

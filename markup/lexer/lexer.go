@@ -55,9 +55,9 @@ const (
 	TokenStrong
 	TokenEmphasisStrong
 	TokenLinkHref
-	TokenLinkText
+	TokenLinkText // @todo: TextBegin ... TextEnd? (allow StringRenderable in between?)
 	TokenAmpSpecial
-	TokenEscaped // @todo: https://www.markdownguide.org/basic-syntax/#characters-you-can-escape
+	//TokenEscaped // @todo: https://www.markdownguide.org/basic-syntax/#characters-you-can-escape (handle this on the level of the lexer, not parser)
 	TokenBlockquoteBegin
 	TokenBlockquoteAttribution
 	TokenBlockquoteEnd
