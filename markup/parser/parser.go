@@ -38,17 +38,27 @@ func Parse(lx LexResult) (blog gen.Blog, err error) {
 	type ParseState int
 	const (
 		ParsingStart ParseState = iota
-		ParsingDocument
 		ParsingMeta
 		ParsingMetaVal
+		ParsingDocument
 		ParsingHtmlTag
 		ParsingSection1
+		ParsingSection1Content
 		ParsingSection2
+		ParsingSection2Content
+		ParsingParagraph
+		ParsingBlockquote
+		ParsingImage
+		ParsingCodeblock
 	)
 	state := ParsingStart
+	type LevelState struct {
+		ContentValues Stack[gen.Renderable]
+	}
 	var (
 		stringValues Stack[string]
 		textValues Stack[gen.StringRenderable]
+		levels Stack[LevelState]
 	)
 	for lexeme := range lx.Tokens() {
 		log.Println(lexeme)
@@ -62,9 +72,9 @@ func Parse(lx LexResult) (blog gen.Blog, err error) {
 			case lexer.TokenHtmlTagOpen:
 				state = ParsingHtmlTag
 			case lexer.TokenSection1:
+				levels = levels.Push(LevelState{})
 				state = ParsingSection1
 			}
-		case ParsingDocument:
 		case ParsingMeta:
 			switch lexeme.Type {
 			default:
@@ -100,9 +110,198 @@ func Parse(lx LexResult) (blog gen.Blog, err error) {
 			case isStringContent(lexeme.Type):
 				textValues = textValues.Push(newTextContent(lexeme))
 			}
+		case ParsingDocument:
+			switch lexeme.Type {
+			default:
+				err = errors.Join(err, fmt.Errorf("invalid token, expected one of Section1, HtmlTagOpen"))
+			case lexer.TokenSection1:
+				state = ParsingSection1
+			case lexer.TokenHtmlTagOpen:
+				state = ParsingHtmlTag
+			}
 		case ParsingHtmlTag:
 		case ParsingSection1:
+			switch {
+			default:
+				err = errors.Join(err, fmt.Errorf("invalid token, expected one of HtmlTagOpen, ParagraphBegin, BlockquoteBegin, TokenImage, CodeBlockBegin, Section2, Section1"))
+
+			case lexeme.Type == lexer.TokenHtmlTagOpen:
+				if len(textValues) == 0 {
+					err = errors.Join(err, fmt.Errorf("missing title"))
+				}
+				blog.Sections = append(blog.Sections, gen.Section{
+					Level: 1,
+					Heading: gen.StringOnlyContent(textValues),
+				})
+				textValues = textValues.Empty()
+				state = ParsingHtmlTag
+			case lexeme.Type == lexer.TokenParagraphBegin:
+				if len(textValues) == 0 {
+					err = errors.Join(err, fmt.Errorf("missing title"))
+				}
+				blog.Sections = append(blog.Sections, gen.Section{
+					Level: 1,
+					Heading: gen.StringOnlyContent(textValues),
+				})
+				textValues = textValues.Empty()
+				state = ParsingParagraph
+			case lexeme.Type == lexer.TokenBlockquoteBegin:
+				if len(textValues) == 0 {
+					err = errors.Join(err, fmt.Errorf("missing title"))
+				}
+				blog.Sections = append(blog.Sections, gen.Section{
+					Level: 1,
+					Heading: gen.StringOnlyContent(textValues),
+				})
+				textValues = textValues.Empty()
+				state = ParsingBlockquote
+			case lexeme.Type == lexer.TokenImage:
+				if len(textValues) == 0 {
+					err = errors.Join(err, fmt.Errorf("missing title"))
+				}
+				blog.Sections = append(blog.Sections, gen.Section{
+					Level: 1,
+					Heading: gen.StringOnlyContent(textValues),
+				})
+				textValues = textValues.Empty()
+				state = ParsingImage
+			case lexeme.Type == lexer.TokenCodeBlockBegin:
+				if len(textValues) == 0 {
+					err = errors.Join(err, fmt.Errorf("missing title"))
+				}
+				blog.Sections = append(blog.Sections, gen.Section{
+					Level: 1,
+					Heading: gen.StringOnlyContent(textValues),
+				})
+				textValues = textValues.Empty()
+				state = ParsingCodeblock
+			case lexeme.Type == lexer.TokenSection2:
+				if len(textValues) == 0 {
+					err = errors.Join(err, fmt.Errorf("missing title"))
+				}
+				blog.Sections = append(blog.Sections, gen.Section{
+					Level: 1,
+					Heading: gen.StringOnlyContent(textValues),
+				})
+				textValues = textValues.Empty()
+				state = ParsingSection2
+			case lexeme.Type == lexer.TokenSection1:
+				// this case is possible when there is an empty Section1 (a Section1 immediately followed by another Section1)
+				if len(textValues) == 0 {
+					err = errors.Join(err, fmt.Errorf("missing title"))
+				}
+				blog.Sections = append(blog.Sections, gen.Section{
+					Level: 1,
+					Heading: gen.StringOnlyContent(textValues),
+				})
+				textValues = textValues.Empty()
+				//setSectionContent(&blog, contentValues) // no-op
+				//contentValues = contentValues.Empty()
+				//state = ParsingSection1
+			case isStringContent(lexeme.Type):
+				textValues = textValues.Push(newTextContent(lexeme))
+			}
 		case ParsingSection2:
+			switch {
+			default:
+				err = errors.Join(err, fmt.Errorf("invalid token, expected one of HtmlTagOpen, ParagraphBegin, BlockquoteBegin, TokenImage, CodeBlockBegin, Section2, Section1"))
+			case lexeme.Type == lexer.TokenHtmlTagOpen:
+			case lexeme.Type == lexer.TokenParagraphBegin:
+			case lexeme.Type == lexer.TokenBlockquoteBegin:
+			case lexeme.Type == lexer.TokenImage:
+			case lexeme.Type == lexer.TokenCodeBlockBegin:
+			case lexeme.Type == lexer.TokenSection1:
+				// this case is possible when there is an empty Section2 (a Section2 immediately followed by a Section1)
+				// this also means that the current Section1 ends here, and a new Section1 starts
+				if len(textValues) == 0 {
+					err = errors.Join(err, fmt.Errorf("missing title"))
+				}
+				contentValues = contentValues.Push(gen.Section{
+					Level: 2,
+					Heading: gen.StringOnlyContent(textValues),
+				})
+				textValues = textValues.Empty()
+				setSectionContent(&blog, contentValues)
+				contentValues = contentValues.Empty()
+				state = ParsingSection1
+			case lexeme.Type == lexer.TokenSection2:
+				// this case is possible when there is an empty Section2 (a Section2 immediately followed by another Section2)
+				if len(textValues) == 0 {
+					err = errors.Join(err, fmt.Errorf("missing title"))
+				}
+				contentValues = contentValues.Push(gen.Section{
+					Level: 2,
+					Heading: gen.StringOnlyContent(textValues),
+				})
+				textValues = textValues.Empty()
+			case isStringContent(lexeme.Type):
+				textValues = textValues.Push(newTextContent(lexeme))
+			}
+		case ParsingParagraph:
+			switch {
+			default:
+			case lexeme.Type == lexer.TokenParagraphEnd:
+				// @todo: do we even need this token type? (I think not)
+				//contentValues = contentValues.Push(gen.Paragraph{
+				//	Content: gen.StringOnlyContent(textValues)
+				//})
+				//textValues = textValues.Empty()
+				//state = Parsing???
+			case lexeme.Type == lexer.TokenSection2:
+				contentValues = contentValues.Push(gen.Paragraph{
+					Content: gen.StringOnlyContent(textValues)
+				})
+				textValues = textValues.Empty()
+				state = ParsingSection2
+			case lexeme.Type == lexer.TokenSection1:
+				contentValues = contentValues.Push(gen.Paragraph{
+					Content: gen.StringOnlyContent(textValues)
+				})
+				textValues = textValues.Empty()
+				state = ParsingSection1
+				// A: we are in section1
+				setSectionContent(&blog, contentValues)
+				contentValues = contentValues.Empty()
+				// B: we are in section2
+				// ?????
+				// @todo: we have to collect separate contentValues!!! //// Levels deep????
+			case lexeme.Type == lexer.TokenCodeBlockBegin:
+				contentValues = contentValues.Push(gen.Paragraph{
+					Content: gen.StringOnlyContent(textValues)
+				})
+				textValues = textValues.Empty()
+				state = ParsingCodeblock
+			case lexeme.Type == lexer.TokenImage:
+				contentValues = contentValues.Push(gen.Paragraph{
+					Content: gen.StringOnlyContent(textValues)
+				})
+				textValues = textValues.Empty()
+				state = ParsingImage
+			case lexeme.Type == lexer.TokenBlockquoteBegin:
+				contentValues = contentValues.Push(gen.Paragraph{
+					Content: gen.StringOnlyContent(textValues)
+				})
+				textValues = textValues.Empty()
+				state = ParsingBlockquote
+			case lexeme.Type == lexer.TokenParagraphBegin:
+				contentValues = contentValues.Push(gen.Paragraph{
+					Content: gen.StringOnlyContent(textValues)
+				})
+				textValues = textValues.Empty()
+			case lexeme.Type == lexer.TokenHtmlTagOpen:
+				err = errors.Join(err, fmt.Errorf("not implemented"))
+				// @todo: what ends a paragraph, what needs to be contained in it? (StringRenderable [doesn't end] vs. Renderable [ends])
+				// @todo: lookup registered html tags
+				// @todo: let registered thingy take care of it (Renderable, StringRenderable, MetaObject)
+				//switch element.(type) {
+				//case MetaObject:
+				//case gen.Renderable:
+				//case gen.StringRenderable:
+				//}
+				// @todo: ^^^^^ processing in its own ParsingState though...
+			case isStringContent(lexeme.Type):
+				textValues = textValues.Push(newTextContent(lexeme))
+			}
 		}
 	}
 	return
@@ -269,6 +468,11 @@ func setMetaKeyValuePair(blog *gen.Blog, key string, value gen.StringRenderable)
 		}
 	}
 	return
+}
+
+func setSectionContent(blog *gen.Blog, content []gen.Renderable) {
+	l := len(blog.Sections)
+	blog.Sections[l].Content = content
 }
 
 type (
