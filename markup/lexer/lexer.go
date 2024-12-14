@@ -10,18 +10,19 @@ type (
 		Filename string
 		Source string
 		Pos, Consumed int
-		Tokens []Token
+		Lexemes []Token
 		Errors []error
 	}
 	LexerError struct {
-		lx *Lexer
+		Filename string
 		Pos int
 		Inner error
 	}
 	Token struct {
-		lx *Lexer
 		Type TokenType
+		Filename string
 		Pos, Len int
+		Text string
 	}
 )
 
@@ -71,11 +72,21 @@ const (
 )
 
 func (err LexerError) Error() string {
-	return fmt.Sprintf("%s:+%d: %s", err.lx.Filename, err.Pos, err.Inner)
+	return fmt.Sprintf("%s:+%d: %s", err.Filename, err.Pos, err.Inner)
 }
 
 func New() *Lexer {
 	return &Lexer{}
+}
+
+func (lx *Lexer) Tokens() func(func(Token) bool) {
+	return func(yield func(Token) bool) {
+		for _, t := range lx.Lexemes {
+			if !yield(t) {
+				return
+			}
+		}
+	}
 }
 
 func (lx *Lexer) LexSource(filename, source string) error {
@@ -155,7 +166,7 @@ func (lx *Lexer) LexMetaKeyValues() {
 			lx.Error(fmt.Errorf("expected key-value pair, got: %s", val))
 			break
 		}
-		lx.Emit(TokenMetaVal)
+		//lx.Emit(TokenMetaVal) @todo
 		lx.SkipWhitespace()
 	}
 }
@@ -328,11 +339,11 @@ func (lx *Lexer) Skip() {
 }
 
 func (lx *Lexer) Emit(tokenType TokenType) {
-	lx.Tokens = append(lx.Tokens, Token{
-		lx: lx,
+	lx.Lexemes = append(lx.Lexemes, Token{
 		Type: tokenType,
 		Pos: lx.Consumed,
 		Len: lx.Pos - lx.Consumed,
+		Text: lx.Source[lx.Pos:lx.Consumed],
 	})
 	lx.Consumed = lx.Pos
 }
@@ -350,7 +361,7 @@ func (lx *Lexer) Expect(expected string) bool {
 
 func (lx *Lexer) ErrorPos(pos int, err error) {
 	lx.Errors = append(lx.Errors, LexerError{
-		lx: lx,
+		Filename: lx.Filename,
 		Pos: pos,
 		Inner: err,
 	})
@@ -358,20 +369,16 @@ func (lx *Lexer) ErrorPos(pos int, err error) {
 
 func (lx *Lexer) Error(err error) {
 	lx.Errors = append(lx.Errors, LexerError{
-		lx: lx,
+		Filename: lx.Filename,
 		Pos: lx.Pos,
 		Inner: err,
 	})
 }
 
-func (t Token) Text() string {
-	return t.lx.Source[t.Pos:t.Pos+t.Len]
-}
-
 func (t Token) String() string {
-	return fmt.Sprintf("%s:+%d: %s: `%s`", t.lx.Filename, t.Pos, t.Type, t.Text())
+	return fmt.Sprintf("%s:+%d: %s: `%s`", t.Filename, t.Pos, t.Type, t.Text)
 }
 
 func (t Token) Location() string {
-	return fmt.Sprintf("%s:+%d", t.lx.Filename, t.Pos)
+	return fmt.Sprintf("%s:+%d", t.Filename, t.Pos)
 }

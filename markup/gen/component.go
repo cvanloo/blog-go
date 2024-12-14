@@ -90,7 +90,8 @@ type (
 		Address *url.URL // e.g. https://blog.vanloo.ch
 	}
 	Author struct {
-		Name, Email StringRenderable
+		Name StringRenderable
+		Email string
 		RelMe StringRenderable // https://tech.lgbt/@attaboy
 		FediCreator StringRenderable // @attaboy@tech.lgbt
 	}
@@ -123,15 +124,22 @@ type (
 		Content StringRenderable
 	}
 	Text string
-	Bold string
-	Italic string
 	Mono string
 	EscapedString string
 	Enquote string
 	StringOnlyContent []StringRenderable
+	Strong struct {
+		StringOnlyContent
+	}
+	Emphasis struct {
+		StringOnlyContent
+	}
+	EmphasisStrong struct {
+		StringOnlyContent
+	}
 	Link struct {
 		Href string
-		Text StringRenderable
+		Name StringRenderable
 	}
 	CodeBlock struct {
 		Lines []string
@@ -141,12 +149,14 @@ type (
 		// @todo: For the title attribute we can't have <b> and stuff...
 		Word, Content StringRenderable
 	}
-	Picture struct {
-		Name, Title, Alt StringRenderable
+	Image struct {
+		Name string
+		Title, Alt StringRenderable
 	}
 	Blockquote struct {
 		QuoteText, Author, Source StringRenderable
 	}
+	HorizontalRule struct{}
 	RelevantBox struct {
 		Heading StringRenderable
 		Articles []ReadingItem
@@ -183,20 +193,28 @@ func (t Text) Text() string {
 	return string(t)
 }
 
-func (b Bold) Render() (template.HTML, error) {
-	return template.HTML(b.Text()), nil
+func (s Strong) Render() (template.HTML, error) {
+	return template.HTML(s.Text()), nil
 }
 
-func (b Bold) Text() string {
-	return fmt.Sprintf("<strong>%s</strong>", b) // @todo: strong or b?
+func (s Strong) Text() string {
+	return fmt.Sprintf("<strong>%s</strong>", s.StringOnlyContent.Text())
 }
 
-func (i Italic) Render() (template.HTML, error) {
-	return template.HTML(i.Text()), nil
+func (e Emphasis) Render() (template.HTML, error) {
+	return template.HTML(e.Text()), nil
 }
 
-func (i Italic) Text() string {
-	return fmt.Sprintf("<em>%s</em>", i)
+func (e Emphasis) Text() string {
+	return fmt.Sprintf("<em>%s</em>", e.StringOnlyContent.Text())
+}
+
+func (e EmphasisStrong) Render() (template.HTML, error) {
+	return template.HTML(e.Text()), nil
+}
+
+func (e EmphasisStrong) Text() string {
+	return fmt.Sprintf("<em><strong>%s</strong></em>", e.StringOnlyContent.Text())
 }
 
 func (m Mono) Render() (template.HTML, error) {
@@ -213,6 +231,28 @@ func (q Enquote) Render() (template.HTML, error) {
 
 func (q Enquote) Text() string {
 	return fmt.Sprintf("&ldquo;%s&rdquo;", string(q))
+}
+
+func (l Link) Render() (template.HTML, error) {
+	return template.HTML(l.Text()), nil
+}
+
+func (l Link) Target() string {
+	// @todo: check if it's a link referring to a section in the same blog post.
+	//    then add a css class, so that we can show an arrow-up or arrow-down
+	//    (depending on the relative position of the link and the section it points to)
+	href := Must(url.Parse(l.Href))
+	if href.Host == site.Address.Host {
+		return "_self"
+	}
+	return "_blank"
+}
+
+func (l Link) Text() string {
+	bs := &bytes.Buffer{}
+	err := pages.Execute(bs, "link.gohtml", l)
+	_ = err // @todo
+	return bs.String()
 }
 
 func (e EscapedString) Render() (template.HTML, error) {
@@ -348,32 +388,15 @@ func (p Paragraph) Render() (template.HTML, error) {
 	return template.HTML(bs.String()), err
 }
 
-func (l Link) Render() (template.HTML, error) {
-	bs := &bytes.Buffer{}
-	err := pages.Execute(bs, "link.gohtml", l)
-	return template.HTML(bs.String()), err
-}
-
-func (l Link) Target() string {
-	// @todo: check if it's a link referring to a section in the same blog post.
-	//    then add a css class, so that we can show an arrow-up or arrow-down
-	//    (depending on the relative position of the link and the section it points to)
-	href := Must(url.Parse(l.Href))
-	if href.Host == site.Address.Host {
-		return "_self"
-	}
-	return "_blank"
-}
-
 func (cb CodeBlock) Render() (template.HTML, error) {
 	bs := &bytes.Buffer{}
 	err := pages.Execute(bs, "code-block.gohtml", cb)
 	return template.HTML(bs.String()), err
 }
 
-func (p Picture) Render() (template.HTML, error) {
+func (i Image) Render() (template.HTML, error) {
 	bs := &bytes.Buffer{}
-	err := pages.Execute(bs, "picture.gohtml", p)
+	err := pages.Execute(bs, "image.gohtml", i)
 	return template.HTML(bs.String()), err
 }
 
@@ -381,6 +404,10 @@ func (b Blockquote) Render() (template.HTML, error) {
 	bs := &bytes.Buffer{}
 	err := pages.Execute(bs, "blockquote.gohtml", b)
 	return template.HTML(bs.String()), err
+}
+
+func (hr HorizontalRule) Render() (template.HTML, error) {
+	return template.HTML("\n<hr>\n"), nil
 }
 
 func (b *Blog) ShowRelevantSection() bool {
@@ -409,7 +436,7 @@ func (b *Blog) ObfuscatedEmail() template.HTML {
 		}
 		return string(out)
 	}
-	return template.HTML(janetStart + rot13(b.Author.Email.Text()) + janetEnd)
+	return template.HTML(janetStart + rot13(b.Author.Email) + janetEnd)
 }
 
 func (b *Blog) PublishedFull() string {
