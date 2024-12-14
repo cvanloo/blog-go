@@ -91,7 +91,7 @@ type (
 	}
 	Author struct {
 		Name StringRenderable
-		Email string
+		Email StringRenderable
 		RelMe StringRenderable // https://tech.lgbt/@attaboy
 		FediCreator StringRenderable // @attaboy@tech.lgbt
 	}
@@ -436,7 +436,7 @@ func (b *Blog) ObfuscatedEmail() template.HTML {
 		}
 		return string(out)
 	}
-	return template.HTML(janetStart + rot13(b.Author.Email) + janetEnd)
+	return template.HTML(janetStart + rot13(b.Author.Email.Text()) + janetEnd)
 }
 
 func (b *Blog) PublishedFull() string {

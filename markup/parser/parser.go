@@ -4,6 +4,9 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"strings"
+	"time"
+	"strconv"
 
 	. "github.com/cvanloo/blog-go/assert"
 	"github.com/cvanloo/blog-go/markup/lexer"
@@ -31,7 +34,7 @@ func (err ParserError) Error() string {
 	return fmt.Sprintf("%s: %s", err.Token.Location(), err.Inner)
 }
 
-func Parse(lx LexResult) (blog *gen.Blog, err error) {
+func Parse(lx LexResult) (blog gen.Blog, err error) {
 	type ParseState int
 	const (
 		ParsingStart ParseState = iota
@@ -83,22 +86,16 @@ func Parse(lx LexResult) (blog *gen.Blog, err error) {
 				if !checkMetaKey(lexeme.Text) {
 					err = errors.Join(err, fmt.Errorf("unrecognized meta key: %s", lexeme.Text))
 				}
-				var (
-					metaKey string
-					metaVal Maybe[gen.StringRenderable]
-				)
+				var metaKey string
 				stringValues, metaKey = stringValues.Pop()
-				textValues, metaVal = textValues.SafePop()
-				setMetaKeyValuePair(blog, metaKey, metaVal)
+				setMetaKeyValuePair(&blog, metaKey, gen.StringOnlyContent(textValues))
 				stringValues = stringValues.Push(lexeme.Text)
+				textValues = textValues.Empty()
 			case lexeme.Type == lexer.TokenMetaEnd:
-				var (
-					metaKey string
-					metaVal Maybe[gen.StringRenderable]
-				)
+				var metaKey string
 				stringValues, metaKey = stringValues.Pop()
-				textValues, metaVal = textValues.SafePop()
-				setMetaKeyValuePair(blog, metaKey, metaVal)
+				setMetaKeyValuePair(&blog, metaKey, gen.StringOnlyContent(textValues))
+				textValues = textValues.Empty()
 				state = ParsingDocument
 			case isStringContent(lexeme.Type):
 				textValues = textValues.Push(newTextContent(lexeme))
@@ -183,29 +180,95 @@ func checkMetaKey(key string) bool {
 	return ok
 }
 
-func setMetaKeyValuePair(blog *gen.Blog, key string, value Maybe[gen.StringRenderable]) {
+func setMetaKeyValuePair(blog *gen.Blog, key string, value gen.StringRenderable) (err error) {
 	switch key {
 	default:
+		// do nothing, error already reported
 	case "author":
+		blog.Author.Name = value
 	case "email":
+		blog.Author.Email = value
 	case "tags":
-		//case "template":
+		for _, tag := range strings.Split(value./*@todo: Clean*/Text(), " ") {
+			blog.Tags = append(blog.Tags, gen.Tag(tag))
+		}
 	case "title":
+		blog.Title = value
 	case "alt-title":
+		blog.AltTitle = value
 	case "url-path":
+		blog.UrlPath = value./*Clean*/Text()
 	case "rel-me":
+		blog.Author.RelMe = value
 	case "fedi-creator":
+		blog.Author.FediCreator = value
 	case "lang":
+		blog.Lang = value./*Clean*/Text()
 	case "published":
+		blog.Published.Published, err = time.Parse("2006-01-02", value./*Clean*/Text())
+		if err != nil {
+			blog.Published.Published, err = time.Parse(time.RFC3339, value./*Clean*/Text())
+			if err != nil {
+				err = fmt.Errorf("invalid date format, use 2006-01-02 or RFC3339")
+			}
+		}
 	case "revised":
+		timeRef := func(t time.Time, err error) (*time.Time, error) {
+			return &t, err
+		}
+		blog.Published.Revised, err = timeRef(time.Parse("2006-01-02", value./*Clean*/Text()))
+		if err != nil {
+			blog.Published.Revised, err = timeRef(time.Parse(time.RFC3339, value./*Clean*/Text()))
+			if err != nil {
+				err = fmt.Errorf("invalid date format, use 2006-01-02 or RFC3339")
+			}
+		}
 	case "est-reading":
-		//case "series":
+		blog.EstReading, err = strconv.Atoi(value./*Clean*/Text())
+	// @todo: case "series":
 	case "series-prev":
+		if blog.Series == nil {
+			blog.Series = &gen.Series{}
+		}
+		if blog.Series.Prev == nil {
+			blog.Series.Prev = &gen.SeriesItem{}
+		}
+		blog.Series.Prev.Title = value
 	case "series-prev-link":
+		if blog.Series == nil {
+			blog.Series = &gen.Series{}
+		}
+		if blog.Series.Prev == nil {
+			blog.Series.Prev = &gen.SeriesItem{}
+		}
+		blog.Series.Prev.Link = value./*Clean*/Text()
 	case "series-next":
+		if blog.Series == nil {
+			blog.Series = &gen.Series{}
+		}
+		if blog.Series.Next == nil {
+			blog.Series.Next = &gen.SeriesItem{}
+		}
+		blog.Series.Next.Title = value
 	case "series-next-link":
+		if blog.Series == nil {
+			blog.Series = &gen.Series{}
+		}
+		if blog.Series.Next == nil {
+			blog.Series.Next = &gen.SeriesItem{}
+		}
+		blog.Series.Next.Link = value./*Clean*/Text()
 	case "enable-revision-warning":
+		switch value.Text() {
+		default:
+			err = fmt.Errorf("invalid option `%s` for enable-revision-warning, expected one of true, false", value.Text())
+		case "true":
+			blog.EnableRevisionWarning = true
+		case "false":
+			blog.EnableRevisionWarning = false
+		}
 	}
+	return
 }
 
 type (
@@ -237,4 +300,8 @@ func (s Stack[T]) SafePop() (Stack[T], Maybe[T]) {
 func (s Stack[T]) Peek() T {
 	l := len(s)
 	return s[l-1]
+}
+
+func (s Stack[T]) Empty() (empty Stack[T]) {
+	return
 }

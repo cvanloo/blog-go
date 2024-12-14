@@ -236,7 +236,7 @@ var LexerTestTokens = MockTokens{
 	M(lexer.TokenBlockquoteEnd, ""),
 }
 
-var BlogTestStruct = &gen.Blog{
+var BlogTestStruct = gen.Blog{
 	UrlPath: "test",
 	Author: gen.Author{
 		Name: gen.StringOnlyContent{
@@ -244,13 +244,13 @@ var BlogTestStruct = &gen.Blog{
 			gen.NoBreakSpace,
 			gen.Text("Loo"),
 		},
-		Email: "noreply@example.com",
-		RelMe: gen.Text("https://tech.lgbt/@attaboy"),
-		FediCreator: gen.Text("@attaboy@tech.lgbt"),
+		Email: gen.StringOnlyContent{gen.Text("noreply@example.com")},
+		RelMe: gen.StringOnlyContent{gen.Text("https://tech.lgbt/@attaboy")},
+		FediCreator: gen.StringOnlyContent{gen.Text("@attaboy@tech.lgbt")},
 	},
 	Lang: "en",
-	Title: gen.Text("This is a Test Title"),
-	AltTitle: gen.Text("This is a test alt-title"),
+	Title: gen.StringOnlyContent{gen.Text("This is a Test Title")},
+	AltTitle: gen.StringOnlyContent{gen.Text("This is a test alt-title")},
 	Published: gen.Revision{
 		Published: Must(time.Parse("2006-01-02", "2019-11-15")),
 		Revised: AsRef(Must(time.Parse("2006-01-02", "2020-05-06"))),
@@ -265,21 +265,21 @@ var BlogTestStruct = &gen.Blog{
 	},
 	Series: &gen.Series{
 		Prev: &gen.SeriesItem{
-			Title: gen.Text("Lorem Ipsum"),
+			Title: gen.StringOnlyContent{gen.Text("Lorem Ipsum")},
 			Link: "/lorem",
 		},
 		Next: &gen.SeriesItem{
-			Title: gen.Text("Lorem Epsum"),
+			Title: gen.StringOnlyContent{gen.Text("Lorem Epsum")},
 			Link: "/epsum",
 		},
 	},
 	EnableRevisionWarning: true,
 	//TOC: nil, @todo: compute based on blog.Sections?
-	Abstract: gen.Text("This is the abstract content."),
+	Abstract: gen.StringOnlyContent{gen.Text("This is the abstract content.")},
 	Sections: []gen.Section{
 		{
 			Level: 1,
-			Heading: gen.Text("Section 1"),
+			Heading: gen.StringOnlyContent{gen.Text("Section 1")},
 			Content: []gen.Renderable{
 				gen.Paragraph{
 					Content: gen.StringOnlyContent{
@@ -297,7 +297,7 @@ var BlogTestStruct = &gen.Blog{
 		},
 		{
 			Level: 1, // @todo: compute level instead of storing in struct?
-			Heading: gen.Text("Section 2"),
+			Heading: gen.StringOnlyContent{gen.Text("Section 2")},
 			Content: []gen.Renderable{
 				gen.Paragraph{
 					Content: gen.StringOnlyContent{
@@ -306,7 +306,7 @@ var BlogTestStruct = &gen.Blog{
 				},
 				gen.Section{
 					Level: 2,
-					Heading: gen.Text("Section 2.1"),
+					Heading: gen.StringOnlyContent{gen.Text("Section 2.1")},
 					Content: []gen.Renderable{
 						gen.Paragraph{
 							Content: gen.StringOnlyContent{
@@ -347,14 +347,14 @@ var BlogTestStruct = &gen.Blog{
 				},
 				gen.Section{
 					Level: 2,
-					Heading: gen.Text("Section 2.2"),
+					Heading: gen.StringOnlyContent{gen.Text("Section 2.2")},
 					Content: []gen.Renderable{
 						gen.Paragraph{
 							Content: gen.StringOnlyContent{
 								gen.Text("There is a link "),
 								gen.Link{
 									Href: "https://example.com/",
-									Name: gen.Text("here"),
+									Name: gen.StringOnlyContent{gen.Text("here")},
 								},
 								gen.Text(", what should "),
 								gen.Emphasis{
@@ -379,8 +379,8 @@ var BlogTestStruct = &gen.Blog{
 						},
 						gen.Image{
 							Name: "cat_in_a_bag",
-							Title: gen.Text("Cat in a Bag"),
-							Alt: gen.Text("Image of a cat looking out of a pink bag."),
+							Title: gen.StringOnlyContent{gen.Text("Cat in a Bag")},
+							Alt: gen.StringOnlyContent{gen.Text("Image of a cat looking out of a pink bag.")},
 						},
 						gen.HorizontalRule{},
 						gen.Blockquote{
@@ -388,8 +388,8 @@ var BlogTestStruct = &gen.Blog{
 								gen.Text("かわいい"),
 								gen.Text("ですね"),
 							},
-							Author: gen.Text("Author Name"), // @todo: how to split this? shouldn't we already do this in the lexer?
-							Source: gen.Text("Where From"),
+							Author: gen.StringOnlyContent{gen.Text("Author Name")}, // @todo: how to split this? shouldn't we already do this in the lexer?
+							Source: gen.StringOnlyContent{gen.Text("Where From")},
 						},
 					},
 				},
