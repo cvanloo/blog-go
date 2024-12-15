@@ -38,6 +38,7 @@ func (err ParserError) Error() string {
 type (
 	Level struct {
 		ReturnToState ParseState
+		Strings Stack[string]
 		Content Stack[gen.Renderable]
 		TextValues Stack[gen.StringRenderable]
 	}
@@ -46,12 +47,25 @@ type (
 	}
 )
 
+func (lv *Level) PushString(v string) {
+	lv.Strings = lv.Strings.Push(v)
+}
+
+func (lv *Level) PopString() (s string) {
+	lv.String, s = lv.String.Pop()
+	return s
+}
+
 func (lv *Level) PushContent(v gen.Renderable) {
 	lv.Content = lv.Content.Push(v)
 }
 
 func (lv *Level) PushText(v gen.StringRenderable) {
 	lv.TextValues = lv.TextValues.Push(v)
+}
+
+func (lv *Level) EmptyText() {
+	lv.TextValues = lv.TextValues.Empty()
 }
 
 func (ls *Levels) Push(l *Level) {
@@ -84,10 +98,8 @@ const (
 	ParsingDocument
 	ParsingSection1
 	ParsingSection1Content
-	ParsingSection1End
 	ParsingSection2
 	ParsingSection2Content
-	ParsingSection2End
 	ParsingHtmlTag
 	ParsingParagraph
 	ParsingCodeBlock
@@ -97,16 +109,12 @@ const (
 	ParsingEmphasis
 	ParsingStrong
 	ParsingEmphasisStrong
+	ParsingLink
 )
 
 func Parse(lx LexResult) (blog gen.Blog, err error) {
 	state := ParsingStart
 	levels := Levels{}
-	var (
-		stringValues Stack[string]
-		textValues Stack[gen.StringRenderable] // @todo: remove this and always use the one from the current level
-		//contentValues Stack[gen.Renderable]
-	)
 	for lexeme := range lx.Tokens() {
 		switch state {
 		default:
@@ -116,13 +124,17 @@ func Parse(lx LexResult) (blog gen.Blog, err error) {
 			default:
 				err = errors.Join(err, newError(lexeme, state, errors.New("invalid token, expected one of MetaBegin, HtmlTagOpen, Section1")))
 			case lexer.TokenMetaBegin:
+				levels.Push(&Level{ReturnToState: ParsingDocument})
 				state = ParsingMeta
 			case lexer.TokenHtmlTagOpen:
+				levels.Push(&Level{ReturnToState: ParsingDocument})
 				state = ParsingHtmlTag
 			case lexer.TokenSection1Begin:
+				levels.Push(&Level{ReturnToState: ParsingDocument})
 				state = ParsingSection1
 			}
 		case ParsingMeta:
+			level := levels.Top()
 			switch lexeme.Type {
 			default:
 				err = errors.Join(err, newError(lexeme, state, errors.New("invalid token, expected one of MetaKey, MetaEnd")))
@@ -130,73 +142,79 @@ func Parse(lx LexResult) (blog gen.Blog, err error) {
 				if !checkMetaKey(lexeme.Text) {
 					err = errors.Join(err, newError(lexeme, state, fmt.Errorf("unrecognized meta key: %s", lexeme.Text)))
 				}
-				stringValues = stringValues.Push(lexeme.Text)
+				level.PushString(lexeme.Text)
 				state = ParsingMetaVal
 			case lexer.TokenMetaEnd:
-				state = ParsingDocument
+				_ = levels.Pop()
+				state = level.ReturnToState
 			}
 		case ParsingMetaVal:
+			level := levels.Top()
 			switch lexeme.Type {
 			default:
 				if isTextContent(lexeme.Type) {
-					textValues = textValues.Push(newTextContent(lexeme))
+					level.PushText(newTextContent(lexeme))
 				} else {
 					err = errors.Join(err, newError(lexeme, state, errors.New("invalid token, expected one of MetaKey, MetaEnd, string content")))
 				}
 			case lexer.TokenMetaKey:
-				var metaKey string
-				stringValues, metaKey = stringValues.Pop()
-				setMetaKeyValuePair(&blog, metaKey, gen.StringOnlyContent(textValues))
-				textValues = textValues.Empty()
-
+				metaKey := level.PopString()
+				setMetaKeyValuePair(&blog, metaKey, gen.StringOnlyContent(level.TextValues))
+				level.EmptyText()
 				if !checkMetaKey(lexeme.Text) {
 					err = errors.Join(err, newError(lexeme, state, fmt.Errorf("unrecognized meta key: %s", lexeme.Text)))
 				}
-				stringValues = stringValues.Push(lexeme.Text)
+				level.PushString(lexeme.Text)
 			case lexer.TokenMetaEnd:
-				var metaKey string
-				stringValues, metaKey = stringValues.Pop()
-				setMetaKeyValuePair(&blog, metaKey, gen.StringOnlyContent(textValues))
-				textValues = textValues.Empty()
-				state = ParsingDocument
+				metaKey := level.PopString()
+				setMetaKeyValuePair(&blog, metaKey, gen.StringOnlyContent(level.TextValues))
+				level.EmptyText()
+				_ = levels.Pop()
+				state = level.ReturnToState
 			}
 		case ParsingDocument:
-			levels.Push(&Level{ReturnToState: ParsingDocument})
 			switch lexeme.Type {
 			default:
 				err = errors.Join(err, newError(lexeme, state, errors.New("invalid token, expected one of Section1, HtmlTagOpen")))
 			case lexer.TokenSection1Begin:
+				levels.Push(&Level{ReturnToState: ParsingDocument})
 				state = ParsingSection1
 			case lexer.TokenHtmlTagOpen:
+				levels.Push(&Level{ReturnToState: ParsingDocument})
 				state = ParsingHtmlTag
 			case lexer.TokenEOF:
 				// @todo
 			}
 		case ParsingSection1:
+			level := levels.Top()
 			switch {
 			default:
 				err = errors.Join(err, newError(lexeme, state, errors.New("invalid token, expected one of Section1Content or text content")))
 			case isTextContent(lexeme.Type):
-				textValues = textValues.Push(newTextContent(lexeme))
+				level.PushText(newTextContent(lexeme))
 			case lexeme.Type == lexer.TokenSection1Content:
 				if len(textValues) == 0 {
 					err = errors.Join(err, newError(lexeme, state, errors.New("section must have a heading")))
 				}
 				blog.Sections = append(blog.Sections, gen.Section{
 					Level: 1,
-					Heading: gen.StringOnlyContent(textValues),
+					Heading: gen.StringOnlyContent(level.TextValues),
 				})
-				textValues = textValues.Empty()
+				level.EmptyText()
 				levels.Push(&Level{ReturnToState: ParsingSection1Content})
 				state = ParsingSection1Content
 			}
 		case ParsingSection1Content:
+			level := levels.Top()
 			switch lexeme.Type {
 			default:
 				err = errors.Join(err, newError(lexeme, state, errors.New("invalid token")))
 			case lexer.TokenSection1End:
-				// empty section, new section starts
-				state = ParsingSection1End
+				_ = levels.Pop()
+				paren := levels.Top()
+				l := len(blog.Sections)
+				blog.Sections[l-1].Content = level.Content
+				state = paren.ReturnToState
 			case lexer.TokenSection2Begin:
 				state = ParsingSection2
 			case lexer.TokenParagraphBegin:
@@ -210,22 +228,7 @@ func Parse(lx LexResult) (blog gen.Blog, err error) {
 			case lexer.TokenHtmlTagOpen:
 				state = ParsingHtmlTag
 			case lexer.TokenHorizontalRule:
-				level := levels.Top()
 				level.PushContent(gen.HorizontalRule{})
-			}
-		case ParsingSection1End:
-			level := levels.Pop()
-			l := len(blog.Sections)
-			blog.Sections[l-1].Content = level.Content
-			switch lexeme.Type {
-			default:
-				err = errors.Join(err, newError(lexeme, state, errors.New("invalid token, expected one of Section1, HtmlTagOpen")))
-			case lexer.TokenSection1Begin:
-				state = ParsingSection1
-			case lexer.TokenHtmlTagOpen:
-				state = ParsingHtmlTag
-			case lexer.TokenEOF:
-				// @todo
 			}
 		case ParsingSection2:
 			level := levels.Top()
@@ -234,25 +237,32 @@ func Parse(lx LexResult) (blog gen.Blog, err error) {
 			default:
 				err = errors.Join(err, newError(lexeme, state, errors.New("invalid token, expected one of Section2Content or text content")))
 			case isTextContent(lexeme.Type):
-				textValues = textValues.Push(newTextContent(lexeme))
+				level.PushText(newTextContent(lexeme))
 			case lexeme.Type == lexer.TokenSection2Content:
 				if len(textValues) == 0 {
 					err = errors.Join(err, newError(lexeme, state, errors.New("section must have a heading")))
 				}
 				level.PushContent(gen.Section{
 					Level: 2,
-					Heading: gen.StringOnlyContent(textValues),
+					Heading: gen.StringOnlyContent(level.TextValues),
 				})
-				textValues = textValues.Empty()
+				level.EmptyText()
 				levels.Push(&Level{ReturnToState: ParsingSection2Content})
 				state = ParsingSection2Content
 			}
 		case ParsingSection2Content:
+			level := levels.Top()
 			switch lexeme.Type {
 			default:
 				err = errors.Join(err, newError(lexeme, state, errors.New("invalid token")))
 			case lexer.TokenSection2End:
-				state = ParsingSection2End
+				_ = levels.Pop()
+				paren := levels.Top()
+				l := len(paren.Content)
+				section := paren.Content[l-1].(gen.Section) // @todo: I really don't like this
+				section.Content = level.Content
+				Assert(paren.ReturnToState == ParsingSection1Content, "confused parser state")
+				state = paren.ReturnToState
 			case lexer.TokenParagraphBegin:
 				state = ParsingParagraph
 			case lexer.TokenCodeBlockBegin:
@@ -264,86 +274,73 @@ func Parse(lx LexResult) (blog gen.Blog, err error) {
 			case lexer.TokenHtmlTagOpen:
 				state = ParsingHtmlTag
 			case lexer.TokenHorizontalRule:
-				level := levels.Top()
 				level.PushContent(gen.HorizontalRule{})
 			}
-		case ParsingSection2End:
-			level2 := levels.Pop()
-			level1 := levels.Top()
-			l := len(level1.Content)
-			section := level1.Content[l-1].(gen.Section) // @todo: I don't like this
-			section.Content = level2.Content
-			Assert(level1.ReturnToState == ParsingSection1Content, "confused parser state")
-			//state = level1.ReturnToState
-			// same as section 1 content
-			switch lexeme.Type {
-			default:
-				err = errors.Join(err, newError(lexeme, state, errors.New("invalid token")))
-			case lexer.TokenSection1End:
-				state = ParsingSection1End
-			case lexer.TokenSection2Begin:
-				state = ParsingSection2
-			case lexer.TokenParagraphBegin:
-				state = ParsingParagraph
-			case lexer.TokenCodeBlockBegin:
-				state = ParsingCodeBlock
-			case lexer.TokenImageBegin:
-				state = ParsingImage
-			case lexer.TokenBlockquoteBegin:
-				state = ParsingBlockquote
-			case lexer.TokenHtmlTagOpen:
-				state = ParsingHtmlTag
-			}
 		case ParsingParagraph:
+			level := levels.Top()
 			switch {
 			default:
 				err = errors.Join(err, newError(lexeme, state, errors.New("invalid token, expected one of ParagraphEnd, or text content")))
 			case isTextContent(lexeme.Type):
-				textValues = textValues.Push(newTextContent(lexeme))
+				level.PushText(newTextContent(lexeme))
 			case lexeme.Type == lexer.TokenParagraphEnd:
-				level := levels.Top()
-				level.PushContent(gen.Paragraph{
-					Content: gen.StringOnlyContent(textValues),
+				_ = levels.Pop()
+				paren := levels.Top()
+				paren.PushContent(gen.Paragraph{
+					Content: gen.StringOnlyContent(level.TextValues),
 				})
-				textValues = textValues.Empty()
 				state = level.ReturnToState
 			case lexeme.Type == lexer.TokenEmphasis:
+				levels.Push(&Level{ReturnToState: ParsingParagraph})
+				state = ParsingEmphasis
 			case lexeme.Type == lexer.TokenStrong:
+				levels.Push(&Level{ReturnToState: ParsingParagraph})
+				state = ParsingStrong
 			case lexeme.Type == lexer.TokenEmphasisStrong:
+				levels.Push(&Level{ReturnToState: ParsingParagraph})
+				state = ParsingEmphasisStrong
 			case lexeme.Type == lexer.TokenEnquoteBegin:
 				levels.Push(&Level{ReturnToState: ParsingParagraph})
 				state = ParsingEnquote
 			case lexeme.Type == lexer.TokenLinkText:
+				levels.Push(&Level{ReturnToState: ParsingParagraph})
+				state = ParsingLink
 			case lexeme.Type == lexer.TokenHtmlTagOpen:
 				// @todo: this is a tad bit tricky (StringRenderable is part of the paragraph, Renderable ends the paragraph, and comes after it)
+				levels.Push(&Level{ReturnToState: ParsingParagraph})
+				state = ParsingHtmlTag
 			}
 		case ParsingHtmlTag:
 			switch lexeme.Type {
 			default:
 				// @todo
 			case lexer.TokenHtmlTagClose:
-				state = levels.Top().ReturnToState
+				level := levels.Pop()
+				state = level.ReturnToState
 			}
 		case ParsingCodeBlock:
 			switch lexeme.Type {
 			default:
 				// @todo
 			case lexer.TokenCodeBlockEnd:
-				state = levels.Top().ReturnToState
+				level = levels.Pop()
+				state = level.ReturnToState
 			}
 		case ParsingImage:
 			switch lexeme.Type {
 			default:
 				// @todo
 			case lexer.TokenImageEnd:
-				state = levels.Top().ReturnToState
+				level := levels.Pop()
+				state = level.ReturnToState
 			}
 		case ParsingBlockquote:
 			switch lexeme.Type {
 			default:
 				// @todo
 			case lexer.TokenBlockquoteEnd:
-				state = levels.Top().ReturnToState
+				level := levels.Pop()
+				state = level.ReturnToState
 			}
 		case ParsingEnquote:
 			level := levels.Top()
@@ -429,6 +426,9 @@ func Parse(lx LexResult) (blog gen.Blog, err error) {
 				})
 				state = level.ReturnToState
 			}
+		case ParsingLink:
+			level := levels.Pop()
+			state = level.ReturnToState
 		}
 	}
 	return
