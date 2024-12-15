@@ -126,7 +126,6 @@ type (
 	Text string
 	Mono string
 	EscapedString string
-	Enquote string
 	StringOnlyContent []StringRenderable
 	Strong struct {
 		StringOnlyContent
@@ -135,6 +134,9 @@ type (
 		StringOnlyContent
 	}
 	EmphasisStrong struct {
+		StringOnlyContent
+	}
+	Enquote struct {
 		StringOnlyContent
 	}
 	Link struct {
@@ -230,7 +232,7 @@ func (q Enquote) Render() (template.HTML, error) {
 }
 
 func (q Enquote) Text() string {
-	return fmt.Sprintf("&ldquo;%s&rdquo;", string(q))
+	return fmt.Sprintf("&ldquo;%s&rdquo;", q.StringOnlyContent.Text())
 }
 
 func (l Link) Render() (template.HTML, error) {

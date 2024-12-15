@@ -38,15 +38,20 @@ func (err ParserError) Error() string {
 type (
 	Level struct {
 		ReturnToState ParseState
-		Content []gen.Renderable
+		Content Stack[gen.Renderable]
+		TextValues Stack[gen.StringRenderable]
 	}
 	Levels struct {
 		levels []*Level
 	}
 )
 
-func (lv *Level) Append(v gen.Renderable) {
-	lv.Content = append(lv.Content, v)
+func (lv *Level) PushContent(v gen.Renderable) {
+	lv.Content = lv.Content.Push(v)
+}
+
+func (lv *Level) PushText(v gen.StringRenderable) {
+	lv.TextValues = lv.TextValues.Push(v)
 }
 
 func (ls *Levels) Push(l *Level) {
@@ -88,6 +93,7 @@ const (
 	ParsingCodeBlock
 	ParsingImage
 	ParsingBlockquote
+	ParsingEnquote
 )
 
 func Parse(lx LexResult) (blog gen.Blog, err error) {
@@ -95,7 +101,7 @@ func Parse(lx LexResult) (blog gen.Blog, err error) {
 	levels := Levels{}
 	var (
 		stringValues Stack[string]
-		textValues Stack[gen.StringRenderable]
+		textValues Stack[gen.StringRenderable] // @todo: remove this and always use the one from the current level
 		//contentValues Stack[gen.Renderable]
 	)
 	for lexeme := range lx.Tokens() {
@@ -200,6 +206,9 @@ func Parse(lx LexResult) (blog gen.Blog, err error) {
 				state = ParsingBlockquote
 			case lexer.TokenHtmlTagOpen:
 				state = ParsingHtmlTag
+			case lexer.TokenHorizontalRule:
+				level := levels.Top()
+				level.PushContent(gen.HorizontalRule{})
 			}
 		case ParsingSection1End:
 			level := levels.Pop()
@@ -227,7 +236,7 @@ func Parse(lx LexResult) (blog gen.Blog, err error) {
 				if len(textValues) == 0 {
 					err = errors.Join(err, newError(lexeme, state, errors.New("section must have a heading")))
 				}
-				level.Append(gen.Section{
+				level.PushContent(gen.Section{
 					Level: 2,
 					Heading: gen.StringOnlyContent(textValues),
 				})
@@ -251,6 +260,9 @@ func Parse(lx LexResult) (blog gen.Blog, err error) {
 				state = ParsingBlockquote
 			case lexer.TokenHtmlTagOpen:
 				state = ParsingHtmlTag
+			case lexer.TokenHorizontalRule:
+				level := levels.Top()
+				level.PushContent(gen.HorizontalRule{})
 			}
 		case ParsingSection2End:
 			level2 := levels.Pop()
@@ -287,11 +299,18 @@ func Parse(lx LexResult) (blog gen.Blog, err error) {
 				textValues = textValues.Push(newTextContent(lexeme))
 			case lexeme.Type == lexer.TokenParagraphEnd:
 				level := levels.Top()
-				level.Append(gen.Paragraph{
+				level.PushContent(gen.Paragraph{
 					Content: gen.StringOnlyContent(textValues),
 				})
 				textValues = textValues.Empty()
 				state = level.ReturnToState
+			case lexeme.Type == lexer.TokenEmphasis:
+			case lexeme.Type == lexer.TokenStrong:
+			case lexeme.Type == lexer.TokenEmphasisStrong:
+			case lexeme.Type == lexer.TokenEnquoteBegin:
+				levels.Push(&Level{ReturnToState: ParsingParagraph})
+				state = ParsingEnquote
+			case lexeme.Type == lexer.TokenLinkText:
 			case lexeme.Type == lexer.TokenHtmlTagOpen:
 				// @todo: this is a tad bit tricky (StringRenderable is part of the paragraph, Renderable ends the paragraph, and comes after it)
 			}
@@ -322,6 +341,22 @@ func Parse(lx LexResult) (blog gen.Blog, err error) {
 				// @todo
 			case lexer.TokenBlockquoteEnd:
 				state = levels.Top().ReturnToState
+			}
+		case ParsingEnquote:
+			level := levels.Top()
+			switch {
+			default:
+				err = errors.Join(err, newError(lexeme, state, errors.New("enquote can only contain text content")))
+			case isTextContent(lexeme.Type):
+				level.PushText(newTextContent(lexeme))
+			case lexeme.Type == lexer.TokenEnquoteEnd:
+				level := levels.Pop()
+				paren := levels.Top()
+				paren.PushContent(gen.Enquote{
+					gen.StringOnlyContent(textValues),
+				})
+				Assert(level.ReturnToState == ParsingParagraph, "confused parser state")
+				state = level.ReturnToState
 			}
 		}
 	}

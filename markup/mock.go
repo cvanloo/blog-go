@@ -338,7 +338,7 @@ var BlogTestStruct = gen.Blog{
 							Content: gen.StringOnlyContent{
 								gen.Ellipsis,
 								gen.Text("And here is the same "),
-								gen.Enquote("thing,"),
+								gen.Enquote{gen.StringOnlyContent{gen.Text("thing,")}},
 								gen.Text("but different:"),
 							},
 						},
