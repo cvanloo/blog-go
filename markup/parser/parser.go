@@ -94,6 +94,9 @@ const (
 	ParsingImage
 	ParsingBlockquote
 	ParsingEnquote
+	ParsingEmphasis
+	ParsingStrong
+	ParsingEmphasisStrong
 )
 
 func Parse(lx LexResult) (blog gen.Blog, err error) {
@@ -349,13 +352,81 @@ func Parse(lx LexResult) (blog gen.Blog, err error) {
 				err = errors.Join(err, newError(lexeme, state, errors.New("enquote can only contain text content")))
 			case isTextContent(lexeme.Type):
 				level.PushText(newTextContent(lexeme))
+			case lexeme.Type == lexer.TokenEmphasis:
+				levels.Push(&Level{ReturnToState: ParsingEnquote})
+				state = ParsingEmphasis
+			case lexeme.Type == lexer.TokenStrong:
+				levels.Push(&Level{ReturnToState: ParsingEnquote})
+				state = ParsingStrong
+			case lexeme.Type == lexer.TokenEmphasisStrong:
+				levels.Push(&Level{ReturnToState: ParsingEnquote})
+				state = ParsingEmphasisStrong
 			case lexeme.Type == lexer.TokenEnquoteEnd:
 				level := levels.Pop()
 				paren := levels.Top()
-				paren.PushContent(gen.Enquote{
-					gen.StringOnlyContent(textValues),
+				paren.PushText(gen.Enquote{
+					gen.StringOnlyContent(level.TextValues),
 				})
-				Assert(level.ReturnToState == ParsingParagraph, "confused parser state")
+				state = level.ReturnToState
+			}
+		case ParsingEmphasis:
+			level := levels.Top()
+			switch {
+			default:
+			case isTextContent(lexeme.Type):
+				level.PushText(newTextContent(lexeme))
+			case lexeme.Type == lexer.TokenStrong:
+				levels.Push(&Level{ReturnToState: ParsingEmphasis})
+				state = ParsingStrong
+			case lexeme.Type == lexer.TokenEmphasisStrong:
+				levels.Push(&Level{ReturnToState: ParsingEmphasis})
+				state = ParsingEmphasisStrong
+			case lexeme.Type == lexer.TokenEmphasis:
+				_ = levels.Pop()
+				paren := levels.Top()
+				paren.PushText(gen.Emphasis{
+					gen.StringOnlyContent(level.TextValues),
+				})
+				state = level.ReturnToState
+			}
+		case ParsingStrong:
+			level := levels.Top()
+			switch {
+			default:
+			case isTextContent(lexeme.Type):
+				level.PushText(newTextContent(lexeme))
+			case lexeme.Type == lexer.TokenEmphasis:
+				levels.Push(&Level{ReturnToState: ParsingStrong})
+				state = ParsingStrong
+			case lexeme.Type == lexer.TokenEmphasisStrong:
+				levels.Push(&Level{ReturnToState: ParsingStrong})
+				state = ParsingEmphasisStrong
+			case lexeme.Type == lexer.TokenStrong:
+				_ = levels.Pop()
+				paren := levels.Top()
+				paren.PushText(gen.Emphasis{
+					gen.StringOnlyContent(level.TextValues),
+				})
+				state = level.ReturnToState
+			}
+		case ParsingEmphasisStrong:
+			level := levels.Top()
+			switch {
+			default:
+			case isTextContent(lexeme.Type):
+				level.PushText(newTextContent(lexeme))
+			case lexeme.Type == lexer.TokenEmphasis:
+				levels.Push(&Level{ReturnToState: ParsingEmphasisStrong})
+				state = ParsingStrong
+			case lexeme.Type == lexer.TokenStrong:
+				levels.Push(&Level{ReturnToState: ParsingEmphasisStrong})
+				state = ParsingEmphasisStrong
+			case lexeme.Type == lexer.TokenEmphasisStrong:
+				_ = levels.Pop()
+				paren := levels.Top()
+				paren.PushText(gen.Emphasis{
+					gen.StringOnlyContent(level.TextValues),
+				})
 				state = level.ReturnToState
 			}
 		}
