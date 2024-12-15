@@ -194,7 +194,7 @@ var LexerTestTokens = MockTokens{
 	M(lexer.TokenText, "thing,"),
 	M(lexer.TokenEnquoteEnd, "\""),
 	M(lexer.TokenText, "but different:"),
-	M(lexer.TokenParagraphEnd, ""), // @todo: how do we know if the html tag ends the paragraph or not?
+	M(lexer.TokenParagraphEnd, ""),
 	M(lexer.TokenHtmlTagOpen, "Code"),
 	M(lexer.TokenHtmlTagAttrKey, "Lang"),
 	M(lexer.TokenHtmlTagAttrVal, "Go"),
@@ -230,10 +230,11 @@ var LexerTestTokens = MockTokens{
 	M(lexer.TokenEmphasisStrong, "***"),
 	M(lexer.TokenText, ", or what?"),
 	M(lexer.TokenParagraphEnd, ""),
-	M(lexer.TokenImage, ""),
+	M(lexer.TokenImageBegin, ""),
 	M(lexer.TokenImageTitle, "Cat in a Bag"),
 	M(lexer.TokenImagePath, "cat_in_a_bag"),
 	M(lexer.TokenImageAlt, "Image of a cat looking out of a pink bag."), // @todo: allow for specials and stuff?
+	M(lexer.TokenImageEnd, ""),
 	M(lexer.TokenHorizontalRule, "---"),
 	M(lexer.TokenBlockquoteBegin, ""),
 	M(lexer.TokenText, "かわいい"),

@@ -17,20 +17,22 @@ type (
 		Tokens() func(func(lexer.Token) bool)
 	}
 	ParserError struct {
+		State ParseState
 		Token lexer.Token
 		Inner error
 	}
 )
 
-func newError(lexeme lexer.Token, inner error) ParserError {
+func newError(lexeme lexer.Token, state ParseState, inner error) ParserError {
 	return ParserError{
+		State: state,
 		Token: lexeme,
 		Inner: inner,
 	}
 }
 
 func (err ParserError) Error() string {
-	return fmt.Sprintf("%s: %s", err.Token.Location(), err.Inner)
+	return fmt.Sprintf("[%s] %s: %s", err.State, err.Token, err.Inner)
 }
 
 type (
@@ -103,7 +105,7 @@ func Parse(lx LexResult) (blog gen.Blog, err error) {
 		case ParsingStart:
 			switch lexeme.Type {
 			default:
-				err = errors.Join(err, newError(lexeme, errors.New("invalid token, expected one of MetaBegin, HtmlTagOpen, Section1")))
+				err = errors.Join(err, newError(lexeme, state, errors.New("invalid token, expected one of MetaBegin, HtmlTagOpen, Section1")))
 			case lexer.TokenMetaBegin:
 				state = ParsingMeta
 			case lexer.TokenHtmlTagOpen:
@@ -114,10 +116,10 @@ func Parse(lx LexResult) (blog gen.Blog, err error) {
 		case ParsingMeta:
 			switch lexeme.Type {
 			default:
-				err = errors.Join(err, newError(lexeme, errors.New("invalid token, expected one of MetaKey, MetaEnd")))
+				err = errors.Join(err, newError(lexeme, state, errors.New("invalid token, expected one of MetaKey, MetaEnd")))
 			case lexer.TokenMetaKey:
 				if !checkMetaKey(lexeme.Text) {
-					err = errors.Join(err, newError(lexeme, fmt.Errorf("unrecognized meta key: %s", lexeme.Text)))
+					err = errors.Join(err, newError(lexeme, state, fmt.Errorf("unrecognized meta key: %s", lexeme.Text)))
 				}
 				stringValues = stringValues.Push(lexeme.Text)
 				state = ParsingMetaVal
@@ -130,7 +132,7 @@ func Parse(lx LexResult) (blog gen.Blog, err error) {
 				if isTextContent(lexeme.Type) {
 					textValues = textValues.Push(newTextContent(lexeme))
 				} else {
-					err = errors.Join(err, newError(lexeme, errors.New("invalid token, expected one of MetaKey, MetaEnd, string content")))
+					err = errors.Join(err, newError(lexeme, state, errors.New("invalid token, expected one of MetaKey, MetaEnd, string content")))
 				}
 			case lexer.TokenMetaKey:
 				var metaKey string
@@ -139,7 +141,7 @@ func Parse(lx LexResult) (blog gen.Blog, err error) {
 				textValues = textValues.Empty()
 
 				if !checkMetaKey(lexeme.Text) {
-					err = errors.Join(err, newError(lexeme, fmt.Errorf("unrecognized meta key: %s", lexeme.Text)))
+					err = errors.Join(err, newError(lexeme, state, fmt.Errorf("unrecognized meta key: %s", lexeme.Text)))
 				}
 				stringValues = stringValues.Push(lexeme.Text)
 			case lexer.TokenMetaEnd:
@@ -150,24 +152,26 @@ func Parse(lx LexResult) (blog gen.Blog, err error) {
 				state = ParsingDocument
 			}
 		case ParsingDocument:
+			levels.Push(&Level{ReturnToState: ParsingDocument})
 			switch lexeme.Type {
 			default:
-				err = errors.Join(err, newError(lexeme, errors.New("invalid token, expected one of Section1, HtmlTagOpen")))
+				err = errors.Join(err, newError(lexeme, state, errors.New("invalid token, expected one of Section1, HtmlTagOpen")))
 			case lexer.TokenSection1Begin:
 				state = ParsingSection1
 			case lexer.TokenHtmlTagOpen:
 				state = ParsingHtmlTag
+			case lexer.TokenEOF:
+				// @todo
 			}
 		case ParsingSection1:
-			Assert(levels.Len() == 0, "section 1 must only appear at top level")
 			switch {
 			default:
-				err = errors.Join(err, newError(lexeme, errors.New("invalid token, expected one of Section1Content or text content")))
+				err = errors.Join(err, newError(lexeme, state, errors.New("invalid token, expected one of Section1Content or text content")))
 			case isTextContent(lexeme.Type):
 				textValues = textValues.Push(newTextContent(lexeme))
 			case lexeme.Type == lexer.TokenSection1Content:
 				if len(textValues) == 0 {
-					err = errors.Join(err, newError(lexeme, errors.New("section must have a heading")))
+					err = errors.Join(err, newError(lexeme, state, errors.New("section must have a heading")))
 				}
 				blog.Sections = append(blog.Sections, gen.Section{
 					Level: 1,
@@ -180,7 +184,7 @@ func Parse(lx LexResult) (blog gen.Blog, err error) {
 		case ParsingSection1Content:
 			switch lexeme.Type {
 			default:
-				err = errors.Join(err, newError(lexeme, errors.New("invalid token")))
+				err = errors.Join(err, newError(lexeme, state, errors.New("invalid token")))
 			case lexer.TokenSection1End:
 				// empty section, new section starts
 				state = ParsingSection1End
@@ -190,7 +194,7 @@ func Parse(lx LexResult) (blog gen.Blog, err error) {
 				state = ParsingParagraph
 			case lexer.TokenCodeBlockBegin:
 				state = ParsingCodeBlock
-			case lexer.TokenImage:
+			case lexer.TokenImageBegin:
 				state = ParsingImage
 			case lexer.TokenBlockquoteBegin:
 				state = ParsingBlockquote
@@ -203,24 +207,25 @@ func Parse(lx LexResult) (blog gen.Blog, err error) {
 			blog.Sections[l-1].Content = level.Content
 			switch lexeme.Type {
 			default:
-				err = errors.Join(err, newError(lexeme, errors.New("invalid token, expected one of Section1, HtmlTagOpen")))
+				err = errors.Join(err, newError(lexeme, state, errors.New("invalid token, expected one of Section1, HtmlTagOpen")))
 			case lexer.TokenSection1Begin:
 				state = ParsingSection1
 			case lexer.TokenHtmlTagOpen:
 				state = ParsingHtmlTag
+			case lexer.TokenEOF:
+				// @todo
 			}
 		case ParsingSection2:
-			Assert(levels.Len() == 1, "section 2 must only appear at the second level")
 			level := levels.Top()
 			Assert(level.ReturnToState == ParsingSection1Content, "section 2 must appear within a section 1")
 			switch {
 			default:
-				err = errors.Join(err, newError(lexeme, errors.New("invalid token, expected one of Section2Content or text content")))
+				err = errors.Join(err, newError(lexeme, state, errors.New("invalid token, expected one of Section2Content or text content")))
 			case isTextContent(lexeme.Type):
 				textValues = textValues.Push(newTextContent(lexeme))
 			case lexeme.Type == lexer.TokenSection2Content:
 				if len(textValues) == 0 {
-					err = errors.Join(err, newError(lexeme, errors.New("section must have a heading")))
+					err = errors.Join(err, newError(lexeme, state, errors.New("section must have a heading")))
 				}
 				level.Append(gen.Section{
 					Level: 2,
@@ -233,14 +238,14 @@ func Parse(lx LexResult) (blog gen.Blog, err error) {
 		case ParsingSection2Content:
 			switch lexeme.Type {
 			default:
-				err = errors.Join(err, newError(lexeme, errors.New("invalid token")))
+				err = errors.Join(err, newError(lexeme, state, errors.New("invalid token")))
 			case lexer.TokenSection2End:
 				state = ParsingSection2End
 			case lexer.TokenParagraphBegin:
 				state = ParsingParagraph
 			case lexer.TokenCodeBlockBegin:
 				state = ParsingCodeBlock
-			case lexer.TokenImage:
+			case lexer.TokenImageBegin:
 				state = ParsingImage
 			case lexer.TokenBlockquoteBegin:
 				state = ParsingBlockquote
@@ -254,11 +259,30 @@ func Parse(lx LexResult) (blog gen.Blog, err error) {
 			section := level1.Content[l-1].(gen.Section) // @todo: I don't like this
 			section.Content = level2.Content
 			Assert(level1.ReturnToState == ParsingSection1Content, "confused parser state")
-			state = level1.ReturnToState
+			//state = level1.ReturnToState
+			// same as section 1 content
+			switch lexeme.Type {
+			default:
+				err = errors.Join(err, newError(lexeme, state, errors.New("invalid token")))
+			case lexer.TokenSection1End:
+				state = ParsingSection1End
+			case lexer.TokenSection2Begin:
+				state = ParsingSection2
+			case lexer.TokenParagraphBegin:
+				state = ParsingParagraph
+			case lexer.TokenCodeBlockBegin:
+				state = ParsingCodeBlock
+			case lexer.TokenImageBegin:
+				state = ParsingImage
+			case lexer.TokenBlockquoteBegin:
+				state = ParsingBlockquote
+			case lexer.TokenHtmlTagOpen:
+				state = ParsingHtmlTag
+			}
 		case ParsingParagraph:
 			switch {
 			default:
-				err = errors.Join(err, newError(lexeme, errors.New("invalid token, expected one of ParagraphEnd, or text content")))
+				err = errors.Join(err, newError(lexeme, state, errors.New("invalid token, expected one of ParagraphEnd, or text content")))
 			case isTextContent(lexeme.Type):
 				textValues = textValues.Push(newTextContent(lexeme))
 			case lexeme.Type == lexer.TokenParagraphEnd:
@@ -270,6 +294,34 @@ func Parse(lx LexResult) (blog gen.Blog, err error) {
 				state = level.ReturnToState
 			case lexeme.Type == lexer.TokenHtmlTagOpen:
 				// @todo: this is a tad bit tricky (StringRenderable is part of the paragraph, Renderable ends the paragraph, and comes after it)
+			}
+		case ParsingHtmlTag:
+			switch lexeme.Type {
+			default:
+				// @todo
+			case lexer.TokenHtmlTagClose:
+				state = levels.Top().ReturnToState
+			}
+		case ParsingCodeBlock:
+			switch lexeme.Type {
+			default:
+				// @todo
+			case lexer.TokenCodeBlockEnd:
+				state = levels.Top().ReturnToState
+			}
+		case ParsingImage:
+			switch lexeme.Type {
+			default:
+				// @todo
+			case lexer.TokenImageEnd:
+				state = levels.Top().ReturnToState
+			}
+		case ParsingBlockquote:
+			switch lexeme.Type {
+			default:
+				// @todo
+			case lexer.TokenBlockquoteEnd:
+				state = levels.Top().ReturnToState
 			}
 		}
 	}

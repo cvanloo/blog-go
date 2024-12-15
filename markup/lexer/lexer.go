@@ -67,10 +67,11 @@ const (
 	TokenBlockquoteEnd
 	TokenEnquoteBegin
 	TokenEnquoteEnd
-	TokenImage
+	TokenImageBegin
 	TokenImageTitle
 	TokenImagePath
 	TokenImageAlt
+	TokenImageEnd
 	TokenHorizontalRule
 	// @todo: sidenote
 )
