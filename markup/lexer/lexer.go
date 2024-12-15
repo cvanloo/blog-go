@@ -41,8 +41,12 @@ const (
 	TokenHtmlTagClose
 	TokenParagraphBegin
 	TokenParagraphEnd
-	TokenSection1
-	TokenSection2
+	TokenSection1Begin
+	TokenSection1Content
+	TokenSection1End
+	TokenSection2Begin
+	TokenSection2Content
+	TokenSection2End
 	TokenMono
 	TokenCodeBlockBegin
 	TokenCodeBlockLang
@@ -177,9 +181,9 @@ func (lx *Lexer) LexSectionHeader(level int) {
 	default:
 		lx.Error(fmt.Errorf("invalid section level: %d", level))
 	case 1:
-		lx.Emit(TokenSection1)
+		lx.Emit(TokenSection1Begin)
 	case 2:
-		lx.Emit(TokenSection2)
+		lx.Emit(TokenSection2Begin)
 	}
 }
 

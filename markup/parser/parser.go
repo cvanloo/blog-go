@@ -3,7 +3,6 @@ package parser
 import (
 	"errors"
 	"fmt"
-	"log"
 	"strings"
 	"time"
 	"strconv"
@@ -34,6 +33,40 @@ func (err ParserError) Error() string {
 	return fmt.Sprintf("%s: %s", err.Token.Location(), err.Inner)
 }
 
+type (
+	Level struct {
+		ReturnToState ParseState
+		Content []gen.Renderable
+	}
+	Levels struct {
+		levels []*Level
+	}
+)
+
+func (lv *Level) Append(v gen.Renderable) {
+	lv.Content = append(lv.Content, v)
+}
+
+func (ls *Levels) Push(l *Level) {
+	ls.levels = append(ls.levels, l)
+}
+
+func (ls *Levels) Top() *Level {
+	l := len(ls.levels)
+	return ls.levels[l-1]
+}
+
+func (ls *Levels) Pop() *Level {
+	l := len(ls.levels)
+	top := ls.levels[l-1]
+	ls.levels = ls.levels[:l-1]
+	return top
+}
+
+func (ls *Levels) Len() int {
+	return len(ls.levels)
+}
+
 //go:generate stringer -type ParseState
 type ParseState int
 
@@ -44,22 +77,24 @@ const (
 	ParsingDocument
 	ParsingSection1
 	ParsingSection1Content
+	ParsingSection1End
 	ParsingSection2
 	ParsingSection2Content
+	ParsingSection2End
+	ParsingHtmlTag
 	ParsingParagraph
+	ParsingCodeBlock
+	ParsingImage
+	ParsingBlockquote
 )
-
-func (pls *ParseLevels) AddContent(c gen.Renderable) {
-	l := len(pls.Stack)
-	pls[l-1].ContentValues = pls[l-1].ContentValues.Push(c)
-}
 
 func Parse(lx LexResult) (blog gen.Blog, err error) {
 	state := ParsingStart
+	levels := Levels{}
 	var (
 		stringValues Stack[string]
 		textValues Stack[gen.StringRenderable]
-		contentValues Stack[gen.Renderable]
+		//contentValues Stack[gen.Renderable]
 	)
 	for lexeme := range lx.Tokens() {
 		switch state {
@@ -73,7 +108,7 @@ func Parse(lx LexResult) (blog gen.Blog, err error) {
 				state = ParsingMeta
 			case lexer.TokenHtmlTagOpen:
 				state = ParsingHtmlTag
-			case lexer.TokenSection1:
+			case lexer.TokenSection1Begin:
 				state = ParsingSection1
 			}
 		case ParsingMeta:
@@ -129,7 +164,7 @@ func Parse(lx LexResult) (blog gen.Blog, err error) {
 			default:
 				err = errors.Join(err, newError(lexeme, errors.New("invalid token, expected one of Section1Content or text content")))
 			case isTextContent(lexeme.Type):
-				textValues = textValues.Push(newTextContent(lexeme.Text))
+				textValues = textValues.Push(newTextContent(lexeme))
 			case lexeme.Type == lexer.TokenSection1Content:
 				if len(textValues) == 0 {
 					err = errors.Join(err, newError(lexeme, errors.New("section must have a heading")))
@@ -139,7 +174,7 @@ func Parse(lx LexResult) (blog gen.Blog, err error) {
 					Heading: gen.StringOnlyContent(textValues),
 				})
 				textValues = textValues.Empty()
-				levels.Push(Level{ReturnToState: ParsingSection1Content})
+				levels.Push(&Level{ReturnToState: ParsingSection1Content})
 				state = ParsingSection1Content
 			}
 		case ParsingSection1Content:
@@ -177,7 +212,7 @@ func Parse(lx LexResult) (blog gen.Blog, err error) {
 		case ParsingSection2:
 			Assert(levels.Len() == 1, "section 2 must only appear at the second level")
 			level := levels.Top()
-			Assert(level.ReturnToState == ParsingSection1ContentNext, "section 2 must appear within a section 1")
+			Assert(level.ReturnToState == ParsingSection1Content, "section 2 must appear within a section 1")
 			switch {
 			default:
 				err = errors.Join(err, newError(lexeme, errors.New("invalid token, expected one of Section2Content or text content")))
@@ -192,7 +227,7 @@ func Parse(lx LexResult) (blog gen.Blog, err error) {
 					Heading: gen.StringOnlyContent(textValues),
 				})
 				textValues = textValues.Empty()
-				levels.Push(Level{ReturnToState: ParsingSection2Content})
+				levels.Push(&Level{ReturnToState: ParsingSection2Content})
 				state = ParsingSection2Content
 			}
 		case ParsingSection2Content:
@@ -216,8 +251,9 @@ func Parse(lx LexResult) (blog gen.Blog, err error) {
 			level2 := levels.Pop()
 			level1 := levels.Top()
 			l := len(level1.Content)
-			level1.Content[l-1].Content = level2.Content
-			Assert(level1.ReturnToState == ParsingSection1ContentNext, "confused parser state")
+			section := level1.Content[l-1].(gen.Section) // @todo: I don't like this
+			section.Content = level2.Content
+			Assert(level1.ReturnToState == ParsingSection1Content, "confused parser state")
 			state = level1.ReturnToState
 		case ParsingParagraph:
 			switch {
@@ -251,7 +287,7 @@ func isTextContent(tokenType lexer.TokenType) bool {
 }
 
 func newTextContent(lexeme lexer.Token) gen.StringRenderable {
-	Assert(isStringContent(lexeme.Type), fmt.Sprintf("cannot make text content out of %s", lexeme.Type))
+	Assert(isTextContent(lexeme.Type), fmt.Sprintf("cannot make text content out of %s", lexeme.Type))
 	switch lexeme.Type {
 	case lexer.TokenMono:
 		return gen.Mono(lexeme.Text)
