@@ -52,7 +52,7 @@ func (lv *Level) PushString(v string) {
 }
 
 func (lv *Level) PopString() (s string) {
-	lv.String, s = lv.String.Pop()
+	lv.Strings, s = lv.Strings.Pop()
 	return s
 }
 
@@ -75,6 +75,11 @@ func (ls *Levels) Push(l *Level) {
 func (ls *Levels) Top() *Level {
 	l := len(ls.levels)
 	return ls.levels[l-1]
+}
+
+func (ls *Levels) Dig() *Level {
+	l := len(ls.levels)
+	return ls.levels[l-2]
 }
 
 func (ls *Levels) Pop() *Level {
@@ -193,7 +198,7 @@ func Parse(lx LexResult) (blog gen.Blog, err error) {
 			case isTextContent(lexeme.Type):
 				level.PushText(newTextContent(lexeme))
 			case lexeme.Type == lexer.TokenSection1Content:
-				if len(textValues) == 0 {
+				if len(level.TextValues) == 0 {
 					err = errors.Join(err, newError(lexeme, state, errors.New("section must have a heading")))
 				}
 				blog.Sections = append(blog.Sections, gen.Section{
@@ -201,7 +206,7 @@ func Parse(lx LexResult) (blog gen.Blog, err error) {
 					Heading: gen.StringOnlyContent(level.TextValues),
 				})
 				level.EmptyText()
-				levels.Push(&Level{ReturnToState: ParsingSection1Content})
+				//levels.Push(&Level{ReturnToState: ParsingSection1Content})
 				state = ParsingSection1Content
 			}
 		case ParsingSection1Content:
@@ -211,21 +216,26 @@ func Parse(lx LexResult) (blog gen.Blog, err error) {
 				err = errors.Join(err, newError(lexeme, state, errors.New("invalid token")))
 			case lexer.TokenSection1End:
 				_ = levels.Pop()
-				paren := levels.Top()
 				l := len(blog.Sections)
 				blog.Sections[l-1].Content = level.Content
-				state = paren.ReturnToState
+				state = level.ReturnToState
 			case lexer.TokenSection2Begin:
+				levels.Push(&Level{ReturnToState: ParsingSection1Content})
 				state = ParsingSection2
 			case lexer.TokenParagraphBegin:
+				levels.Push(&Level{ReturnToState: ParsingSection1Content})
 				state = ParsingParagraph
 			case lexer.TokenCodeBlockBegin:
+				levels.Push(&Level{ReturnToState: ParsingSection1Content})
 				state = ParsingCodeBlock
 			case lexer.TokenImageBegin:
+				levels.Push(&Level{ReturnToState: ParsingSection1Content})
 				state = ParsingImage
 			case lexer.TokenBlockquoteBegin:
+				levels.Push(&Level{ReturnToState: ParsingSection1Content})
 				state = ParsingBlockquote
 			case lexer.TokenHtmlTagOpen:
+				levels.Push(&Level{ReturnToState: ParsingSection1Content})
 				state = ParsingHtmlTag
 			case lexer.TokenHorizontalRule:
 				level.PushContent(gen.HorizontalRule{})
@@ -239,15 +249,16 @@ func Parse(lx LexResult) (blog gen.Blog, err error) {
 			case isTextContent(lexeme.Type):
 				level.PushText(newTextContent(lexeme))
 			case lexeme.Type == lexer.TokenSection2Content:
-				if len(textValues) == 0 {
+				if len(level.TextValues) == 0 {
 					err = errors.Join(err, newError(lexeme, state, errors.New("section must have a heading")))
 				}
-				level.PushContent(gen.Section{
+				paren := levels.Dig()
+				paren.PushContent(gen.Section{
 					Level: 2,
 					Heading: gen.StringOnlyContent(level.TextValues),
 				})
 				level.EmptyText()
-				levels.Push(&Level{ReturnToState: ParsingSection2Content})
+				//levels.Push(&Level{ReturnToState: ParsingSection2Content})
 				state = ParsingSection2Content
 			}
 		case ParsingSection2Content:
@@ -261,17 +272,22 @@ func Parse(lx LexResult) (blog gen.Blog, err error) {
 				l := len(paren.Content)
 				section := paren.Content[l-1].(gen.Section) // @todo: I really don't like this
 				section.Content = level.Content
-				Assert(paren.ReturnToState == ParsingSection1Content, "confused parser state")
-				state = paren.ReturnToState
+				Assert(level.ReturnToState == ParsingSection1Content, "confused parser state")
+				state = level.ReturnToState
 			case lexer.TokenParagraphBegin:
+				levels.Push(&Level{ReturnToState: ParsingSection2Content})
 				state = ParsingParagraph
 			case lexer.TokenCodeBlockBegin:
+				levels.Push(&Level{ReturnToState: ParsingSection2Content})
 				state = ParsingCodeBlock
 			case lexer.TokenImageBegin:
+				levels.Push(&Level{ReturnToState: ParsingSection2Content})
 				state = ParsingImage
 			case lexer.TokenBlockquoteBegin:
+				levels.Push(&Level{ReturnToState: ParsingSection2Content})
 				state = ParsingBlockquote
 			case lexer.TokenHtmlTagOpen:
+				levels.Push(&Level{ReturnToState: ParsingSection2Content})
 				state = ParsingHtmlTag
 			case lexer.TokenHorizontalRule:
 				level.PushContent(gen.HorizontalRule{})
@@ -323,7 +339,7 @@ func Parse(lx LexResult) (blog gen.Blog, err error) {
 			default:
 				// @todo
 			case lexer.TokenCodeBlockEnd:
-				level = levels.Pop()
+				level := levels.Pop()
 				state = level.ReturnToState
 			}
 		case ParsingImage:
