@@ -42,15 +42,11 @@ const (
 	ParsingMeta
 	ParsingMetaVal
 	ParsingDocument
-	ParsingHtmlTag
 	ParsingSection1
 	ParsingSection1Content
 	ParsingSection2
 	ParsingSection2Content
 	ParsingParagraph
-	ParsingBlockquote
-	ParsingImage
-	ParsingCodeblock
 )
 
 func (pls *ParseLevels) AddContent(c gen.Renderable) {
@@ -67,6 +63,8 @@ func Parse(lx LexResult) (blog gen.Blog, err error) {
 	)
 	for lexeme := range lx.Tokens() {
 		switch state {
+		default:
+			panic(fmt.Errorf("parser state not implemented: %s", state))
 		case ParsingStart:
 			switch lexeme.Type {
 			default:
@@ -120,10 +118,122 @@ func Parse(lx LexResult) (blog gen.Blog, err error) {
 			switch lexeme.Type {
 			default:
 				err = errors.Join(err, newError(lexeme, errors.New("invalid token, expected one of Section1, HtmlTagOpen")))
-			case lexer.TokenSection1:
+			case lexer.TokenSection1Begin:
 				state = ParsingSection1
 			case lexer.TokenHtmlTagOpen:
 				state = ParsingHtmlTag
+			}
+		case ParsingSection1:
+			Assert(levels.Len() == 0, "section 1 must only appear at top level")
+			switch {
+			default:
+				err = errors.Join(err, newError(lexeme, errors.New("invalid token, expected one of Section1Content or text content")))
+			case isTextContent(lexeme.Type):
+				textValues = textValues.Push(newTextContent(lexeme.Text))
+			case lexeme.Type == lexer.TokenSection1Content:
+				if len(textValues) == 0 {
+					err = errors.Join(err, newError(lexeme, errors.New("section must have a heading")))
+				}
+				blog.Sections = append(blog.Sections, gen.Section{
+					Level: 1,
+					Heading: gen.StringOnlyContent(textValues),
+				})
+				textValues = textValues.Empty()
+				levels.Push(Level{ReturnToState: ParsingSection1Content})
+				state = ParsingSection1Content
+			}
+		case ParsingSection1Content:
+			switch lexeme.Type {
+			default:
+				err = errors.Join(err, newError(lexeme, errors.New("invalid token")))
+			case lexer.TokenSection1End:
+				// empty section, new section starts
+				state = ParsingSection1End
+			case lexer.TokenSection2Begin:
+				state = ParsingSection2
+			case lexer.TokenParagraphBegin:
+				state = ParsingParagraph
+			case lexer.TokenCodeBlockBegin:
+				state = ParsingCodeBlock
+			case lexer.TokenImage:
+				state = ParsingImage
+			case lexer.TokenBlockquoteBegin:
+				state = ParsingBlockquote
+			case lexer.TokenHtmlTagOpen:
+				state = ParsingHtmlTag
+			}
+		case ParsingSection1End:
+			level := levels.Pop()
+			l := len(blog.Sections)
+			blog.Sections[l-1].Content = level.Content
+			switch lexeme.Type {
+			default:
+				err = errors.Join(err, newError(lexeme, errors.New("invalid token, expected one of Section1, HtmlTagOpen")))
+			case lexer.TokenSection1Begin:
+				state = ParsingSection1
+			case lexer.TokenHtmlTagOpen:
+				state = ParsingHtmlTag
+			}
+		case ParsingSection2:
+			Assert(levels.Len() == 1, "section 2 must only appear at the second level")
+			level := levels.Top()
+			Assert(level.ReturnToState == ParsingSection1ContentNext, "section 2 must appear within a section 1")
+			switch {
+			default:
+				err = errors.Join(err, newError(lexeme, errors.New("invalid token, expected one of Section2Content or text content")))
+			case isTextContent(lexeme.Type):
+				textValues = textValues.Push(newTextContent(lexeme))
+			case lexeme.Type == lexer.TokenSection2Content:
+				if len(textValues) == 0 {
+					err = errors.Join(err, newError(lexeme, errors.New("section must have a heading")))
+				}
+				level.Append(gen.Section{
+					Level: 2,
+					Heading: gen.StringOnlyContent(textValues),
+				})
+				textValues = textValues.Empty()
+				levels.Push(Level{ReturnToState: ParsingSection2Content})
+				state = ParsingSection2Content
+			}
+		case ParsingSection2Content:
+			switch lexeme.Type {
+			default:
+				err = errors.Join(err, newError(lexeme, errors.New("invalid token")))
+			case lexer.TokenSection2End:
+				state = ParsingSection2End
+			case lexer.TokenParagraphBegin:
+				state = ParsingParagraph
+			case lexer.TokenCodeBlockBegin:
+				state = ParsingCodeBlock
+			case lexer.TokenImage:
+				state = ParsingImage
+			case lexer.TokenBlockquoteBegin:
+				state = ParsingBlockquote
+			case lexer.TokenHtmlTagOpen:
+				state = ParsingHtmlTag
+			}
+		case ParsingSection2End:
+			level2 := levels.Pop()
+			level1 := levels.Top()
+			l := len(level1.Content)
+			level1.Content[l-1].Content = level2.Content
+			Assert(level1.ReturnToState == ParsingSection1ContentNext, "confused parser state")
+			state = level1.ReturnToState
+		case ParsingParagraph:
+			switch {
+			default:
+				err = errors.Join(err, newError(lexeme, errors.New("invalid token, expected one of ParagraphEnd, or text content")))
+			case isTextContent(lexeme.Type):
+				textValues = textValues.Push(newTextContent(lexeme))
+			case lexeme.Type == lexer.TokenParagraphEnd:
+				level := levels.Top()
+				level.Append(gen.Paragraph{
+					Content: gen.StringOnlyContent(textValues),
+				})
+				textValues = textValues.Empty()
+				state = level.ReturnToState
+			case lexeme.Type == lexer.TokenHtmlTagOpen:
+				// @todo: this is a tad bit tricky (StringRenderable is part of the paragraph, Renderable ends the paragraph, and comes after it)
 			}
 		}
 	}
