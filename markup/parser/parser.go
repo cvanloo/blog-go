@@ -491,11 +491,6 @@ func setMetaKeyValuePair(blog *gen.Blog, key string, value gen.StringRenderable)
 	return
 }
 
-func setSectionContent(blog *gen.Blog, content []gen.Renderable) {
-	l := len(blog.Sections)
-	blog.Sections[l].Content = content
-}
-
 type (
 	Stack[T any] []T
 	Maybe[T any] struct {
