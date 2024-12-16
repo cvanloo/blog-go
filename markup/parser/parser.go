@@ -333,7 +333,7 @@ func Parse(lx LexResult) (blog gen.Blog, err error) {
 			case lexeme.Type == lexer.TokenEnquoteBegin:
 				levels.Push(&Level{ReturnToState: ParsingParagraph})
 				state = ParsingEnquote
-			case lexeme.Type == lexer.TokenLinkText:
+			case lexeme.Type == lexer.TokenLink:
 				levels.Push(&Level{ReturnToState: ParsingParagraph})
 				state = ParsingLink
 			case lexeme.Type == lexer.TokenHtmlTagOpen:
@@ -500,6 +500,7 @@ func Parse(lx LexResult) (blog gen.Blog, err error) {
 			level := levels.Top()
 			switch {
 			default:
+				err = errors.Join(err, newError(lexeme, state, errors.New("invalid token")))
 			case isTextContent(lexeme.Type):
 				level.PushText(newTextContent(lexeme))
 			case lexeme.Type == lexer.TokenStrong:
@@ -520,6 +521,7 @@ func Parse(lx LexResult) (blog gen.Blog, err error) {
 			level := levels.Top()
 			switch {
 			default:
+				err = errors.Join(err, newError(lexeme, state, errors.New("invalid token")))
 			case isTextContent(lexeme.Type):
 				level.PushText(newTextContent(lexeme))
 			case lexeme.Type == lexer.TokenEmphasis:
@@ -540,6 +542,7 @@ func Parse(lx LexResult) (blog gen.Blog, err error) {
 			level := levels.Top()
 			switch {
 			default:
+				err = errors.Join(err, newError(lexeme, state, errors.New("invalid token")))
 			case isTextContent(lexeme.Type):
 				level.PushText(newTextContent(lexeme))
 			case lexeme.Type == lexer.TokenEmphasis:
@@ -558,10 +561,20 @@ func Parse(lx LexResult) (blog gen.Blog, err error) {
 			}
 		case ParsingLink:
 			level := levels.Top()
-			switch lexeme.Type {
+			switch {
 			default:
-			case lexer.TokenLinkHref:
+				if isTextContent(lexeme.Type) {
+					level.PushText(newTextContent(lexeme))
+				} else {
+					err = errors.Join(err, newError(lexeme, state, errors.New("invalid token")))
+				}
+			case lexeme.Type == lexer.TokenLinkHref:
 				_ = levels.Pop()
+				paren := levels.Top()
+				paren.PushText(gen.Link{
+					Href: lexeme.Text,
+					Name: gen.StringOnlyContent(level.TextValues),
+				})
 				state = level.ReturnToState
 			}
 		}
