@@ -350,11 +350,21 @@ func Parse(lx LexResult) (blog gen.Blog, err error) {
 				state = level.ReturnToState
 			}
 		case ParsingCodeBlock:
+			level := levels.Top()
 			switch lexeme.Type {
 			default:
-				// @todo
+				err = errors.Join(err, newError(lexeme, state, errors.New("invalid token")))
+			case lexer.TokenCodeBlockLang: // @todo
+			case lexer.TokenCodeBlockLineFirst:
+			case lexer.TokenCodeBlockLineLast:
+			case lexer.TokenText:
+				level.PushString(lexeme.Text)
 			case lexer.TokenCodeBlockEnd:
-				level := levels.Pop()
+				_ = levels.Pop()
+				paren := levels.Top()
+				paren.PushContent(gen.CodeBlock{
+					Lines: level.Strings,
+				})
 				state = level.ReturnToState
 			}
 		case ParsingImage:
