@@ -365,12 +365,16 @@ func Parse(lx LexResult) (blog gen.Blog, err error) {
 				content, evalErr := evaluateHtmlTag(&blog, currentHtmlTag)
 				err = errors.Join(err, evalErr)
 				if content != nil {
-					paren := levels.Top()
-					switch c := content.(type) {
-					case gen.StringRenderable:
-						paren.PushText(c)
-					case gen.Renderable:
-						paren.PushContent(c)
+					if levels.Len() == 0 {
+						err = errors.Join(err, newError(lexeme, state, errors.New("all content must be contained within a section")))
+					} else {
+						paren := levels.Top()
+						switch c := content.(type) {
+						case gen.StringRenderable:
+							paren.PushText(c)
+						case gen.Renderable:
+							paren.PushContent(c)
+						}
 					}
 				}
 				currentHtmlTag = HtmlTag{Args: map[string]string{}}
@@ -389,14 +393,18 @@ func Parse(lx LexResult) (blog gen.Blog, err error) {
 				currentHtmlTag.Strings = level.Strings
 				currentHtmlTag.Text = level.TextValues
 				content, evalErr := evaluateHtmlTag(&blog, currentHtmlTag)
-				err = errors.Join(err, evalErr)
+				err = errors.Join(err, newError(lexeme, state, evalErr))
 				if content != nil {
-					paren := levels.Top() // @todo: might not always have a parent
-					switch c := content.(type) {
-					case gen.StringRenderable:
-						paren.PushText(c)
-					case gen.Renderable:
-						paren.PushContent(c)
+					if levels.Len() == 0 {
+						err = errors.Join(err, newError(lexeme, state, errors.New("all content must be contained within a section")))
+					} else {
+						paren := levels.Top()
+						switch c := content.(type) {
+						case gen.StringRenderable:
+							paren.PushText(c)
+						case gen.Renderable:
+							paren.PushContent(c)
+						}
 					}
 				}
 				currentHtmlTag = HtmlTag{Args: map[string]string{}}

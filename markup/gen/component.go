@@ -457,3 +457,12 @@ func (b *Blog) AbstractShort() StringRenderable {
 func (b *Blog) HasAbstract() bool {
 	return b.Abstract != nil
 }
+
+var (
+	currentID = 0
+)
+
+func NextID() int {
+	currentID++
+	return currentID
+}
