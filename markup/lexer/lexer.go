@@ -73,6 +73,7 @@ const (
 	TokenImageTitle
 	TokenImagePath
 	TokenImageAlt
+	TokenImageAttrEnd
 	TokenImageEnd
 	TokenHorizontalRule
 	// @todo: sidenote

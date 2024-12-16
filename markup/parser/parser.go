@@ -112,6 +112,8 @@ const (
 	ParsingParagraph
 	ParsingCodeBlock
 	ParsingImage
+	ParsingImageTitle
+	ParsingImageAlt
 	ParsingBlockquote
 	ParsingBlockquoteAttrAuthor
 	ParsingBlockquoteAttrSource
@@ -127,6 +129,7 @@ func Parse(lx LexResult) (blog gen.Blog, err error) {
 	levels := Levels{}
 	var (
 		currentBlockquote = gen.Blockquote{}
+		currentImage = gen.Image{}
 		//currentSection1 = gen.Section{Level: 1}
 		//currentSection2 = gen.Section{Level: 2}
 	)
@@ -355,11 +358,49 @@ func Parse(lx LexResult) (blog gen.Blog, err error) {
 				state = level.ReturnToState
 			}
 		case ParsingImage:
+			level := levels.Top()
 			switch lexeme.Type {
 			default:
-				// @todo
+				err = errors.Join(err, newError(lexeme, state, errors.New("invalid token")))
+			case lexer.TokenImageTitle:
+				levels.Push(&Level{ReturnToState: ParsingImage})
+				state = ParsingImageTitle
+			case lexer.TokenImageAlt:
+				levels.Push(&Level{ReturnToState: ParsingImage})
+				state = ParsingImageAlt
+			case lexer.TokenImagePath:
+				currentImage.Name = lexeme.Text
 			case lexer.TokenImageEnd:
-				level := levels.Pop()
+				_ = levels.Pop()
+				paren := levels.Top()
+				paren.PushContent(currentImage)
+				currentImage = gen.Image{}
+				state = level.ReturnToState
+			}
+		case ParsingImageTitle:
+			level := levels.Top()
+			switch {
+			default:
+				err = errors.Join(err, newError(lexeme, state, errors.New("invalid token")))
+			case isTextContent(lexeme.Type):
+				level.PushText(newTextContent(lexeme))
+			case lexeme.Type == lexer.TokenImageAttrEnd:
+				_ = levels.Pop()
+				currentImage.Title = gen.StringOnlyContent(level.TextValues)
+				Assert(level.ReturnToState == ParsingImage, "confused parser state")
+				state = level.ReturnToState
+			}
+		case ParsingImageAlt:
+			level := levels.Top()
+			switch {
+			default:
+				err = errors.Join(err, newError(lexeme, state, errors.New("invalid token")))
+			case isTextContent(lexeme.Type):
+				level.PushText(newTextContent(lexeme))
+			case lexeme.Type == lexer.TokenImageAttrEnd:
+				_ = levels.Pop()
+				currentImage.Alt = gen.StringOnlyContent(level.TextValues)
+				Assert(level.ReturnToState == ParsingImage, "confused parser state")
 				state = level.ReturnToState
 			}
 		case ParsingBlockquote:

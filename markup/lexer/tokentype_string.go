@@ -49,13 +49,14 @@ func _() {
 	_ = x[TokenImageTitle-38]
 	_ = x[TokenImagePath-39]
 	_ = x[TokenImageAlt-40]
-	_ = x[TokenImageEnd-41]
-	_ = x[TokenHorizontalRule-42]
+	_ = x[TokenImageAttrEnd-41]
+	_ = x[TokenImageEnd-42]
+	_ = x[TokenHorizontalRule-43]
 }
 
-const _TokenType_name = "EOFMetaBeginMetaKeyMetaEndHtmlTagOpenHtmlTagAttrKeyHtmlTagAttrValHtmlTagCloseParagraphBeginParagraphEndSection1BeginSection1ContentSection1EndSection2BeginSection2ContentSection2EndMonoCodeBlockBeginCodeBlockLangCodeBlockSourceCodeBlockLineFirstCodeBlockLineLastCodeBlockEndTextEmphasisStrongEmphasisStrongLinkHrefLinkTextAmpSpecialBlockquoteBeginBlockquoteAttrAuthorBlockquoteAttrSourceBlockquoteAttrEndBlockquoteEndEnquoteBeginEnquoteEndImageBeginImageTitleImagePathImageAltImageEndHorizontalRule"
+const _TokenType_name = "EOFMetaBeginMetaKeyMetaEndHtmlTagOpenHtmlTagAttrKeyHtmlTagAttrValHtmlTagCloseParagraphBeginParagraphEndSection1BeginSection1ContentSection1EndSection2BeginSection2ContentSection2EndMonoCodeBlockBeginCodeBlockLangCodeBlockSourceCodeBlockLineFirstCodeBlockLineLastCodeBlockEndTextEmphasisStrongEmphasisStrongLinkHrefLinkTextAmpSpecialBlockquoteBeginBlockquoteAttrAuthorBlockquoteAttrSourceBlockquoteAttrEndBlockquoteEndEnquoteBeginEnquoteEndImageBeginImageTitleImagePathImageAltImageAttrEndImageEndHorizontalRule"
 
-var _TokenType_index = [...]uint16{0, 3, 12, 19, 26, 37, 51, 65, 77, 91, 103, 116, 131, 142, 155, 170, 181, 185, 199, 212, 227, 245, 262, 274, 278, 286, 292, 306, 314, 322, 332, 347, 367, 387, 404, 417, 429, 439, 449, 459, 468, 476, 484, 498}
+var _TokenType_index = [...]uint16{0, 3, 12, 19, 26, 37, 51, 65, 77, 91, 103, 116, 131, 142, 155, 170, 181, 185, 199, 212, 227, 245, 262, 274, 278, 286, 292, 306, 314, 322, 332, 347, 367, 387, 404, 417, 429, 439, 449, 459, 468, 476, 488, 496, 510}
 
 func (i TokenType) String() string {
 	if i < 0 || i >= TokenType(len(_TokenType_index)-1) {
