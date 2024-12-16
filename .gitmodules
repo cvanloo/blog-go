@@ -1,3 +1,6 @@
 [submodule "public/fonts"]
 	path = public/fonts
 	url = git@github.com:cvanloo/fonts
+[submodule "日記"]
+	path = 日記
+	url = git@github.com:cvanloo/nikki.git
