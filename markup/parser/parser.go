@@ -6,6 +6,9 @@ import (
 	"strings"
 	"time"
 	"strconv"
+	"log"
+
+	"github.com/kr/pretty"
 
 	. "github.com/cvanloo/blog-go/assert"
 	"github.com/cvanloo/blog-go/markup/lexer"
@@ -121,6 +124,7 @@ func Parse(lx LexResult) (blog gen.Blog, err error) {
 	state := ParsingStart
 	levels := Levels{}
 	for lexeme := range lx.Tokens() {
+		log.Printf("[%s/%s] %# v", state, lexeme, pretty.Formatter(levels))
 		switch state {
 		default:
 			panic(fmt.Errorf("parser state not implemented: %s", state))
@@ -272,6 +276,7 @@ func Parse(lx LexResult) (blog gen.Blog, err error) {
 				l := len(paren.Content)
 				section := paren.Content[l-1].(gen.Section) // @todo: I really don't like this
 				section.Content = level.Content
+				paren.Content[l-1] = section
 				Assert(level.ReturnToState == ParsingSection1Content, "confused parser state")
 				state = level.ReturnToState
 			case lexer.TokenParagraphBegin:
@@ -417,7 +422,7 @@ func Parse(lx LexResult) (blog gen.Blog, err error) {
 			case lexeme.Type == lexer.TokenStrong:
 				_ = levels.Pop()
 				paren := levels.Top()
-				paren.PushText(gen.Emphasis{
+				paren.PushText(gen.Strong{
 					gen.StringOnlyContent(level.TextValues),
 				})
 				state = level.ReturnToState
@@ -437,14 +442,19 @@ func Parse(lx LexResult) (blog gen.Blog, err error) {
 			case lexeme.Type == lexer.TokenEmphasisStrong:
 				_ = levels.Pop()
 				paren := levels.Top()
-				paren.PushText(gen.Emphasis{
+				paren.PushText(gen.EmphasisStrong{
 					gen.StringOnlyContent(level.TextValues),
 				})
 				state = level.ReturnToState
 			}
 		case ParsingLink:
-			level := levels.Pop()
-			state = level.ReturnToState
+			level := levels.Top()
+			switch lexeme.Type {
+			default:
+			case lexer.TokenLinkHref:
+				_ = levels.Pop()
+				state = level.ReturnToState
+			}
 		}
 	}
 	return
