@@ -113,6 +113,8 @@ const (
 	ParsingCodeBlock
 	ParsingImage
 	ParsingBlockquote
+	ParsingBlockquoteAttrAuthor
+	ParsingBlockquoteAttrSource
 	ParsingEnquote
 	ParsingEmphasis
 	ParsingStrong
@@ -123,6 +125,11 @@ const (
 func Parse(lx LexResult) (blog gen.Blog, err error) {
 	state := ParsingStart
 	levels := Levels{}
+	var (
+		currentBlockquote = gen.Blockquote{}
+		//currentSection1 = gen.Section{Level: 1}
+		//currentSection2 = gen.Section{Level: 2}
+	)
 	for lexeme := range lx.Tokens() {
 		log.Printf("[%s/%s] %# v", state, lexeme, pretty.Formatter(levels))
 		switch state {
@@ -356,11 +363,62 @@ func Parse(lx LexResult) (blog gen.Blog, err error) {
 				state = level.ReturnToState
 			}
 		case ParsingBlockquote:
+			level := levels.Top()
+			// @todo: also allow links inside blockquote
 			switch lexeme.Type {
 			default:
-				// @todo
+				if isTextContent(lexeme.Type) {
+					level.PushText(newTextContent(lexeme))
+				} else {
+					err = errors.Join(err, newError(lexeme, state, errors.New("invalid token")))
+				}
+			case lexer.TokenBlockquoteAttrAuthor:
+				levels.Push(&Level{ReturnToState: ParsingBlockquote})
+				state = ParsingBlockquoteAttrAuthor
+			case lexer.TokenBlockquoteAttrSource:
+				levels.Push(&Level{ReturnToState: ParsingBlockquote})
+				state = ParsingBlockquoteAttrSource
+			case lexer.TokenEmphasis:
+				levels.Push(&Level{ReturnToState: ParsingBlockquote})
+				state = ParsingEmphasis
+			case lexer.TokenStrong:
+				levels.Push(&Level{ReturnToState: ParsingBlockquote})
+				state = ParsingStrong
+			case lexer.TokenEmphasisStrong:
+				levels.Push(&Level{ReturnToState: ParsingBlockquote})
+				state = ParsingEmphasisStrong
 			case lexer.TokenBlockquoteEnd:
-				level := levels.Pop()
+				currentBlockquote.QuoteText = gen.StringOnlyContent(level.TextValues)
+				_ = levels.Pop()
+				paren := levels.Top()
+				paren.PushContent(currentBlockquote)
+				currentBlockquote = gen.Blockquote{}
+				state = level.ReturnToState
+			}
+		case ParsingBlockquoteAttrAuthor:
+			level := levels.Top()
+			switch {
+			default:
+				err = errors.Join(err, newError(lexeme, state, errors.New("invalid token")))
+			case isTextContent(lexeme.Type):
+				level.PushText(newTextContent(lexeme))
+			case lexeme.Type == lexer.TokenBlockquoteAttrEnd:
+				_ = levels.Pop()
+				currentBlockquote.Author = gen.StringOnlyContent(level.TextValues)
+				Assert(level.ReturnToState == ParsingBlockquote, "confused parser state")
+				state = level.ReturnToState
+			}
+		case ParsingBlockquoteAttrSource:
+			level := levels.Top()
+			switch {
+			default:
+				err = errors.Join(err, newError(lexeme, state, errors.New("invalid token")))
+			case isTextContent(lexeme.Type):
+				level.PushText(newTextContent(lexeme))
+			case lexeme.Type == lexer.TokenBlockquoteAttrEnd:
+				_ = levels.Pop()
+				currentBlockquote.Source = gen.StringOnlyContent(level.TextValues)
+				Assert(level.ReturnToState == ParsingBlockquote, "confused parser state")
 				state = level.ReturnToState
 			}
 		case ParsingEnquote:

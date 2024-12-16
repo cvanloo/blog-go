@@ -63,7 +63,9 @@ const (
 	TokenAmpSpecial
 	//TokenEscaped // @todo: https://www.markdownguide.org/basic-syntax/#characters-you-can-escape (handle this on the level of the lexer, not parser)
 	TokenBlockquoteBegin
-	TokenBlockquoteAttribution
+	TokenBlockquoteAttrAuthor
+	TokenBlockquoteAttrSource
+	TokenBlockquoteAttrEnd
 	TokenBlockquoteEnd
 	TokenEnquoteBegin
 	TokenEnquoteEnd

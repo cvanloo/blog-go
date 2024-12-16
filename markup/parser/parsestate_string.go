@@ -21,16 +21,18 @@ func _() {
 	_ = x[ParsingCodeBlock-10]
 	_ = x[ParsingImage-11]
 	_ = x[ParsingBlockquote-12]
-	_ = x[ParsingEnquote-13]
-	_ = x[ParsingEmphasis-14]
-	_ = x[ParsingStrong-15]
-	_ = x[ParsingEmphasisStrong-16]
-	_ = x[ParsingLink-17]
+	_ = x[ParsingBlockquoteAttrAuthor-13]
+	_ = x[ParsingBlockquoteAttrSource-14]
+	_ = x[ParsingEnquote-15]
+	_ = x[ParsingEmphasis-16]
+	_ = x[ParsingStrong-17]
+	_ = x[ParsingEmphasisStrong-18]
+	_ = x[ParsingLink-19]
 }
 
-const _ParseState_name = "ParsingStartParsingMetaParsingMetaValParsingDocumentParsingSection1ParsingSection1ContentParsingSection2ParsingSection2ContentParsingHtmlTagParsingParagraphParsingCodeBlockParsingImageParsingBlockquoteParsingEnquoteParsingEmphasisParsingStrongParsingEmphasisStrongParsingLink"
+const _ParseState_name = "ParsingStartParsingMetaParsingMetaValParsingDocumentParsingSection1ParsingSection1ContentParsingSection2ParsingSection2ContentParsingHtmlTagParsingParagraphParsingCodeBlockParsingImageParsingBlockquoteParsingBlockquoteAttrAuthorParsingBlockquoteAttrSourceParsingEnquoteParsingEmphasisParsingStrongParsingEmphasisStrongParsingLink"
 
-var _ParseState_index = [...]uint16{0, 12, 23, 37, 52, 67, 89, 104, 126, 140, 156, 172, 184, 201, 215, 230, 243, 264, 275}
+var _ParseState_index = [...]uint16{0, 12, 23, 37, 52, 67, 89, 104, 126, 140, 156, 172, 184, 201, 228, 255, 269, 284, 297, 318, 329}
 
 func (i ParseState) String() string {
 	if i < 0 || i >= ParseState(len(_ParseState_index)-1) {
