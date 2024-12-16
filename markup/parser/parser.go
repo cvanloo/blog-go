@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"log"
 
-	"github.com/kr/pretty"
+	//"github.com/kr/pretty"
 
 	. "github.com/cvanloo/blog-go/assert"
 	"github.com/cvanloo/blog-go/markup/lexer"
@@ -109,6 +109,7 @@ const (
 	ParsingSection2
 	ParsingSection2Content
 	ParsingHtmlTag
+	ParsingHtmlTagContent
 	ParsingParagraph
 	ParsingCodeBlock
 	ParsingImage
@@ -130,11 +131,12 @@ func Parse(lx LexResult) (blog gen.Blog, err error) {
 	var (
 		currentBlockquote = gen.Blockquote{}
 		currentImage = gen.Image{}
+		currentHtmlTag = HtmlTag{Args: map[string]string{}}
 		//currentSection1 = gen.Section{Level: 1}
 		//currentSection2 = gen.Section{Level: 2}
 	)
 	for lexeme := range lx.Tokens() {
-		log.Printf("[%s/%s] %# v", state, lexeme, pretty.Formatter(levels))
+		//log.Printf("[%s/%s] %# v", state, lexeme, pretty.Formatter(levels))
 		switch state {
 		default:
 			panic(fmt.Errorf("parser state not implemented: %s", state))
@@ -147,6 +149,7 @@ func Parse(lx LexResult) (blog gen.Blog, err error) {
 				state = ParsingMeta
 			case lexer.TokenHtmlTagOpen:
 				levels.Push(&Level{ReturnToState: ParsingDocument})
+				currentHtmlTag.Name = lexeme.Text
 				state = ParsingHtmlTag
 			case lexer.TokenSection1Begin:
 				levels.Push(&Level{ReturnToState: ParsingDocument})
@@ -200,6 +203,7 @@ func Parse(lx LexResult) (blog gen.Blog, err error) {
 				state = ParsingSection1
 			case lexer.TokenHtmlTagOpen:
 				levels.Push(&Level{ReturnToState: ParsingDocument})
+				currentHtmlTag.Name = lexeme.Text
 				state = ParsingHtmlTag
 			case lexer.TokenEOF:
 				// @todo
@@ -250,6 +254,7 @@ func Parse(lx LexResult) (blog gen.Blog, err error) {
 				state = ParsingBlockquote
 			case lexer.TokenHtmlTagOpen:
 				levels.Push(&Level{ReturnToState: ParsingSection1Content})
+				currentHtmlTag.Name = lexeme.Text
 				state = ParsingHtmlTag
 			case lexer.TokenHorizontalRule:
 				level.PushContent(gen.HorizontalRule{})
@@ -303,6 +308,7 @@ func Parse(lx LexResult) (blog gen.Blog, err error) {
 				state = ParsingBlockquote
 			case lexer.TokenHtmlTagOpen:
 				levels.Push(&Level{ReturnToState: ParsingSection2Content})
+				currentHtmlTag.Name = lexeme.Text
 				state = ParsingHtmlTag
 			case lexer.TokenHorizontalRule:
 				level.PushContent(gen.HorizontalRule{})
@@ -339,14 +345,59 @@ func Parse(lx LexResult) (blog gen.Blog, err error) {
 			case lexeme.Type == lexer.TokenHtmlTagOpen:
 				// @todo: this is a tad bit tricky (StringRenderable is part of the paragraph, Renderable ends the paragraph, and comes after it)
 				levels.Push(&Level{ReturnToState: ParsingParagraph})
+				currentHtmlTag.Name = lexeme.Text
 				state = ParsingHtmlTag
 			}
 		case ParsingHtmlTag:
+			level := levels.Top()
 			switch lexeme.Type {
 			default:
-				// @todo
+			case lexer.TokenHtmlTagAttrKey:
+				level.PushString(lexeme.Text)
+			case lexer.TokenHtmlTagAttrVal:
+				attrKey := level.PopString()
+				currentHtmlTag.Args[attrKey] = lexeme.Text
+			case lexer.TokenHtmlTagContent:
+				Assert(len(level.Strings) == 0, "key/value pair mismatch")
+				state = ParsingHtmlTagContent
 			case lexer.TokenHtmlTagClose:
-				level := levels.Pop()
+				_ = levels.Pop()
+				content, evalErr := evaluateHtmlTag(&blog, currentHtmlTag)
+				err = errors.Join(err, evalErr)
+				if content != nil {
+					switch content.(type) {
+					case gen.StringRenderable:
+						log.Println("is string renderable")
+					case gen.Renderable:
+						log.Println("is renderable")
+					}
+				}
+				currentHtmlTag = HtmlTag{Args: map[string]string{}}
+				state = level.ReturnToState
+			}
+		case ParsingHtmlTagContent:
+			level := levels.Top()
+			switch {
+			case isTextContent(lexeme.Type):
+				level.PushText(newTextContent(lexeme))
+				fallthrough
+			case lexeme.Type == lexer.TokenText:
+				level.PushString(lexeme.Text)
+			case lexeme.Type == lexer.TokenHtmlTagClose:
+				_ = levels.Pop()
+				currentHtmlTag.Strings = level.Strings
+				currentHtmlTag.Text = level.TextValues
+				content, evalErr := evaluateHtmlTag(&blog, currentHtmlTag)
+				err = errors.Join(err, evalErr)
+				if content != nil {
+					switch content.(type) {
+					case gen.StringRenderable:
+						log.Println("is string renderable")
+					case gen.Renderable:
+						log.Println("is renderable")
+					}
+				}
+				currentHtmlTag = HtmlTag{Args: map[string]string{}}
 				state = level.ReturnToState
 			}
 		case ParsingCodeBlock:

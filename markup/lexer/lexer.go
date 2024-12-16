@@ -38,6 +38,7 @@ const (
 	TokenHtmlTagOpen // no paragraphs inside, only TokenText, etc. (but of course can do <p></p> explicitly)
 	TokenHtmlTagAttrKey
 	TokenHtmlTagAttrVal
+	TokenHtmlTagContent
 	TokenHtmlTagClose
 	TokenParagraphBegin
 	TokenParagraphEnd

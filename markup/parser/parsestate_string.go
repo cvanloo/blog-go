@@ -17,24 +17,25 @@ func _() {
 	_ = x[ParsingSection2-6]
 	_ = x[ParsingSection2Content-7]
 	_ = x[ParsingHtmlTag-8]
-	_ = x[ParsingParagraph-9]
-	_ = x[ParsingCodeBlock-10]
-	_ = x[ParsingImage-11]
-	_ = x[ParsingImageTitle-12]
-	_ = x[ParsingImageAlt-13]
-	_ = x[ParsingBlockquote-14]
-	_ = x[ParsingBlockquoteAttrAuthor-15]
-	_ = x[ParsingBlockquoteAttrSource-16]
-	_ = x[ParsingEnquote-17]
-	_ = x[ParsingEmphasis-18]
-	_ = x[ParsingStrong-19]
-	_ = x[ParsingEmphasisStrong-20]
-	_ = x[ParsingLink-21]
+	_ = x[ParsingHtmlTagContent-9]
+	_ = x[ParsingParagraph-10]
+	_ = x[ParsingCodeBlock-11]
+	_ = x[ParsingImage-12]
+	_ = x[ParsingImageTitle-13]
+	_ = x[ParsingImageAlt-14]
+	_ = x[ParsingBlockquote-15]
+	_ = x[ParsingBlockquoteAttrAuthor-16]
+	_ = x[ParsingBlockquoteAttrSource-17]
+	_ = x[ParsingEnquote-18]
+	_ = x[ParsingEmphasis-19]
+	_ = x[ParsingStrong-20]
+	_ = x[ParsingEmphasisStrong-21]
+	_ = x[ParsingLink-22]
 }
 
-const _ParseState_name = "ParsingStartParsingMetaParsingMetaValParsingDocumentParsingSection1ParsingSection1ContentParsingSection2ParsingSection2ContentParsingHtmlTagParsingParagraphParsingCodeBlockParsingImageParsingImageTitleParsingImageAltParsingBlockquoteParsingBlockquoteAttrAuthorParsingBlockquoteAttrSourceParsingEnquoteParsingEmphasisParsingStrongParsingEmphasisStrongParsingLink"
+const _ParseState_name = "ParsingStartParsingMetaParsingMetaValParsingDocumentParsingSection1ParsingSection1ContentParsingSection2ParsingSection2ContentParsingHtmlTagParsingHtmlTagContentParsingParagraphParsingCodeBlockParsingImageParsingImageTitleParsingImageAltParsingBlockquoteParsingBlockquoteAttrAuthorParsingBlockquoteAttrSourceParsingEnquoteParsingEmphasisParsingStrongParsingEmphasisStrongParsingLink"
 
-var _ParseState_index = [...]uint16{0, 12, 23, 37, 52, 67, 89, 104, 126, 140, 156, 172, 184, 201, 216, 233, 260, 287, 301, 316, 329, 350, 361}
+var _ParseState_index = [...]uint16{0, 12, 23, 37, 52, 67, 89, 104, 126, 140, 161, 177, 193, 205, 222, 237, 254, 281, 308, 322, 337, 350, 371, 382}
 
 func (i ParseState) String() string {
 	if i < 0 || i >= ParseState(len(_ParseState_index)-1) {
