@@ -1,21 +1,28 @@
 package parser
 
 import (
-	"log"
 	"fmt"
 	"errors"
 
 	"github.com/cvanloo/blog-go/markup/gen"
 )
 
-var RegisteredHtmlTags = map[string]HtmlTagHandler{
-	"Abstract": abstractHtmlTagHandler,
-	"Code": codeHtmlTagHandler,
-	"Sidenote": sidenoteHtmlTagHandler,
+var RegisteredHtmlTags = map[string]HtmlHandler{
+	"Abstract": MH(abstractHtmlTagHandler),
+	"Code": CH(codeHtmlTagHandler),
+	"Sidenote": TH(sidenoteHtmlTagHandler),
 }
 
 type (
-	HtmlTagHandler func(*gen.Blog, HtmlTag) (gen.Renderable, error)
+	MetaHandler func(*gen.Blog, HtmlTag) error
+	ContentHandler func(*gen.Blog, HtmlTag) (gen.Renderable, error)
+	TextHandler func(*gen.Blog, HtmlTag) (gen.StringRenderable, error)
+	HtmlHandler struct {
+		Type HtmlHandlerType
+		MH MetaHandler
+		CH ContentHandler
+		TH TextHandler
+	}
 	HtmlTag struct {
 		Name string
 		Args map[string]string
@@ -25,23 +32,61 @@ type (
 	}
 )
 
+//go:generate stringer -type HtmlHandlerType -trimprefix HtmlType
+type HtmlHandlerType int
+
+const (
+	HtmlTypeMeta HtmlHandlerType = iota
+	HtmlTypeContent
+	HtmlTypeText
+)
+
+func MH(h MetaHandler) HtmlHandler {
+	return HtmlHandler{
+		Type: HtmlTypeMeta,
+		MH: h,
+	}
+}
+
+func CH(h ContentHandler) HtmlHandler {
+	return HtmlHandler{
+		Type: HtmlTypeContent,
+		CH: h,
+	}
+}
+
+func TH(h TextHandler) HtmlHandler {
+	return HtmlHandler{
+		Type: HtmlTypeText,
+		TH: h,
+	}
+}
+
 func evaluateHtmlTag(blog *gen.Blog, htmlTag HtmlTag) (gen.Renderable, error) {
 	handler, hasHandler := RegisteredHtmlTags[htmlTag.Name]
 	if hasHandler {
-		return handler(blog, htmlTag)
+		switch handler.Type {
+		default:
+			panic("invalid handler type")
+		case HtmlTypeMeta:
+			merr := handler.MH(blog, htmlTag)
+			return nil, merr
+		case HtmlTypeContent:
+			return handler.CH(blog, htmlTag)
+		case HtmlTypeText:
+			return handler.TH(blog, htmlTag)
+		}
 	}
 	return defaultHtmlTagHandler(blog, htmlTag)
 }
 
 func defaultHtmlTagHandler(blog *gen.Blog, htmlTag HtmlTag) (gen.Renderable, error) {
-	log.Printf("no handler registered for html tag: %s", htmlTag.Name)
-	// @todo: output verbatim?
-	return nil, nil
+	return nil, fmt.Errorf("no handler registered for html tag: %s", htmlTag.Name)
 }
 
-func abstractHtmlTagHandler(blog *gen.Blog, htmlTag HtmlTag) (gen.Renderable, error) {
+func abstractHtmlTagHandler(blog *gen.Blog, htmlTag HtmlTag) error {
 	blog.Abstract = gen.StringOnlyContent(htmlTag.Text)
-	return nil, nil
+	return nil
 }
 
 func codeHtmlTagHandler(blog *gen.Blog, htmlTag HtmlTag) (gen.Renderable, error) {
@@ -50,7 +95,7 @@ func codeHtmlTagHandler(blog *gen.Blog, htmlTag HtmlTag) (gen.Renderable, error)
 	}, nil
 }
 
-func sidenoteHtmlTagHandler(blog *gen.Blog, htmlTag HtmlTag) (gen.Renderable, error) {
+func sidenoteHtmlTagHandler(blog *gen.Blog, htmlTag HtmlTag) (gen.StringRenderable, error) {
 	var word, content gen.StringRenderable
 	wordStr, hasWordArg := htmlTag.Args["Word"]
 	word = gen.StringOnlyContent{gen.Text(wordStr)}

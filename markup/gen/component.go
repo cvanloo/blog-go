@@ -55,6 +55,10 @@ func (t *Template) Execute(w io.Writer, name string, data any) error {
 	return t.Template.ExecuteTemplate(w, name, data)
 }
 
+func WriteBlog(w io.Writer, blog *Blog) error {
+	return pages.Execute(w, "entry.gohtml", blog)
+}
+
 func String(blog *Blog) (string, error) {
 	bs := &bytes.Buffer{}
 	err := pages.Execute(bs, "entry.gohtml", blog)

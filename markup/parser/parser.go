@@ -6,9 +6,9 @@ import (
 	"strings"
 	"time"
 	"strconv"
-	"log"
+	//"log"
 
-	"github.com/kr/pretty"
+	//"github.com/kr/pretty"
 
 	. "github.com/cvanloo/blog-go/assert"
 	"github.com/cvanloo/blog-go/markup/lexer"
@@ -26,7 +26,10 @@ type (
 	}
 )
 
-func newError(lexeme lexer.Token, state ParseState, inner error) ParserError {
+func newError(lexeme lexer.Token, state ParseState, inner error) error {
+	if inner == nil {
+		return nil
+	}
 	return ParserError{
 		State: state,
 		Token: lexeme,
@@ -136,7 +139,7 @@ func Parse(lx LexResult) (blog gen.Blog, err error) {
 		//currentSection2 = gen.Section{Level: 2}
 	)
 	for lexeme := range lx.Tokens() {
-		log.Printf("[%s/%s] %# v", state, lexeme, pretty.Formatter(levels))
+		//log.Printf("[%s/%s] %# v", state, lexeme, pretty.Formatter(levels))
 		switch state {
 		default:
 			panic(fmt.Errorf("parser state not implemented: %s", state))
@@ -388,6 +391,9 @@ func Parse(lx LexResult) (blog gen.Blog, err error) {
 				fallthrough
 			case lexeme.Type == lexer.TokenText:
 				level.PushString(lexeme.Text)
+			case lexeme.Type == lexer.TokenHtmlTagOpen:
+				levels.Push(&Level{ReturnToState: ParsingHtmlTagContent})
+				state = ParsingHtmlTag
 			case lexeme.Type == lexer.TokenHtmlTagClose:
 				_ = levels.Pop()
 				currentHtmlTag.Strings = level.Strings
