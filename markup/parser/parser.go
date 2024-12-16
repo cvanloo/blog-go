@@ -26,6 +26,7 @@ type (
 	}
 )
 
+// @todo: make parser a type like with the lexer?
 func newError(lexeme lexer.Token, state ParseState, inner error) error {
 	if inner == nil {
 		return nil
@@ -704,13 +705,13 @@ func checkMetaKey(key string) bool {
 		"title": {},
 		"alt-title": {},
 		"url-path": {},
-		"rel-me": {},
+		"rel-me": {}, // @todo: this should actually be an array
 		"fedi-creator": {},
 		"lang": {},
 		"published": {},
 		"revised": {},
 		"est-reading": {},
-		//"series": {},
+		//"series": {}, // @todo: only parse `series` name and then determine the correct order (with prev and next) depending on all other parsed articles that have the same series name and their published dates.
 		"series-prev": {},
 		"series-prev-link": {},
 		"series-next": {},
@@ -734,7 +735,7 @@ func setMetaKeyValuePair(blog *gen.Blog, key string, value gen.StringRenderable)
 			blog.Tags = append(blog.Tags, gen.Tag(tag))
 		}
 	case "title":
-		blog.Title = value
+		blog.Title = value // @todo: automatically apply proper English Title Casing
 	case "alt-title":
 		blog.AltTitle = value
 	case "url-path":

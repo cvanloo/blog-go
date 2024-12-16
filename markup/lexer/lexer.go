@@ -3,6 +3,9 @@ package lexer
 import (
 	"fmt"
 	"unicode"
+	"strings"
+
+	. "github.com/cvanloo/blog-go/assert"
 )
 
 type (
@@ -21,7 +24,7 @@ type (
 	Token struct {
 		Type TokenType
 		Filename string
-		Pos, Len int
+		Pos int
 		Text string
 	}
 )
@@ -61,7 +64,7 @@ const (
 	TokenLinkHref
 	TokenLink
 	TokenAmpSpecial
-	//TokenEscaped // @todo: https://www.markdownguide.org/basic-syntax/#characters-you-can-escape (handle this on the level of the lexer, not parser)
+	//TokenEscaped // @todo: https://www.markdownguide.org/basic-syntax/#characters-you-can-escape (handle this on the level of the lexer, not parser -> emit TokenText)
 	TokenBlockquoteBegin
 	TokenBlockquoteAttrAuthor
 	TokenBlockquoteAttrSource
@@ -76,7 +79,7 @@ const (
 	TokenImageAttrEnd
 	TokenImageEnd
 	TokenHorizontalRule
-	// @todo: sidenote
+	// @todo: sidenote: https://www.markdownguide.org/extended-syntax/#footnotes
 )
 
 func (err LexerError) Error() string {
@@ -97,33 +100,111 @@ func (lx *Lexer) Tokens() func(func(Token) bool) {
 	}
 }
 
+// LexSource lexes the passed source and returns the first error that occurred during said lexing, if any.
 func (lx *Lexer) LexSource(filename, source string) error {
+	// reset lexer state when parsing new file, leave errors though
 	lx.Filename = filename
 	lx.Source = source
+	lx.Pos = 0
+	lx.Consumed = 0
 	firstSourceErrorIdx := len(lx.Errors)
-	lx.LexStart()
+	lx.LexMetaOrContent()
 	if len(lx.Errors) > firstSourceErrorIdx {
 		return lx.Errors[firstSourceErrorIdx]
 	}
 	return nil
 }
 
-func (lx *Lexer) LexStart() {
-	defer func() {
-		r := recover()
-		if r != nil {
-			lx.Error(fmt.Errorf("%v", r))
+const (
+	SpecAsciiLower = CharInRange{'a', 'z'}
+	SpecAsciiUpper = CharInRange{'A', 'Z'}
+	SpecAscii = CharInSpec{SpecAsciiLower, SpecAsciiUpper}
+	SpecValidMetaKey = CharInSpec{SpecAscii, CharInAny("-_")}
+)
+
+type (
+	CharSpec interface {
+		IsValid(r rune) bool
+	}
+	CharInRange [2]rune
+	CharInAny string
+	CharInSpec []CharSpec
+)
+
+func (c CharInRange) IsValid(r rune) bool {
+	return c[0] <= r && r <= c[1]
+}
+
+func (c CharInAny) IsValid(r rune) bool {
+	return strings.ContainsRune(c, r)
+}
+
+func (c CharInSpec) IsValid(r rune) bool {
+	for _, spec := range c {
+		if spec.IsValid(r) {
+			return true
 		}
-	}()
+	}
+	return false
+}
+
+func (lx *Lexer) NextValids(spec CharSpec) string {
+	for spec.IsValid(lx.PeekOne()) {
+		lx.Next(1)
+	}
+	return lx.Diff()
+}
+
+func (lx *Lexer) LexMetaOrContent() {
 	lx.SkipWhitespace()
 	if lx.Peek(3) == "---" {
-		lx.Next(3)
-		lx.Emit(TokenMetaBegin)
-		lx.LexMetaKeyValues()
-		lx.Expect("---")
-		lx.Emit(TokenMetaEnd)
+		lx.LexMeta()
 	}
 	lx.LexContent()
+}
+
+func (lx *Lexer) LexMeta() {
+	Assert(lx.Peek(3) == "---", "confused lexer state")
+	lx.Next(3)
+	lx.Emit(TokenMetaBegin)
+	lx.LexMetaKeyValuePairs()
+	lx.Expect("---")
+	lx.Emit(TokenMetaEnd)
+}
+
+func (lx *Lexer) LexMetaKeyValuePairs() {
+	for lx.Peek(3) != "---" {
+		lx.LexMetaKey()
+		if lx.ExpectAndSkip(":") {
+			lx.LexMetaValue()
+		}
+		lx.SkipWhitespace()
+	}
+}
+
+func (lx *Lexer) LexMetaKey() {
+	key := lx.NextValids(SpecValidMetaKey)
+	lx.Emit(TokenMetaKey)
+	_ = key
+	if lx.PeekOne() != ':' {
+		lx.Error(errors.New("a meta key can only contain [a-zA-Z_-]"))
+		// try to recover by dropping invalid runes and parsing to the : or \n
+		for lx.PeekOne() != ':' {
+			if lx.PeekOne() == '\n' {
+				// consider key as finished and having an empty value
+				lx.Next(1)
+				break
+			}
+			lx.Next(1)
+		}
+		lx.Skip()
+	}
+}
+
+func (lx *Lexer) LexMetaValue() {
+	lx.SkipWhitespace()
+	// @todo: can also include AmpSpecial
+	lx.ExpectAndSkip("\n")
 }
 
 func (lx *Lexer) LexContent() {
@@ -169,7 +250,7 @@ func (lx *Lexer) LexMetaKeyValues() {
 		lx.Next(1)
 		lx.Skip()
 		lx.SkipWhitespace()
-		val, ok := lx.TextUntil("\n")
+		val, ok := lx.Until("\n")
 		if !ok {
 			lx.Error(fmt.Errorf("expected key-value pair, got: %s", val))
 			break
@@ -181,29 +262,29 @@ func (lx *Lexer) LexMetaKeyValues() {
 func (lx *Lexer) LexText() {
 	for !lx.IsEOF() {
 		if lx.Peek(1) == "~" || lx.Peek(1) == "\u00A0" {
-			lx.EmitNonEmpty(TokenText)
+			lx.EmitIfNonEmpty(TokenText)
 			lx.Next(1)
 			lx.Emit(TokenAmpSpecial)
 		} else if lx.Peek(1) == "…" {
-			lx.EmitNonEmpty(TokenText)
+			lx.EmitIfNonEmpty(TokenText)
 			lx.Next(1)
 			lx.Emit(TokenAmpSpecial)
 		} else if lx.Peek(3) == "..." {
-			lx.EmitNonEmpty(TokenText)
+			lx.EmitIfNonEmpty(TokenText)
 			lx.Next(3)
 			lx.Emit(TokenAmpSpecial)
 		} else if lx.Peek(3) == "---" {
-			lx.EmitNonEmpty(TokenText)
+			lx.EmitIfNonEmpty(TokenText)
 			lx.Next(3)
 			lx.Emit(TokenAmpSpecial)
-		} else if lx.Peek("`") {
-			lx.EmitNonEmpty(TokenText)
+		} else if lx.Peek(1) == "`" {
+			lx.EmitIfNonEmpty(TokenText)
 			lx.LexMono()
 		} else if lx.Peek(1) == "&" {
-			lx.EmitNonEmpty(TokenText)
+			lx.EmitIfNonEmpty(TokenText)
 			lx.LexAmpSpecial()
 		} else if lx.Peek(1) == "#" || lx.Peek(1) == "<" || lx.Peek(3) == "```" {
-			lx.EmitNonEmpty(TokenText)
+			lx.EmitIfNonEmpty(TokenText)
 			break
 		} else {
 			lx.Next(1)
@@ -217,6 +298,7 @@ func (lx *Lexer) LexMono() {
 	lx.Next(1)
 	lx.Skip()
 	monoText, closed := lx.Until("`")
+	_ = monoText
 	if !closed {
 		// @todo ???
 		lx.Error(fmt.Errorf("unclosed `"))
@@ -364,6 +446,17 @@ func (lx *Lexer) IsEOF() bool {
 	return lx.Pos >= len(lx.Source)
 }
 
+func (lx *Lexer) Diff() string {
+	return lx.Source[lx.Consumed:lx.Pos]
+}
+
+func (lx *Lexer) Peek1() rune {
+	if lx.IsEOF() {
+		return 0
+	}
+	return lx.Source[lx.Pos]
+}
+
 func (lx *Lexer) Peek(n int) string {
 	if lx.IsEOF() {
 		return ""
@@ -421,13 +514,12 @@ func (lx *Lexer) Emit(tokenType TokenType) {
 	lx.Lexemes = append(lx.Lexemes, Token{
 		Type: tokenType,
 		Pos: lx.Consumed,
-		Len: lx.Pos - lx.Consumed,
-		Text: lx.Source[lx.Pos:lx.Consumed],
+		Text: lx.Source[lx.Consumed:lx.Pos],
 	})
 	lx.Consumed = lx.Pos
 }
 
-func (lx *Lexer) EmitNonEmpty(tokenType TokenType) {
+func (lx *Lexer) EmitIfNonEmpty(tokenType TokenType) {
 	if lx.Pos < lx.Consumed {
 		lx.Emit(tokenType)
 	}
@@ -437,10 +529,22 @@ func (lx *Lexer) Expect(expected string) bool {
 	lpos := lx.Pos
 	got := lx.Peek(len(expected))
 	if got != expected {
-		lx.ErrorPos(lpos, fmt.Errorf("expected: %s, got: %s", expected, got))
+		lx.Error(fmt.Errorf("expected: %s, got: %s", expected, got))
 		return false
 	}
 	lx.Next(len(expected))
+	return true
+}
+
+func (lx *Lexer) ExpectAndSkip(expected string) bool {
+	lpos := lx.Pos
+	got := lx.Peek(len(expected))
+	if got != expected {
+		lx.Error(fmt.Errorf("expected: %s, got: %s", expected, got))
+		return false
+	}
+	lx.Next(len(expected))
+	lx.Skip()
 	return true
 }
 

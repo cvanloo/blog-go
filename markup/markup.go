@@ -47,6 +47,7 @@ func OutDir(path string) MarkupOption {
 }
 
 func (m Markup) Run() (err error) {
+	// @todo: accept a io.Writer, instead of handling output dir here
 	{
 		_, err := os.Stat(m.OutDir)
 		if err != nil {
