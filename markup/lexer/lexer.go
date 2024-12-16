@@ -33,7 +33,6 @@ const (
 	TokenEOF TokenType = iota
 	TokenMetaBegin
 	TokenMetaKey
-	//TokenMetaVal // value ends when meta ends or when new key begins
 	TokenMetaEnd
 	TokenHtmlTagOpen // no paragraphs inside, only TokenText, etc. (but of course can do <p></p> explicitly)
 	TokenHtmlTagAttrKey
@@ -101,9 +100,10 @@ func (lx *Lexer) Tokens() func(func(Token) bool) {
 func (lx *Lexer) LexSource(filename, source string) error {
 	lx.Filename = filename
 	lx.Source = source
+	firstSourceErrorIdx := len(lx.Errors)
 	lx.LexStart()
-	if len(lx.Errors) > 0 {
-		return lx.Errors[0]
+	if len(lx.Errors) > firstSourceErrorIdx {
+		return lx.Errors[firstSourceErrorIdx]
 	}
 	return nil
 }
@@ -129,11 +129,10 @@ func (lx *Lexer) LexStart() {
 func (lx *Lexer) LexContent() {
 	lx.SkipWhitespace()
 	for !lx.IsEOF() {
-		/*if lx.Peek(3) == "---" {
+		if lx.Peek(3) == "---" {
 			lx.Next(3)
-			lx.LexHorizontalRuler()
-		} else */
-		if lx.Peek(1) == "#" {
+			lx.Emit(TokenHorizontalRule)
+		} else if lx.Peek(1) == "#" {
 			sectionLevel := 0
 			for lx.Peek(1) == "#" {
 				sectionLevel += 1
@@ -170,14 +169,81 @@ func (lx *Lexer) LexMetaKeyValues() {
 		lx.Next(1)
 		lx.Skip()
 		lx.SkipWhitespace()
-		val, ok := lx.Until("\n")
+		val, ok := lx.TextUntil("\n")
 		if !ok {
 			lx.Error(fmt.Errorf("expected key-value pair, got: %s", val))
 			break
 		}
-		//lx.Emit(TokenMetaVal) @todo
 		lx.SkipWhitespace()
 	}
+}
+
+func (lx *Lexer) LexText() {
+	for !lx.IsEOF() {
+		if lx.Peek(1) == "~" || lx.Peek(1) == "\u00A0" {
+			lx.EmitNonEmpty(TokenText)
+			lx.Next(1)
+			lx.Emit(TokenAmpSpecial)
+		} else if lx.Peek(1) == "…" {
+			lx.EmitNonEmpty(TokenText)
+			lx.Next(1)
+			lx.Emit(TokenAmpSpecial)
+		} else if lx.Peek(3) == "..." {
+			lx.EmitNonEmpty(TokenText)
+			lx.Next(3)
+			lx.Emit(TokenAmpSpecial)
+		} else if lx.Peek(3) == "---" {
+			lx.EmitNonEmpty(TokenText)
+			lx.Next(3)
+			lx.Emit(TokenAmpSpecial)
+		} else if lx.Peek("`") {
+			lx.EmitNonEmpty(TokenText)
+			lx.LexMono()
+		} else if lx.Peek(1) == "&" {
+			lx.EmitNonEmpty(TokenText)
+			lx.LexAmpSpecial()
+		} else if lx.Peek(1) == "#" || lx.Peek(1) == "<" || lx.Peek(3) == "```" {
+			lx.EmitNonEmpty(TokenText)
+			break
+		} else {
+			lx.Next(1)
+		}
+	}
+}
+
+func (lx *Lexer) LexMono() {
+	Assert(lx.Peek(1) == "`", "lexer confused")
+	// skip past `
+	lx.Next(1)
+	lx.Skip()
+	monoText, closed := lx.Until("`")
+	if !closed {
+		// @todo ???
+		lx.Error(fmt.Errorf("unclosed `"))
+	}
+	lx.Emit(TokenMono)
+	lx.Expect("`")
+}
+
+func (lx *Lexer) LexAmpSpecial() bool {
+	Assert(lx.Peek(1) == "&", "lexer confused")
+	special, closed := lx.Until(";") // @todo: don't allow any whitespace
+	if !closed {
+		lx.Reset()
+		Assert(lx.Peek(1) == "&", "expected to be back at & position after reset")
+		return false
+	}
+	lx.Next(1) // include ;
+	switch special+";" {
+	default:
+		// invalid
+		lx.Error(fmt.Errorf("invalid &<...>; sequence: %s;", special))
+		return false
+	case "&mdash;", "&ldquo;", "&rdquo;", "&prime;", "&Prime;", "&tprime;", "&qprime;", "&bprime;":
+		// valid
+	}
+	lx.Emit(TokenAmpSpecial)
+	return true
 }
 
 func (lx *Lexer) LexSectionHeader(level int) {
@@ -347,6 +413,10 @@ func (lx *Lexer) Skip() {
 	lx.Consumed = lx.Pos
 }
 
+func (lx *Lexer) Reset() {
+	lx.Pos = lx.Consumed
+}
+
 func (lx *Lexer) Emit(tokenType TokenType) {
 	lx.Lexemes = append(lx.Lexemes, Token{
 		Type: tokenType,
@@ -355,6 +425,12 @@ func (lx *Lexer) Emit(tokenType TokenType) {
 		Text: lx.Source[lx.Pos:lx.Consumed],
 	})
 	lx.Consumed = lx.Pos
+}
+
+func (lx *Lexer) EmitNonEmpty(tokenType TokenType) {
+	if lx.Pos < lx.Consumed {
+		lx.Emit(tokenType)
+	}
 }
 
 func (lx *Lexer) Expect(expected string) bool {
