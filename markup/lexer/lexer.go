@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"unicode"
 	"strings"
+	"errors"
 
 	. "github.com/cvanloo/blog-go/assert"
 )
@@ -11,7 +12,7 @@ import (
 type (
 	Lexer struct {
 		Filename string
-		Source string
+		Source []rune
 		Pos, Consumed int
 		Lexemes []Token
 		Errors []error
@@ -104,7 +105,7 @@ func (lx *Lexer) Tokens() func(func(Token) bool) {
 func (lx *Lexer) LexSource(filename, source string) error {
 	// reset lexer state when parsing new file, leave errors though
 	lx.Filename = filename
-	lx.Source = source
+	lx.Source = []rune(source)
 	lx.Pos = 0
 	lx.Consumed = 0
 	firstSourceErrorIdx := len(lx.Errors)
@@ -115,7 +116,7 @@ func (lx *Lexer) LexSource(filename, source string) error {
 	return nil
 }
 
-const (
+var (
 	SpecAsciiLower = CharInRange{'a', 'z'}
 	SpecAsciiUpper = CharInRange{'A', 'Z'}
 	SpecAscii = CharInSpec{SpecAsciiLower, SpecAsciiUpper}
@@ -136,7 +137,7 @@ func (c CharInRange) IsValid(r rune) bool {
 }
 
 func (c CharInAny) IsValid(r rune) bool {
-	return strings.ContainsRune(c, r)
+	return strings.ContainsRune(string(c), r)
 }
 
 func (c CharInSpec) IsValid(r rune) bool {
@@ -149,7 +150,7 @@ func (c CharInSpec) IsValid(r rune) bool {
 }
 
 func (lx *Lexer) NextValids(spec CharSpec) string {
-	for spec.IsValid(lx.PeekOne()) {
+	for spec.IsValid(lx.Peek1()) {
 		lx.Next(1)
 	}
 	return lx.Diff()
@@ -186,11 +187,11 @@ func (lx *Lexer) LexMetaKey() {
 	key := lx.NextValids(SpecValidMetaKey)
 	lx.Emit(TokenMetaKey)
 	_ = key
-	if lx.PeekOne() != ':' {
+	if lx.Peek1() != ':' {
 		lx.Error(errors.New("a meta key can only contain [a-zA-Z_-]"))
 		// try to recover by dropping invalid runes and parsing to the : or \n
-		for lx.PeekOne() != ':' {
-			if lx.PeekOne() == '\n' {
+		for lx.Peek1() != ':' {
+			if lx.Peek1() == '\n' {
 				// consider key as finished and having an empty value
 				lx.Next(1)
 				break
@@ -447,7 +448,7 @@ func (lx *Lexer) IsEOF() bool {
 }
 
 func (lx *Lexer) Diff() string {
-	return lx.Source[lx.Consumed:lx.Pos]
+	return string(lx.Source[lx.Consumed:lx.Pos])
 }
 
 func (lx *Lexer) Peek1() rune {
@@ -480,12 +481,12 @@ func (lx *Lexer) Until(search string) (string, bool) {
 	for {
 		if len(lx.Source) - lx.Pos >= len(search) {
 			if lx.Peek(len(search)) == search {
-				return lx.Source[lpos:lx.Pos], true
+				return string(lx.Source[lpos:lx.Pos]), true
 			} else {
 				lx.Next(1)
 			}
 		} else {
-			return lx.Source[lpos:lx.Pos], false
+			return string(lx.Source[lpos:lx.Pos]), false
 		}
 	}
 }
@@ -514,7 +515,7 @@ func (lx *Lexer) Emit(tokenType TokenType) {
 	lx.Lexemes = append(lx.Lexemes, Token{
 		Type: tokenType,
 		Pos: lx.Consumed,
-		Text: lx.Source[lx.Consumed:lx.Pos],
+		Text: string(lx.Source[lx.Consumed:lx.Pos]),
 	})
 	lx.Consumed = lx.Pos
 }
@@ -526,7 +527,6 @@ func (lx *Lexer) EmitIfNonEmpty(tokenType TokenType) {
 }
 
 func (lx *Lexer) Expect(expected string) bool {
-	lpos := lx.Pos
 	got := lx.Peek(len(expected))
 	if got != expected {
 		lx.Error(fmt.Errorf("expected: %s, got: %s", expected, got))
@@ -537,7 +537,6 @@ func (lx *Lexer) Expect(expected string) bool {
 }
 
 func (lx *Lexer) ExpectAndSkip(expected string) bool {
-	lpos := lx.Pos
 	got := lx.Peek(len(expected))
 	if got != expected {
 		lx.Error(fmt.Errorf("expected: %s, got: %s", expected, got))
