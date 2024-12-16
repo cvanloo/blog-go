@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"log"
 
-	//"github.com/kr/pretty"
+	"github.com/kr/pretty"
 
 	. "github.com/cvanloo/blog-go/assert"
 	"github.com/cvanloo/blog-go/markup/lexer"
@@ -136,7 +136,7 @@ func Parse(lx LexResult) (blog gen.Blog, err error) {
 		//currentSection2 = gen.Section{Level: 2}
 	)
 	for lexeme := range lx.Tokens() {
-		//log.Printf("[%s/%s] %# v", state, lexeme, pretty.Formatter(levels))
+		log.Printf("[%s/%s] %# v", state, lexeme, pretty.Formatter(levels))
 		switch state {
 		default:
 			panic(fmt.Errorf("parser state not implemented: %s", state))
@@ -365,11 +365,12 @@ func Parse(lx LexResult) (blog gen.Blog, err error) {
 				content, evalErr := evaluateHtmlTag(&blog, currentHtmlTag)
 				err = errors.Join(err, evalErr)
 				if content != nil {
-					switch content.(type) {
+					paren := levels.Top()
+					switch c := content.(type) {
 					case gen.StringRenderable:
-						log.Println("is string renderable")
+						paren.PushText(c)
 					case gen.Renderable:
-						log.Println("is renderable")
+						paren.PushContent(c)
 					}
 				}
 				currentHtmlTag = HtmlTag{Args: map[string]string{}}
@@ -390,11 +391,12 @@ func Parse(lx LexResult) (blog gen.Blog, err error) {
 				content, evalErr := evaluateHtmlTag(&blog, currentHtmlTag)
 				err = errors.Join(err, evalErr)
 				if content != nil {
-					switch content.(type) {
+					paren := levels.Top() // @todo: might not always have a parent
+					switch c := content.(type) {
 					case gen.StringRenderable:
-						log.Println("is string renderable")
+						paren.PushText(c)
 					case gen.Renderable:
-						log.Println("is renderable")
+						paren.PushContent(c)
 					}
 				}
 				currentHtmlTag = HtmlTag{Args: map[string]string{}}
