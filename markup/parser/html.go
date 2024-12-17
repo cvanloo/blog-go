@@ -1,6 +1,7 @@
 package parser
 
 import (
+	"log"
 	"fmt"
 	"errors"
 
@@ -8,6 +9,7 @@ import (
 )
 
 var RegisteredHtmlTags = map[string]HtmlHandler{
+	"Todo": MH(todoHtmlTagHandler),
 	"Abstract": MH(abstractHtmlTagHandler),
 	"Code": CH(codeHtmlTagHandler),
 	"Sidenote": TH(sidenoteHtmlTagHandler),
@@ -82,6 +84,11 @@ func evaluateHtmlTag(blog *gen.Blog, htmlTag HtmlTag) (gen.Renderable, error) {
 
 func defaultHtmlTagHandler(blog *gen.Blog, htmlTag HtmlTag) (gen.Renderable, error) {
 	return nil, fmt.Errorf("no handler registered for html tag: %s", htmlTag.Name)
+}
+
+func todoHtmlTagHandler(blog *gen.Blog, htmlTag HtmlTag) error {
+	log.Println(htmlTag.Strings)
+	return nil
 }
 
 func abstractHtmlTagHandler(blog *gen.Blog, htmlTag HtmlTag) error {

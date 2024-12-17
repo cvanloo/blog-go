@@ -117,6 +117,10 @@ func (lx *Lexer) LexSource(filename, source string) error {
 }
 
 var (
+	AmpSpecials = []string{"&mdash;", "&ldquo;", "&rdquo;", "&prime;", "&Prime;", "&tprime;", "&qprime;", "&bprime;"}
+)
+
+var (
 	SpecAsciiLower = CharInRange{'a', 'z'}
 	SpecAsciiUpper = CharInRange{'A', 'Z'}
 	SpecAscii = CharInSpec{SpecAsciiLower, SpecAsciiUpper}
@@ -156,6 +160,68 @@ func (lx *Lexer) NextValids(spec CharSpec) string {
 	return lx.Diff()
 }
 
+func (lx *Lexer) IsAmpSpecial() bool {
+	switch lx.Peek1() {
+	case '&':
+		for _, special := range AmpSpecials {
+			if lx.MatchAtPos(special) {
+				return true
+			}
+		}
+	case '…', '~', '\u00A0':
+		return true
+	}
+	switch lx.Peek(3) {
+	case "...", "---":
+		return true
+	}
+	return false
+}
+
+func (lx *Lexer) LexAmpSpecial() {
+	switch lx.Peek1() {
+	case '&':
+		lx.LexAmpSpecialAmpSemi()
+	case '…', '~', '\u00A0':
+		lx.Next(1)
+		lx.Emit(TokenAmpSpecial)
+	default:
+		switch lx.Peek(3) {
+		case "...", "---":
+			lx.Next(3)
+			lx.Emit(TokenAmpSpecial)
+		default:
+			panic("have you checked IsAmpSpecial before calling this function?")
+		}
+	}
+}
+
+func (lx *Lexer) LexAmpSpecialAmpSemi() bool {
+	Assert(lx.Peek(1) == "&", "lexer confused")
+	//for _, special := range AmpSpecials {
+	//	if lx.NextIfMatch(special) {
+	//		lx.Emit(TokenAmpSpecial)
+	//		return true
+	//	}
+	//}
+	special := lx.NextValids(SpecAscii)
+	if !lx.Expect(";") {
+		lx.Reset()
+		Assert(lx.Peek(1) == "&", "expected to be back at & position after reset")
+		return false
+	}
+	switch special+";" {
+	default:
+		// invalid
+		lx.Error(fmt.Errorf("invalid &<...>; sequence: %s;", special))
+		return false
+	case "&mdash;", "&ldquo;", "&rdquo;", "&prime;", "&Prime;", "&tprime;", "&qprime;", "&bprime;":
+		// valid
+		lx.Emit(TokenAmpSpecial)
+		return true
+	}
+}
+
 func (lx *Lexer) LexMetaOrContent() {
 	lx.SkipWhitespace()
 	if lx.Peek(3) == "---" {
@@ -168,13 +234,16 @@ func (lx *Lexer) LexMeta() {
 	Assert(lx.Peek(3) == "---", "confused lexer state")
 	lx.Next(3)
 	lx.Emit(TokenMetaBegin)
-	lx.LexMetaKeyValuePairs()
-	lx.Expect("---")
-	lx.Emit(TokenMetaEnd)
+	if lx.ExpectAndSkip("\n") {
+		lx.LexMetaKeyValuePairs()
+		lx.Expect("---")
+		lx.Emit(TokenMetaEnd)
+		lx.ExpectAndSkip("\n")
+	}
 }
 
 func (lx *Lexer) LexMetaKeyValuePairs() {
-	for lx.Peek(3) != "---" {
+	for !lx.IsEOF() && lx.Peek(4) != "---\n" {
 		lx.LexMetaKey()
 		if lx.ExpectAndSkip(":") {
 			lx.LexMetaValue()
@@ -190,7 +259,7 @@ func (lx *Lexer) LexMetaKey() {
 	if lx.Peek1() != ':' {
 		lx.Error(errors.New("a meta key can only contain [a-zA-Z_-]"))
 		// try to recover by dropping invalid runes and parsing to the : or \n
-		for lx.Peek1() != ':' {
+		for !lx.IsEOF() && lx.Peek1() != ':' {
 			if lx.Peek1() == '\n' {
 				// consider key as finished and having an empty value
 				lx.Next(1)
@@ -203,44 +272,27 @@ func (lx *Lexer) LexMetaKey() {
 }
 
 func (lx *Lexer) LexMetaValue() {
-	lx.SkipWhitespace()
-	for lx.Peek1() != '\n' {
+	lx.SkipWhitespaceNoNewLine()
+	if lx.Peek1() != '\n' {
 		lx.LexAsStringOrAmpSpecial()
 	}
 	lx.ExpectAndSkip("\n")
 }
 
 func (lx *Lexer) LexAsStringOrAmpSpecial() {
-	for lx.Peek1() != '\n' {
-		if lx.Peek1() == '&' && lx.LexAmpSpecial() {
-			// token already emitted --^
-		} else if lx.Peek(3) == '...' {
+	for !lx.IsEOF() && lx.Peek1() != '\n' {
+		if lx.IsAmpSpecial() {
 			lx.EmitIfNonEmpty(TokenText)
-			lx.Next(3)
-			lx.Emit(TokenAmpSpecial)
-		} else if lx.Peek1() == '…' {
-			lx.EmitIfNonEmpty(TokenText)
-			lx.Next(1)
-			lx.Emit(TokenAmpSpecial)
-		} else if lx.Peek1() == '~' {
-			lx.EmitIfNonEmpty(TokenText)
-			lx.Next(1)
-			lx.Emit(TokenAmpSpecial)
-		} else if lx.Peek1() == '\u00A0' {
-			lx.EmitIfNonEmpty(TokenText)
-			lx.Next(1)
-			lx.Emit(TokenAmpSpecial)
-		} else if lx.Peek3() == "---" {
-			lx.EmitIfNonEmpty(TokenText)
-			lx.Next(3)
-			lx.Emit(TokenAmpSpecial)
+			lx.LexAmpSpecial()
 		} else {
 			lx.Next(1)
 		}
 	}
+	lx.EmitIfNonEmpty(TokenText)
 }
 
 func (lx *Lexer) LexContent() {
+	/*
 	lx.SkipWhitespace()
 	for !lx.IsEOF() {
 		if lx.Peek(3) == "---" {
@@ -268,11 +320,12 @@ func (lx *Lexer) LexContent() {
 		lx.SkipWhitespace()
 	}
 	lx.Emit(TokenEOF)
+	*/
 }
 
 func (lx *Lexer) LexMetaKeyValues() {
 	lx.SkipWhitespace()
-	for lx.Peek(3) != "---" {
+	for !lx.IsEOF() && lx.Peek(3) != "---" {
 		key, ok := lx.Until(":")
 		if !ok {
 			lx.Error(fmt.Errorf("expected key-value pair, got: %s", key))
@@ -338,26 +391,6 @@ func (lx *Lexer) LexMono() {
 	}
 	lx.Emit(TokenMono)
 	lx.Expect("`")
-}
-
-func (lx *Lexer) LexAmpSpecial() bool {
-	Assert(lx.Peek(1) == "&", "lexer confused")
-	special := lx.NextValids(SpecAscii)
-	if !lx.Expect(";") {
-		lx.Reset()
-		Assert(lx.Peek(1) == "&", "expected to be back at & position after reset")
-		return false
-	}
-	switch special+";" {
-	default:
-		// invalid
-		lx.Error(fmt.Errorf("invalid &<...>; sequence: %s;", special))
-		return false
-	case "&mdash;", "&ldquo;", "&rdquo;", "&prime;", "&Prime;", "&tprime;", "&qprime;", "&bprime;":
-		// valid
-	}
-	lx.Emit(TokenAmpSpecial)
-	return true
 }
 
 func (lx *Lexer) LexSectionHeader(level int) {
@@ -474,6 +507,13 @@ func (lx *Lexer) SkipWhitespace() {
 	lx.Skip()
 }
 
+func (lx *Lexer) SkipWhitespaceNoNewLine() {
+	for !lx.IsEOF() && unicode.IsSpace(lx.Peek1()) && lx.Peek1() != '\n' {
+		lx.Next(1)
+	}
+	lx.Skip()
+}
+
 func (lx *Lexer) IsEOF() bool {
 	return lx.Pos >= len(lx.Source)
 }
@@ -544,6 +584,7 @@ func (lx *Lexer) Reset() {
 
 func (lx *Lexer) Emit(tokenType TokenType) {
 	lx.Lexemes = append(lx.Lexemes, Token{
+		Filename: lx.Filename,
 		Type: tokenType,
 		Pos: lx.Consumed,
 		Text: string(lx.Source[lx.Consumed:lx.Pos]),
@@ -552,9 +593,23 @@ func (lx *Lexer) Emit(tokenType TokenType) {
 }
 
 func (lx *Lexer) EmitIfNonEmpty(tokenType TokenType) {
-	if lx.Pos < lx.Consumed {
+	if lx.Pos > lx.Consumed {
 		lx.Emit(tokenType)
 	}
+}
+
+func (lx *Lexer) MatchAtPos(test string) bool {
+	got := lx.Peek(len(test))
+	return got == test
+}
+
+func (lx *Lexer) NextIfMatch(test string) bool {
+	got := lx.Peek(len(test))
+	if got != test {
+		return false
+	}
+	lx.Next(len(test))
+	return true
 }
 
 func (lx *Lexer) Expect(expected string) bool {
