@@ -204,8 +204,40 @@ func (lx *Lexer) LexMetaKey() {
 
 func (lx *Lexer) LexMetaValue() {
 	lx.SkipWhitespace()
-	// @todo: can also include AmpSpecial
+	for lx.Peek1() != '\n' {
+		lx.LexAsStringOrAmpSpecial()
+	}
 	lx.ExpectAndSkip("\n")
+}
+
+func (lx *Lexer) LexAsStringOrAmpSpecial() {
+	for lx.Peek1() != '\n' {
+		if lx.Peek1() == '&' && lx.LexAmpSpecial() {
+			// token already emitted --^
+		} else if lx.Peek(3) == '...' {
+			lx.EmitIfNonEmpty(TokenText)
+			lx.Next(3)
+			lx.Emit(TokenAmpSpecial)
+		} else if lx.Peek1() == '…' {
+			lx.EmitIfNonEmpty(TokenText)
+			lx.Next(1)
+			lx.Emit(TokenAmpSpecial)
+		} else if lx.Peek1() == '~' {
+			lx.EmitIfNonEmpty(TokenText)
+			lx.Next(1)
+			lx.Emit(TokenAmpSpecial)
+		} else if lx.Peek1() == '\u00A0' {
+			lx.EmitIfNonEmpty(TokenText)
+			lx.Next(1)
+			lx.Emit(TokenAmpSpecial)
+		} else if lx.Peek3() == "---" {
+			lx.EmitIfNonEmpty(TokenText)
+			lx.Next(3)
+			lx.Emit(TokenAmpSpecial)
+		} else {
+			lx.Next(1)
+		}
+	}
 }
 
 func (lx *Lexer) LexContent() {
@@ -310,13 +342,12 @@ func (lx *Lexer) LexMono() {
 
 func (lx *Lexer) LexAmpSpecial() bool {
 	Assert(lx.Peek(1) == "&", "lexer confused")
-	special, closed := lx.Until(";") // @todo: don't allow any whitespace
-	if !closed {
+	special := lx.NextValids(SpecAscii)
+	if !lx.Expect(";") {
 		lx.Reset()
 		Assert(lx.Peek(1) == "&", "expected to be back at & position after reset")
 		return false
 	}
-	lx.Next(1) // include ;
 	switch special+";" {
 	default:
 		// invalid
