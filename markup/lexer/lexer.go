@@ -83,6 +83,14 @@ const (
 	// @todo: sidenote: https://www.markdownguide.org/extended-syntax/#footnotes
 )
 
+func (t Token) String() string {
+	return fmt.Sprintf("%s:+%d: %s: `%s`", t.Filename, t.Pos, t.Type, t.Text)
+}
+
+func (t Token) Location() string {
+	return fmt.Sprintf("%s:+%d", t.Filename, t.Pos)
+}
+
 func (err LexerError) Error() string {
 	return fmt.Sprintf("%s:+%d: %s", err.Filename, err.Pos, err.Inner)
 }
@@ -106,6 +114,160 @@ func (lx *Lexer) Clear() {
 	lx.Errors = nil
 }
 
+func (lx *Lexer) Skip() {
+	lx.Consumed = lx.Pos
+}
+
+func (lx *Lexer) Reset() {
+	lx.Pos = lx.Consumed
+}
+
+func (lx *Lexer) SkipWhitespace() {
+	for !lx.IsEOF() && unicode.IsSpace(([]rune(lx.Peek(1))[0])) {
+		lx.Next(1)
+	}
+	lx.Skip()
+}
+
+func (lx *Lexer) SkipWhitespaceNoNewLine() {
+	for !lx.IsEOF() && unicode.IsSpace(lx.Peek1()) && lx.Peek1() != '\n' {
+		lx.Next(1)
+	}
+	lx.Skip()
+}
+
+func (lx *Lexer) IsEOF() bool {
+	return lx.Pos >= len(lx.Source)
+}
+
+func (lx *Lexer) Diff() string {
+	return string(lx.Source[lx.Consumed:lx.Pos])
+}
+
+func (lx *Lexer) Peek1() rune {
+	if lx.IsEOF() {
+		return 0
+	}
+	return lx.Source[lx.Pos]
+}
+
+func (lx *Lexer) Peek(n int) string {
+	if lx.IsEOF() {
+		return ""
+	}
+	m := min(lx.Pos+n, len(lx.Source))
+	return string(lx.Source[lx.Pos:m])
+}
+
+func (lx *Lexer) Next1() rune {
+	if lx.IsEOF() {
+		return 0
+	}
+	defer func() {
+		lx.Pos++
+	}()
+	return lx.Source[lx.Pos]
+}
+
+func (lx *Lexer) Next(n int) string {
+	if lx.IsEOF() {
+		return ""
+	}
+	start := lx.Pos
+	m := min(n, len(lx.Source) - start)
+	lx.Pos += m
+	return string(lx.Source[start:start+m])
+}
+
+func (lx *Lexer) NextValids(spec CharSpec) string {
+	for spec.IsValid(lx.Peek1()) {
+		lx.Next(1)
+	}
+	return lx.Diff()
+}
+
+func (lx *Lexer) UntilSpec(spec CharSpec) rune {
+	for !spec.IsValid(lx.Peek1()) {
+		lx.Next1()
+	}
+	return lx.Peek1()
+}
+
+func (lx *Lexer) UntilMatch(search string) (string, bool) {
+	lpos := lx.Pos
+	for {
+		if len(lx.Source) - lx.Pos >= len(search) {
+			if lx.Peek(len(search)) == search {
+				return string(lx.Source[lpos:lx.Pos]), true
+			} else {
+				lx.Next(1)
+			}
+		} else {
+			return string(lx.Source[lpos:lx.Pos]), false
+		}
+	}
+}
+
+func (lx *Lexer) Emit(tokenType TokenType) {
+	lx.Lexemes = append(lx.Lexemes, Token{
+		Filename: lx.Filename,
+		Type: tokenType,
+		Pos: lx.Consumed,
+		Text: string(lx.Source[lx.Consumed:lx.Pos]),
+	})
+	lx.Consumed = lx.Pos
+}
+
+func (lx *Lexer) EmitIfNonEmpty(tokenType TokenType) bool {
+	if lx.Pos > lx.Consumed {
+		lx.Emit(tokenType)
+		return true
+	}
+	return false
+}
+
+func (lx *Lexer) MatchAtPos(test string) bool {
+	got := lx.Peek(len(test))
+	return got == test
+}
+
+func (lx *Lexer) NextIfMatch(test string) bool {
+	if !lx.MatchAtPos(test) {
+		return false
+	}
+	lx.Next(len(test))
+	return true
+}
+
+func (lx *Lexer) Expect(expected string) bool {
+	got := lx.Peek(len(expected))
+	if got != expected {
+		lx.Error(fmt.Errorf("expected: `%s`, got: `%s`", WhiteSpaceToVisible(expected), WhiteSpaceToVisible(got)))
+		return false
+	}
+	lx.Next(len(expected))
+	return true
+}
+
+func (lx *Lexer) ExpectAndSkip(expected string) bool {
+	got := lx.Peek(len(expected))
+	if got != expected {
+		lx.Error(fmt.Errorf("expected: `%s`, got: `%s`", WhiteSpaceToVisible(expected), WhiteSpaceToVisible(got)))
+		return false
+	}
+	lx.Next(len(expected))
+	lx.Skip()
+	return true
+}
+
+func (lx *Lexer) Error(err error) {
+	lx.Errors = append(lx.Errors, LexerError{
+		Filename: lx.Filename,
+		Pos: lx.Pos,
+		Inner: err,
+	})
+}
+
 // LexSource lexes the passed source and returns the first error that occurred during said lexing, if any.
 func (lx *Lexer) LexSource(filename, source string) error {
 	// reset lexer state when parsing new file, leave errors though
@@ -123,6 +285,8 @@ func (lx *Lexer) LexSource(filename, source string) error {
 
 var (
 	AmpSpecials = []string{"&mdash;", "&ldquo;", "&rdquo;", "&prime;", "&Prime;", "&tprime;", "&qprime;", "&bprime;"}
+	AmpShortSpecials = []string{"…", "...", "~", "\u00A0", "---"}
+	AmpAllSpecials = append(AmpSpecials, AmpShortSpecials...)
 )
 
 var (
@@ -139,6 +303,7 @@ type (
 	CharInRange [2]rune
 	CharInAny string
 	CharInSpec []CharSpec
+	CharNotInSpec []CharSpec
 )
 
 func (c CharInRange) IsValid(r rune) bool {
@@ -158,73 +323,41 @@ func (c CharInSpec) IsValid(r rune) bool {
 	return false
 }
 
-func (lx *Lexer) NextValids(spec CharSpec) string {
-	for spec.IsValid(lx.Peek1()) {
-		lx.Next(1)
-	}
-	return lx.Diff()
-}
-
-func (lx *Lexer) IsAmpSpecial() bool {
-	switch lx.Peek1() {
-	case '&':
-		for _, special := range AmpSpecials {
-			if lx.MatchAtPos(special) {
-				return true
-			}
+func (c CharNotInSpec) IsValid(r rune) bool {
+	for _, spec := range c {
+		if spec.IsValid(r) {
+			return false
 		}
-	case '…', '~', '\u00A0':
-		return true
 	}
-	switch lx.Peek(3) {
-	case "...", "---":
-		return true
-	}
-	return false
+	return true
 }
 
-func (lx *Lexer) LexAmpSpecial() {
-	switch lx.Peek1() {
-	case '&':
-		lx.LexAmpSpecialAmpSemi()
-	case '…', '~', '\u00A0':
-		lx.Next(1)
+func (lx *Lexer) IsAmpSpecial() (bool, string) {
+	for _, special := range AmpAllSpecials {
+		if lx.MatchAtPos(special) {
+			return true, special
+		}
+	}
+	return false, ""
+}
+
+func (lx *Lexer) LexAmpSpecial() bool {
+	if ok, special := lx.IsAmpSpecial(); ok {
+		lx.Next(len(special))
 		lx.Emit(TokenAmpSpecial)
-	default:
-		switch lx.Peek(3) {
-		case "...", "---":
-			lx.Next(3)
-			lx.Emit(TokenAmpSpecial)
-		default:
-			panic("have you checked IsAmpSpecial before calling this function?")
-		}
+		return true
 	}
-}
-
-func (lx *Lexer) LexAmpSpecialAmpSemi() bool {
-	Assert(lx.Peek(1) == "&", "lexer confused")
-	//for _, special := range AmpSpecials {
-	//	if lx.NextIfMatch(special) {
-	//		lx.Emit(TokenAmpSpecial)
-	//		return true
-	//	}
-	//}
-	special := lx.NextValids(SpecAscii)
-	if !lx.Expect(";") {
+	// just for showing the user a nice error
+	if lx.Peek1() == '&' {
+		special := lx.NextValids(SpecAscii)
+		if lx.Peek1() == ';' {
+			lx.Error(fmt.Errorf("invalid &<...>; sequence: %s;", special))
+		}
 		lx.Reset()
-		Assert(lx.Peek(1) == "&", "expected to be back at & position after reset")
-		return false
 	}
-	switch special+";" {
-	default:
-		// invalid
-		lx.Error(fmt.Errorf("invalid &<...>; sequence: %s;", special))
-		return false
-	case "&mdash;", "&ldquo;", "&rdquo;", "&prime;", "&Prime;", "&tprime;", "&qprime;", "&bprime;":
-		// valid
-		lx.Emit(TokenAmpSpecial)
-		return true
-	}
+	// & don't have to be escaped, if it isn't of the form &[a-zA-Z];
+	return false
+
 }
 
 func (lx *Lexer) LexMetaOrContent() {
@@ -289,7 +422,7 @@ func (lx *Lexer) LexMetaValue() {
 
 func (lx *Lexer) LexAsStringOrAmpSpecial() {
 	for !lx.IsEOF() && lx.Peek1() != '\n' {
-		if lx.IsAmpSpecial() {
+		if ok, _ := lx.IsAmpSpecial(); ok {
 			lx.EmitIfNonEmpty(TokenText)
 			lx.LexAmpSpecial()
 		} else {
@@ -311,28 +444,7 @@ func (lx *Lexer) LexContent() {
 	lx.Emit(TokenEOF)
 }
 
-func (lx *Lexer) LexMetaKeyValues() {
-	lx.SkipWhitespace()
-	for !lx.IsEOF() && lx.Peek(3) != "---" {
-		key, ok := lx.Until(":")
-		if !ok {
-			lx.Error(fmt.Errorf("expected key-value pair, got: %s", key))
-			break
-		}
-		lx.Emit(TokenMetaKey)
-		// skip past :
-		lx.Next(1)
-		lx.Skip()
-		lx.SkipWhitespace()
-		val, ok := lx.Until("\n")
-		if !ok {
-			lx.Error(fmt.Errorf("expected key-value pair, got: %s", val))
-			break
-		}
-		lx.SkipWhitespace()
-	}
-}
-
+/*
 func (lx *Lexer) LexText() {
 	for !lx.IsEOF() {
 		if lx.Peek(1) == "~" || lx.Peek(1) == "\u00A0" {
@@ -487,165 +599,7 @@ func (lx *Lexer) LexCodeBlockStart() {
 	lx.Next(3)
 	lx.Skip()
 }
-
-func (lx *Lexer) SkipWhitespace() {
-	for !lx.IsEOF() && unicode.IsSpace(([]rune(lx.Peek(1))[0])) {
-		lx.Next(1)
-	}
-	lx.Skip()
-}
-
-func (lx *Lexer) SkipWhitespaceNoNewLine() {
-	for !lx.IsEOF() && unicode.IsSpace(lx.Peek1()) && lx.Peek1() != '\n' {
-		lx.Next(1)
-	}
-	lx.Skip()
-}
-
-func (lx *Lexer) IsEOF() bool {
-	return lx.Pos >= len(lx.Source)
-}
-
-func (lx *Lexer) Diff() string {
-	return string(lx.Source[lx.Consumed:lx.Pos])
-}
-
-func (lx *Lexer) Peek1() rune {
-	if lx.IsEOF() {
-		return 0
-	}
-	return lx.Source[lx.Pos]
-}
-
-func (lx *Lexer) Peek(n int) string {
-	if lx.IsEOF() {
-		return ""
-	}
-	m := min(lx.Pos+n, len(lx.Source))
-	return string(lx.Source[lx.Pos:m])
-}
-
-func (lx *Lexer) Next(n int) string {
-	if lx.IsEOF() {
-		return ""
-	}
-	start := lx.Pos
-	m := min(n, len(lx.Source) - start)
-	lx.Pos += m
-	return string(lx.Source[start:start+m])
-}
-
-func (lx *Lexer) Until(search string) (string, bool) {
-	lpos := lx.Pos
-	for {
-		if len(lx.Source) - lx.Pos >= len(search) {
-			if lx.Peek(len(search)) == search {
-				return string(lx.Source[lpos:lx.Pos]), true
-			} else {
-				lx.Next(1)
-			}
-		} else {
-			return string(lx.Source[lpos:lx.Pos]), false
-		}
-	}
-}
-
-func (lx *Lexer) NextASCII() string {
-	lpos := lx.Pos
-	for !lx.IsEOF() {
-		r := []rune(lx.Peek(1))[0]
-		if !((r >= 'A' && r <= 'Z') || (r >= 'a' && r <= 'z')) {
-			break
-		}
-		lx.Next(1)
-	}
-	return string(lx.Source[lpos:lx.Pos])
-}
-
-func (lx *Lexer) Skip() {
-	lx.Consumed = lx.Pos
-}
-
-func (lx *Lexer) Reset() {
-	lx.Pos = lx.Consumed
-}
-
-func (lx *Lexer) Emit(tokenType TokenType) {
-	lx.Lexemes = append(lx.Lexemes, Token{
-		Filename: lx.Filename,
-		Type: tokenType,
-		Pos: lx.Consumed,
-		Text: string(lx.Source[lx.Consumed:lx.Pos]),
-	})
-	lx.Consumed = lx.Pos
-}
-
-func (lx *Lexer) EmitIfNonEmpty(tokenType TokenType) bool {
-	if lx.Pos > lx.Consumed {
-		lx.Emit(tokenType)
-		return true
-	}
-	return false
-}
-
-func (lx *Lexer) MatchAtPos(test string) bool {
-	got := lx.Peek(len(test))
-	return got == test
-}
-
-func (lx *Lexer) NextIfMatch(test string) bool {
-	got := lx.Peek(len(test))
-	if got != test {
-		return false
-	}
-	lx.Next(len(test))
-	return true
-}
-
-func (lx *Lexer) Expect(expected string) bool {
-	got := lx.Peek(len(expected))
-	if got != expected {
-		lx.Error(fmt.Errorf("expected: `%s`, got: `%s`", WhiteSpaceToVisible(expected), WhiteSpaceToVisible(got)))
-		return false
-	}
-	lx.Next(len(expected))
-	return true
-}
-
-func (lx *Lexer) ExpectAndSkip(expected string) bool {
-	got := lx.Peek(len(expected))
-	if got != expected {
-		lx.Error(fmt.Errorf("expected: `%s`, got: `%s`", WhiteSpaceToVisible(expected), WhiteSpaceToVisible(got)))
-		return false
-	}
-	lx.Next(len(expected))
-	lx.Skip()
-	return true
-}
-
-func (lx *Lexer) ErrorPos(pos int, err error) {
-	lx.Errors = append(lx.Errors, LexerError{
-		Filename: lx.Filename,
-		Pos: pos,
-		Inner: err,
-	})
-}
-
-func (lx *Lexer) Error(err error) {
-	lx.Errors = append(lx.Errors, LexerError{
-		Filename: lx.Filename,
-		Pos: lx.Pos,
-		Inner: err,
-	})
-}
-
-func (t Token) String() string {
-	return fmt.Sprintf("%s:+%d: %s: `%s`", t.Filename, t.Pos, t.Type, t.Text)
-}
-
-func (t Token) Location() string {
-	return fmt.Sprintf("%s:+%d", t.Filename, t.Pos)
-}
+*/
 
 func WhiteSpaceToVisible(s string) string {
 	var builder strings.Builder
