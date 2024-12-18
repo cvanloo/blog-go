@@ -61,7 +61,7 @@ func TestLexMeta(t *testing.T) {
 	var metaTests = []struct{
 		name, source string
 		expected []lexer.Token
-		expectedErrors []error
+		expectedErrors []string
 	}{
 		{
 			name: "Empty Meta Block",
@@ -134,10 +134,10 @@ func TestLexMeta(t *testing.T) {
 				{Type: lexer.TokenMetaEnd, Text: ""}, // still emitted, as the lexer tries to recover
 				{Type: lexer.TokenEOF, Text: ""},
 			},
-			// @todo: how are we going to verify the error?
-			//expectedErrors: []error{
-			//  "expected ---"
-			//},
+			expectedErrors: []string{
+				"expected: `---`, got: ``",
+				"expected: `\\n`, got: ``", // @todo: better errors
+			},
 		},
 		{
 			name: "Non-Empty Meta Block",
@@ -154,6 +154,28 @@ foo: bar baz
 				{Type: lexer.TokenEOF, Text: ""},
 			},
 		},
+		{
+			name: "Non-Empty Meta Block with Keys, Missing End Marker",
+			source: `
+---
+foo: bar baz
+oof: rab zab
+
+`,
+			expected: []lexer.Token{
+				{Type: lexer.TokenMetaBegin, Text: "---"},
+				{Type: lexer.TokenMetaKey, Text: "foo"},
+				{Type: lexer.TokenText, Text: "bar baz"},
+				{Type: lexer.TokenMetaKey, Text: "oof"},
+				{Type: lexer.TokenText, Text: "rab zab"},
+				{Type: lexer.TokenMetaEnd, Text: ""}, // still emitted, as the lexer tries to recover
+				{Type: lexer.TokenEOF, Text: ""},
+			},
+			expectedErrors: []string{
+				"expected: `---`, got: ``",
+				"expected: `\\n`, got: ``", // @todo: better errors
+			},
+		},
 	}
 	lx := lexer.New()
 	for _, testCase := range metaTests {
@@ -163,10 +185,24 @@ foo: bar baz
 		for _, diff := range diffTokens {
 			t.Error(diff)
 		}
-		diffErrors := deep.Equal(lx.Errors, testCase.expectedErrors)
+		diffErrors := deep.Equal(innerErrorStrings(lx.Errors), testCase.expectedErrors)
 		for _, diff := range diffErrors {
 			t.Error(diff)
 		}
 		lx.Clear()
 	}
+}
+
+func innerErrorStrings(es []error) (ss []string) {
+	for _, e := range es {
+		ss = append(ss, innerErrorString(e))
+	}
+	return ss
+}
+
+func innerErrorString(e error) string {
+	if lxe, ok := e.(lexer.LexerError); ok {
+		return lxe.Inner.Error()
+	}
+	return e.Error()
 }
