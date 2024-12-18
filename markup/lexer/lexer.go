@@ -24,8 +24,8 @@ type (
 	}
 	Token struct {
 		Type TokenType
-		Filename string
-		Pos int
+		Filename string `deep:"-"`
+		Pos int `deep:"-"`
 		Text string
 	}
 )
@@ -99,6 +99,11 @@ func (lx *Lexer) Tokens() func(func(Token) bool) {
 			}
 		}
 	}
+}
+
+func (lx *Lexer) Clear() {
+	lx.Lexemes = nil
+	lx.Errors = nil
 }
 
 // LexSource lexes the passed source and returns the first error that occurred during said lexing, if any.
@@ -234,16 +239,19 @@ func (lx *Lexer) LexMeta() {
 	Assert(lx.Peek(3) == "---", "confused lexer state")
 	lx.Next(3)
 	lx.Emit(TokenMetaBegin)
+	lx.SkipWhitespaceNoNewLine()
 	if lx.ExpectAndSkip("\n") {
 		lx.LexMetaKeyValuePairs()
 		lx.Expect("---")
 		lx.Emit(TokenMetaEnd)
+		lx.SkipWhitespaceNoNewLine()
 		lx.ExpectAndSkip("\n")
 	}
 }
 
 func (lx *Lexer) LexMetaKeyValuePairs() {
-	for !lx.IsEOF() && lx.Peek(4) != "---\n" {
+	lx.SkipWhitespace()
+	for !lx.IsEOF() && lx.Peek(3) != "---" {
 		lx.LexMetaKey()
 		if lx.ExpectAndSkip(":") {
 			lx.LexMetaValue()
@@ -292,35 +300,15 @@ func (lx *Lexer) LexAsStringOrAmpSpecial() {
 }
 
 func (lx *Lexer) LexContent() {
-	/*
-	lx.SkipWhitespace()
 	for !lx.IsEOF() {
-		if lx.Peek(3) == "---" {
-			lx.Next(3)
-			lx.Emit(TokenHorizontalRule)
-		} else if lx.Peek(1) == "#" {
-			sectionLevel := 0
-			for lx.Peek(1) == "#" {
-				sectionLevel += 1
-				lx.Next(1)
-			}
-			lx.SkipWhitespace()
-			lx.LexSectionHeader(sectionLevel)
-		} else if lx.Peek(1) == "<" {
-			if lx.Peek(2) == "</" {
-				lx.LexHtmlTagEnd()
-			} else {
-				lx.LexHtmlTagStart()
-			}
-		} else if lx.Peek(3) == "```" {
-			lx.LexCodeBlockStart()
-		} else {
-			lx.LexParagraph()
-		}
 		lx.SkipWhitespace()
+		// Section 1 and 2
+		// HtmlTag
+		// Sidenote
+		// Definition List
+		// Reference Style Links
 	}
 	lx.Emit(TokenEOF)
-	*/
 }
 
 func (lx *Lexer) LexMetaKeyValues() {
@@ -592,10 +580,12 @@ func (lx *Lexer) Emit(tokenType TokenType) {
 	lx.Consumed = lx.Pos
 }
 
-func (lx *Lexer) EmitIfNonEmpty(tokenType TokenType) {
+func (lx *Lexer) EmitIfNonEmpty(tokenType TokenType) bool {
 	if lx.Pos > lx.Consumed {
 		lx.Emit(tokenType)
+		return true
 	}
+	return false
 }
 
 func (lx *Lexer) MatchAtPos(test string) bool {
@@ -615,7 +605,7 @@ func (lx *Lexer) NextIfMatch(test string) bool {
 func (lx *Lexer) Expect(expected string) bool {
 	got := lx.Peek(len(expected))
 	if got != expected {
-		lx.Error(fmt.Errorf("expected: %s, got: %s", expected, got))
+		lx.Error(fmt.Errorf("expected: `%s`, got: `%s`", WhiteSpaceToVisible(expected), WhiteSpaceToVisible(got)))
 		return false
 	}
 	lx.Next(len(expected))
@@ -625,7 +615,7 @@ func (lx *Lexer) Expect(expected string) bool {
 func (lx *Lexer) ExpectAndSkip(expected string) bool {
 	got := lx.Peek(len(expected))
 	if got != expected {
-		lx.Error(fmt.Errorf("expected: %s, got: %s", expected, got))
+		lx.Error(fmt.Errorf("expected: `%s`, got: `%s`", WhiteSpaceToVisible(expected), WhiteSpaceToVisible(got)))
 		return false
 	}
 	lx.Next(len(expected))
@@ -655,4 +645,23 @@ func (t Token) String() string {
 
 func (t Token) Location() string {
 	return fmt.Sprintf("%s:+%d", t.Filename, t.Pos)
+}
+
+func WhiteSpaceToVisible(s string) string {
+	var builder strings.Builder
+	for _, r := range s {
+		switch r {
+		default:
+			builder.WriteRune(r)
+		case '\n':
+			builder.WriteString(`\n`)
+		case '\r':
+			builder.WriteString(`\r`)
+		case '\t':
+			builder.WriteString(`\t`)
+		case '\v':
+			builder.WriteString(`\v`)
+		}
+	}
+	return builder.String()
 }
