@@ -38,7 +38,7 @@ const (
 	TokenMetaBegin
 	TokenMetaKey
 	TokenMetaEnd
-	TokenHtmlTagOpen // no paragraphs inside, only TokenText, etc. (but of course can do <p></p> explicitly)
+	TokenHtmlTagOpen // ??? no paragraphs inside, only TokenText, etc. (but of course can do <p></p> explicitly)
 	TokenHtmlTagAttrKey
 	TokenHtmlTagAttrVal
 	TokenHtmlTagContent
@@ -62,10 +62,11 @@ const (
 	TokenEmphasis
 	TokenStrong
 	TokenEmphasisStrong
+	TokenLinkText
 	TokenLinkHref
-	TokenLink
+	TokenLinkIdRef
+	TokenLinkIdDef
 	TokenAmpSpecial
-	//TokenEscaped // @todo: https://www.markdownguide.org/basic-syntax/#characters-you-can-escape (handle this on the level of the lexer, not parser -> emit TokenText)
 	TokenBlockquoteBegin
 	TokenBlockquoteAttrAuthor
 	TokenBlockquoteAttrSource
@@ -80,7 +81,7 @@ const (
 	TokenImageAttrEnd
 	TokenImageEnd
 	TokenHorizontalRule
-	// @todo: sidenote: https://www.markdownguide.org/extended-syntax/#footnotes
+	TokenSidenote
 )
 
 func (t Token) String() string {
@@ -122,6 +123,23 @@ func (lx *Lexer) Reset() {
 	lx.Pos = lx.Consumed
 }
 
+func (lx *Lexer) ResetToPos(pos int) {
+	lx.Pos = pos
+}
+
+func (lx *Lexer) DeferResetToPos(pos int) func() {
+	return func() {
+		lx.ResetToPos(pos)
+	}
+}
+
+func (lx *Lexer) DeferResetToCurrentPos() func() {
+	pos := lx.Pos
+	return func() {
+		lx.ResetToPos(pos)
+	}
+}
+
 func (lx *Lexer) SkipWhitespace() {
 	for !lx.IsEOF() && unicode.IsSpace(([]rune(lx.Peek(1))[0])) {
 		lx.Next(1)
@@ -134,6 +152,24 @@ func (lx *Lexer) SkipWhitespaceNoNewLine() {
 		lx.Next(1)
 	}
 	lx.Skip()
+}
+
+func (lx *Lexer) NextMatchSurroundedByNewlines(search string) bool {
+	lx.SkipWhitespaceNoNewLine()
+	if !lx.MatchAtPos("\n") {
+		return false
+	}
+	lx.Next1()
+	lx.SkipWhitespace()
+	if !lx.MatchAtPos(search) {
+		return false
+	}
+	lx.SkipWhitespaceNoNewLine()
+	if !lx.MatchAtPos("\n") {
+		return false
+	}
+	lx.SkipWhitespace()
+	return true
 }
 
 func (lx *Lexer) IsEOF() bool {
@@ -186,11 +222,11 @@ func (lx *Lexer) NextValids(spec CharSpec) string {
 	return lx.Diff()
 }
 
-func (lx *Lexer) UntilSpec(spec CharSpec) rune {
+func (lx *Lexer) UntilSpec(spec CharSpec) string {
 	for !spec.IsValid(lx.Peek1()) {
 		lx.Next1()
 	}
-	return lx.Peek1()
+	return lx.Diff()
 }
 
 func (lx *Lexer) UntilMatch(search string) (string, bool) {
@@ -206,6 +242,15 @@ func (lx *Lexer) UntilMatch(search string) (string, bool) {
 			return string(lx.Source[lpos:lx.Pos]), false
 		}
 	}
+}
+
+func (lx *Lexer) IsStartOfLine() bool {
+	return lx.Pos == 0 || lx.Source[lx.Pos-1] == '\n'
+}
+
+func (lx *Lexer) NextEmptyLine() bool {
+	lx.SkipWhitespaceNoNewLine()
+	return lx.Peek1() == '\n'
 }
 
 func (lx *Lexer) Emit(tokenType TokenType) {
@@ -434,14 +479,88 @@ func (lx *Lexer) LexAsStringOrAmpSpecial() {
 
 func (lx *Lexer) LexContent() {
 	for !lx.IsEOF() {
-		lx.SkipWhitespace()
-		// Section 1 and 2
-		// HtmlTag
-		// Sidenote
-		// Definition List
-		// Reference Style Links
+		if lx.NextMatchSurroundedByNewlines("---") || lx.NextMatchSurroundedByNewlines("***") {
+			lx.Emit(TokenHorizontalRule)
+		} else if lx.IsDefinition() {
+			lx.LexDefinition()
+		} else {
+			lx.SkipWhitespace()
+			if lx.Peek(3) == "```" {
+				lx.LexCodeBlock()
+			} else if lx.Peek(3) == "***" || lx.Peek(3) == "___" {
+				lx.LexEmphasisStrong()
+			} else if lx.Peek(2) == "**" || lx.Peek(2) == "__" {
+				lx.LexStrong()
+			} else if lx.Peek(2) == "/>" {
+				lx.LexHtmlTagClose()
+			} else if lx.Peek(2) == "![" {
+				lx.LexImage()
+			} else if lx.Peek(2) == "~~" {
+				lx.LexStrikethrough()
+			} else if lx.Peek(2) == "==" {
+				lx.LexMarker()
+			} else if lx.Peek1() == '*' || lx.Peek1() == '_' {
+				lx.LexEmphasis()
+			} else if lx.Peek1() == '<' {
+				lx.LexLinkOrHtmlTagOpen()
+			} else if lx.Peek1() == '>' {
+				lx.LexBlockQuote()
+			} else if lx.Peek1() == '#' {
+				lx.LexSection()
+			} else if lx.Peek1() == '`' {
+				lx.LexMono()
+			} else if lx.Peek1() == '[' {
+				lx.LexLinkOrSidenote()
+			} else if lx.Peek1() == '"' {
+				lx.LexEnquote()
+			} else if lx.Peek1() == `\` {
+				lx.LexEscape()
+			}
+		}
 	}
 	lx.Emit(TokenEOF)
+}
+
+func (lx *Lexer) LexSection() {
+	Assert(lx.Peek1() == '#', "lexer state confused")
+	hashes := lx.NextValids(CharInAny("#"))
+	level := len(hashes)
+	switch level {
+	case 1:
+		lx.Emit(TokenSection1Begin)
+	case 2:
+		lx.Emit(TokenSection2Begin)
+	default:
+		lx.Error(errors.New("max section level is 2"))
+	}
+	lx.ExpectAndSkip(" ")
+	heading := lx.UntilSpec(CharInAny("\n"))
+	if len(heading) == 0 {
+		lx.Error(errors.New("section must have a heading"))
+	}
+	switch level {
+	case 1:
+		lx.Emit(TokenSection1Content)
+	case 2:
+		lx.Emit(TokenSection2Content)
+	}
+}
+
+func (lx *Lexer) IsDefinition() bool {
+	if !lx.IsStartOfLine() {
+		return false
+	}
+	lx.NextValids(SpecValidDefinitionTerm)
+	if lx.Peek1() != '\n' {
+		return false
+	}
+	lx.Next1()
+	lx.SkipWhitespaceNoNewLine()
+	if lx.Peek1() != ':' {
+		return false
+	}
+	lx.Reset()
+	return true
 }
 
 /*

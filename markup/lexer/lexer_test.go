@@ -58,11 +58,7 @@ func TestLexer(t *testing.T) {
 }*/
 
 func TestLexMeta(t *testing.T) {
-	var metaTests = []struct{
-		name, source string
-		expected []lexer.Token
-		expectedErrors []string
-	}{
+	var metaTests = []TestCase{
 		{
 			name: "Empty Meta Block",
 			source: `---
@@ -177,6 +173,62 @@ oof: rab zab
 			},
 		},
 	}
+	RunTests(t, testCases)
+}
+
+func TestLexSectionHeader(t *testing.T) {
+	var testCases := []TestCase{
+		{
+			name: "Section 1 Header",
+			source: `# Hello, World!`,
+			expected: []lexer.Token{
+				{Type: lexer.TokenSection1Begin, Text: "# "},
+				{Type: lexer.TokenText, Text: "Hello, World!"},
+				{Type: lexer.TokenSection1Content, Text: ""},
+				{Type: lexer.TokenEOF, Text: ""},
+			},
+		},
+		{
+			name: "Section 2 Header",
+			source: `## Hello, World!`,
+			expected: []lexer.Token{
+				{Type: lexer.TokenSection2Begin, Text: "## "},
+				{Type: lexer.TokenText, Text: "Hello, World!"},
+				{Type: lexer.TokenSection2Content, Text: ""},
+				{Type: lexer.TokenEOF, Text: ""},
+			},
+		},
+		{
+			name: "Section 2 Header With Whitespace Around",
+			source: `   
+
+## Hello, World!   
+  `,
+			expected: []lexer.Token{
+				{Type: lexer.TokenSection2Begin, Text: "## "},
+				{Type: lexer.TokenText, Text: "Hello, World!   "},
+				{Type: lexer.TokenSection2Content, Text: ""},
+				{Type: lexer.TokenEOF, Text: "  "},
+			},
+		},
+		{
+			name: "",
+			source: ``,
+			expected: []lexer.Token{
+				{Type: lexer.TokenEOF, Text: ""},
+			},
+		},
+	}
+	RunTests(t, testCases)
+}
+
+type TestCase struct{
+	name, source string
+	expected []lexer.Token
+	expectedErrors []string
+}
+
+func RunTests(t *testing.T, testCases []TestCase) {
 	lx := lexer.New()
 	for _, testCase := range metaTests {
 		t.Log("now testing", testCase.name)
