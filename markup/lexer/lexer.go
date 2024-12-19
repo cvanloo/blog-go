@@ -522,6 +522,30 @@ func (lx *Lexer) LexContent() {
 	lx.Emit(TokenEOF)
 }
 
+// LexSection lexes section 1 and 2
+//
+//   # Section 1
+//
+// - TokenSection1Begin "#"
+// - TokenText "Section 1"
+// - TokenSection1Content
+//
+//   ## Section 2
+//
+// - TokenSection2Begin "##"
+// - TokenText "Section 2"
+// - TokenSection2Content
+//
+// A section can be given a custom id, as in the following example:
+//
+//   ## Some Heading {#custom-id}
+//
+// - TokenSection2Begin "##"
+// - TokenText "Section 2"
+// - TokenAttributeListBegin
+// - TokenAttributeListID "custom-id"
+// - TokenAttributeListEnd
+// - TokenSection2Content
 func (lx *Lexer) LexSection() {
 	Assert(lx.Peek1() == '#', "lexer state confused")
 	hashes := lx.NextValids(CharInAny("#"))
@@ -535,6 +559,7 @@ func (lx *Lexer) LexSection() {
 		lx.Error(errors.New("max section level is 2"))
 	}
 	lx.ExpectAndSkip(" ")
+	// @todo: lex text and then lx.LexAttributeList
 	heading := lx.UntilSpec(CharInAny("\n"))
 	if len(heading) == 0 {
 		lx.Error(errors.New("section must have a heading"))
@@ -545,23 +570,7 @@ func (lx *Lexer) LexSection() {
 	case 2:
 		lx.Emit(TokenSection2Content)
 	}
-}
-
-func (lx *Lexer) IsDefinition() bool {
-	if !lx.IsStartOfLine() {
-		return false
-	}
-	lx.NextValids(SpecValidDefinitionTerm)
-	if lx.Peek1() != '\n' {
-		return false
-	}
-	lx.Next1()
-	lx.SkipWhitespaceNoNewLine()
-	if lx.Peek1() != ':' {
-		return false
-	}
-	lx.Reset()
-	return true
+	// @todo: TokenSection1End?
 }
 
 // LexCodeBlock lexes a code block.
@@ -625,6 +634,18 @@ func (lx *Lexer) LexCodeBlock() {
 // - TokenAttributeListKey "key5"
 // - TokenAttributeListKey "key6"
 // - TokenText "val6"
+// - TokenAttributeListEnd
+//
+// An attribute list can contain a custom id as the very first element:
+//
+//   {#some-id key1=val1 key2=val2}
+//
+// - TokenAttributeListBegin
+// - TokenAttributeListID "some-id"
+// - TokenAttributeListKey "key1"
+// - TokenText "val1"
+// - TokenAttributeListKey "key2"
+// - TokenText "val2"
 // - TokenAttributeListEnd
 func (lx *Lexer) LexAttributeList() {
 	Assert(lx.Peek1() == '{', "lexer state confused")
@@ -766,6 +787,7 @@ func (lx *Lexer) LexLinkOrSidenote() {
 // - &...; specials and ~ (nbsp), -- (en dash), --- (em dash), - (hyphen)
 // - ~~strikethrough~~ and ~strikethrough~
 // - `mono spaced text`
+// - "enquote" and 'enquote' and <<enquote>>
 func (lx *Lexer) LexTextUntil(match string) {
 	// @todo: implement
 }
@@ -784,6 +806,56 @@ func (lx *Lexer) LexTextUntil(match string) {
 // - TokenSidenoteDefEnd
 func (lx *Lexer) LexLinkOrSidenoteDefinition() {
 	Assert(lx.Peek1() == '[', "lexer state confused")
+}
+
+// LexImage lexes an image of the form
+//
+//   ![Alt Text](/path/to/image)
+//
+// - TokenImageBegin "!["
+// - TokenImageAltText "Alt Text"
+// - TokenImagePath "/path/to/image"
+//
+//   ![Alt Text](/path/to/image "Optional Image Title")
+// - TokenImageBegin "!["
+// - TokenImageAltText "Alt Text"
+// - TokenImagePath "/path/to/image"
+// - TokenImageTitle "Optional Image Title"
+func (lx *Lexer) LexImage() {
+}
+
+// LexBlockQuotes lexes block quotes of the form
+//
+//   > Elea acta est.
+//   > -- Author, Source
+//
+// - TokenBlockquoteBegin ">"
+// - TokenText "Elea acta est."
+// - TokenBlockquoteAttrAuthor
+// - TokenText "Author"
+// - TokenBlockquoteAttrSource
+// - TokenText "Source"
+// - TokenBlockquoteAttrEnd
+func (lx *Lexer) LexBlockQuotes() {
+}
+
+// LexHorizontalRule lexes a horizontal rule of the form <WSL>---<WSL> or <WSL>**<WSL>
+// where <WSL> denotes Whitespace including at least one newline.
+//
+// - TokenHorizontalRule "---" or "***"
+func (lx *Lexer) LexHorizontalRule() {
+}
+
+// LexDefinitionList lexes a definition of the form
+//
+// Term
+// : Explanation of term
+//
+// - TokenDefinitionTerm "Term"
+// - TokenDefinitionExplanationBegin
+// - TokenText "Explanation of term"
+// - TokenDefinitionExplanationEnd
+func (lx *Lexer) LexDefinition() {
 }
 
 /*
