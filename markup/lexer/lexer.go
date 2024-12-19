@@ -339,6 +339,7 @@ var (
 	SpecAsciiUpper = CharInRange{'A', 'Z'}
 	SpecAscii = CharInSpec{SpecAsciiLower, SpecAsciiUpper}
 	SpecValidMetaKey = CharInSpec{SpecAscii, CharInAny("-_")}
+	SpecNonWhitespace = CharNotInSpec{CharInAny(" \u00A0\n\r\v\t")} // @todo: and all the others...
 )
 
 type (
@@ -561,6 +562,228 @@ func (lx *Lexer) IsDefinition() bool {
 	}
 	lx.Reset()
 	return true
+}
+
+// LexCodeBlock lexes a code block.
+// 
+//   ```
+//   console.log('Hello, 世界')
+//   ```
+//
+// A code block can have an option language:
+//
+//   ```js
+//   console.log('Hello, 世界')
+//   ```
+//
+// A code block can also have an attribute list after the opening tag and optional language:
+//
+//   ```js {link=https://gist.github.com/no/where lines=L1-2}
+//   console.log('Hello, 世界')
+//   console.log('Hello, 金星')
+//   ```
+//
+// The lexer produces the tokens:
+// - TokenCodeBlockBegin "```"
+// - TokenCodeBlockLang "go"
+// - <tokens for attribute list if present>
+// - TokenText "console.log('Hello, 世界')" // a single TokenText containing the full body of the code block
+// - TokenCodeBlockEnd "```"
+func (lx *Lexer) LexCodeBlock() {
+	Assert(lx.Peek(3) == "```", "lexer state confused")
+	lx.Next(3)
+	lx.Emit(TokenCodeBlockBegin)
+	lang := lx.NextValids(SpecAscii)
+	if len(lang) > 0 {
+		lx.Emit(TokenCodeBlockLang)
+	}
+	lx.SkipWhitespaceNoNewLine()
+	if lx.Peek1() == '{' {
+		lx.LexAttributeList()
+	}
+	lx.Expect("\n")
+	lx.UntilMatch("```")
+	lx.Emit(TokenText)
+	lx.Expect("```")
+	lx.Emit(TokenCodeBlockEnd)
+}
+
+// LexAttributeList lexes an attribute list of the form
+// 
+//   {key1=val1 key2 =val2 key3 = val3 key4 = 'with spaces between' key5= key6=val6}
+//
+// with a variable amount of key-value pairs.
+// An empty attribute list looks like this: {}.
+//
+// The lexer produces the tokens:
+// - TokenAttributeListBegin
+// - TokenAttributeListKey "key1"
+// - TokenText "val1"
+// ...
+// - TokenAttributeListKey "key4"
+// - TokenText "with spaces between"
+// - TokenAttributeListKey "key5"
+// - TokenAttributeListKey "key6"
+// - TokenText "val6"
+// - TokenAttributeListEnd
+func (lx *Lexer) LexAttributeList() {
+	Assert(lx.Peek1() == '{', "lexer state confused")
+	lx.Next1()
+	lx.Emit(TokenAttributeListBegin)
+	lx.SkipWhitespace()
+	for !lx.IsEOF() && lx.Peek1() != '}' {
+		key := lx.NextValids(SpecAscii)
+		if len(key) == 0 {
+			lx.Error(errors.New("must provide a key"))
+		}
+		lx.Emit(TokenAttributeListKey)
+		lx.SkipWhitespaceNoNewLine()
+		lx.ExpectAndSkip("=") // @todo: likely error: key contains non-ASCII characters
+		lx.SkipWhitespaceNoNewLine()
+		lx.LexStringValue()
+		lx.SkipWhitespace()
+	}
+	lx.Expect("}")
+	lx.Emit(TokenAttributeListEnd)
+}
+
+// LexStringValue lexes a string value that is either a single word like
+//
+//   oneword
+//
+// or one or multiple words enclosed in single quotes
+//
+//   'one or multiple words enclosed in single quotes'
+//
+// or simply empty (the absence of any characters or '').
+//
+// The lexer produces the token:
+// - TokenText "one or multiple words enclosed in single quotes"
+//
+// No token is produced if the string value is empty.
+func (lx *Lexer) LexStringValue() {
+	if lx.Peek1() == '\'' {
+		lx.Next1()
+		lx.Skip()
+		text := lx.UntilMatch("'")
+		if len(tex) > 0 {
+			lx.Emit(TokenText)
+		}
+		lx.Expect("'")
+	} else {
+		lx.NextValids(SpecNonWhitespace)
+		lx.Emit(TokenText)
+	}
+}
+
+// LexLinkOrSidenote lexes the following elements:
+//
+//   [Link Text](https://example.com)
+//
+// - TokenLinkableBegin "["
+// - TokenText "Link Text"
+// - TokenLinkHref "https://example.com"
+// - TokenLinkableEnd
+//
+//   [Link Text][0]
+//
+// - TokenLinkableBegin "["
+// - TokenText "Link Text"
+// - TokenLinkRef "0"
+// - TokenLinkableEnd
+//
+//   [Sidenote Text][^0]
+//
+// - TokenLinkableBegin "["
+// - TokenText "Sidenote Text"
+// - TokenSidenoteRef "0"
+// - TokenLinkableEnd
+//
+// The following is allowed, it makes an <a> with an empty href
+//
+//   [Link Text]
+//
+// - TokenLinkableBegin "["
+// - TokenText "Link Text"
+// - TokenLinkableEnd
+//
+// A bit exotic, but also allowed
+//
+//   [Sidenote Text](^Sidenote content)
+//
+// - TokenLinkableBegin "["
+// - TokenText "Sidenote Text"
+// - TokenSidenoteContent
+// - TokenText "Sidenote content"
+// - TokenLinkableEnd
+func (lx *Lexer) LexLinkOrSidenote() {
+	Assert(lx.Peek1() == '[', "lexer state confused")
+	lx.Next1()
+	lx.Emit(TokenLinkableBegin)
+	lx.LexTextUntil("]")
+	lx.Expect("]")
+	if lx.Peek(2) == "[^" {
+		// reference style sidenote
+		lx.Next(2)
+		lx.Skip()
+		lx.UntilMatch("]")
+		lx.Emit(TokenSidenoteRef)
+		lx.ExpectAndSkip("]")
+	} else if lx.Peek1() == '[' {
+		// reference style link
+		lx.Next1()
+		lx.Skip()
+		lx.UntilMatch("]")
+		lx.Emit(TokenLinkRef)
+		lx.ExpectAndSkip("]")
+	} else if lx.Peek(2) == "(^" { // @todo: good idea to make my own MD extension?
+		// (normal) sidenote
+		lx.Next(2)
+		lx.Skip()
+		lx.Emit(TokenSidenoteContent)
+		lx.LexTextUntil(")") // @todo: LexSidenoteText or sth, Sidenotes shouldn't allow all text types?
+		lx.ExpectAndSkip(")")
+	} else if lx.Peek1() == '(' {
+		// (normal) link
+		lx.Next1()
+		lx.Skip()
+		lx.UntilMatch(")")
+		lx.Emit(TokenLinkHref)
+		lx.ExpectAndSkip(")")
+	} else {
+		// not an error, it's just an link with an empty href
+		lx.Emit(TokenLinkHref)
+	}
+	lx.Skip() // just for good measure
+	lx.Emit(TokenLinkableEnd)
+}
+
+// LexTextUntil lexes text elements, namely:
+// - strings
+// - <https://example.com/> form links
+// - *emphasis*, **strong**, ***emphasis strong***
+// - _emphasis_, __strong__, ___emphasis strong___
+// - &...; specials and ~ (nbsp), -- (en dash), --- (em dash), - (hyphen)
+// - ~~strikethrough~~ and ~strikethrough~
+// - `mono spaced text`
+func (lx *Lexer) LexTextUntil(match string) {
+	// @todo: implement
+}
+
+// LexLinkOrSidenoteDefinition lexes the definition of the link or sidenote.
+//
+//   [0]: https://example.com
+//
+// - TokenLinkDef "0"
+// - TokenText "https://example.com"
+//
+//   [^0]: This is the side note content.
+//
+// - TokenSidenoteDef "0"
+// - TokenText "This is the sidenote content."
+// - TokenSidenoteDefEnd
+func (lx *Lexer) LexLinkOrSidenoteDefinition() {
+	Assert(lx.Peek1() == '[', "lexer state confused")
 }
 
 /*
