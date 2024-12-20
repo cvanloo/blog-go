@@ -806,6 +806,29 @@ func (lx *Lexer) LexTextUntil(match string) {
 // - TokenSidenoteDefEnd
 func (lx *Lexer) LexLinkOrSidenoteDefinition() {
 	Assert(lx.Peek1() == '[', "lexer state confused")
+	if lx.Peek1() == '^' {
+		// sidenote definition
+		lx.Next(2)
+		lx.Skip()
+		lx.UntilMatch("]")
+		lx.Emit(TokenSidenoteDef)
+		lx.ExpectAndSkip("]:")
+		lx.SkipWhitespaceNoNewLine()
+		lx.LexTextUntil("\n")
+		lx.Expect("\n")
+		lx.Emit(TokenSidenoteDefEnd)
+	} else {
+		// link definition
+		lx.Next1()
+		lx.Skip()
+		lx.UntilMatch("]")
+		lx.Emit(TokenLinkDef)
+		lx.ExpectAndSkip("]:")
+		lx.SkipWhitespaceNoNewLine()
+		lx.UntilMatch("\n")
+		lx.Emit(TokenText)
+		lx.Expect("\n")
+	}
 }
 
 // LexImage lexes an image of the form
@@ -822,6 +845,37 @@ func (lx *Lexer) LexLinkOrSidenoteDefinition() {
 // - TokenImagePath "/path/to/image"
 // - TokenImageTitle "Optional Image Title"
 func (lx *Lexer) LexImage() {
+	Assert(lx.Peek(2) == "![", "lexer state confused")
+	lx.Next(2)
+	lx.Emit(TokenImageBegin)
+	lx.UntilMatch("]")
+	lex.Emit(TokenImageAltText)
+	lx.Next1()
+	lx.Skip()
+	if lx.Expect("(") {
+		lx.SkipWhitespaceNoNewLine()
+		if lx.Peek1() == '\'' {
+			lx.UntilMatch("'")
+			lx.Emit(TokenImagePath)
+			lx.ExpectAndSkip("'")
+		} else if lx.Peek1() == '"' {
+			lx.UntilMatch("\"")
+			lx.Emit(TokenImagePath)
+			lx.ExpectAndSkip("\"")
+		} else {
+			lx.NextValids(SpecValidPath)
+			lx.Emit(TokenImagePath)
+		}
+		lx.SkipWhitespaceNoNewLine()
+		if lx.Peek1() == '"' {
+			lx.Next1()
+			lx.Skip()
+			lx.UntilMatch(`"`)
+			lx.Emit(TokenImageTitle)
+			lx.ExpectAndSkip(`"`)
+		}
+		lx.ExpectAndSkip(`)`)
+	}
 }
 
 // LexBlockQuotes lexes block quotes of the form
@@ -854,14 +908,19 @@ func (lx *Lexer) LexBlockQuotes() {
 				lx.LexTextUntil("\n")
 			}
 			lx.Emit(TokenBlockquoteAttrEnd)
-			break
+			lx.Expect("\n")
+			lx.Emit(TokenBlockquoteEnd)
+			lx.SkipWhitespaceNoNewLine()
+			if lx.Peek1() == '>' {
+				lx.Error(errors.New("blockquote already finished by attribution"))
+			}
+			return
 		}
 		lx.LexTextUntil("\n")
 		lx.Expect("\n")
 		lx.SkipWhitespaceNoNewLine()
 	}
 	lx.Emit(TokenBlockquoteEnd)
-	// @todo: error if there is more to the block quote after the attribution
 }
 
 // LexHorizontalRule lexes a horizontal rule of the form <WSL>---<WSL> or <WSL>***<WSL>
