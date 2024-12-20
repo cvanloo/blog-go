@@ -836,14 +836,48 @@ func (lx *Lexer) LexImage() {
 // - TokenBlockquoteAttrSource
 // - TokenText "Source"
 // - TokenBlockquoteAttrEnd
+// - TokenBlockquoteEnd
+//
+// @todo: nested block quotes
 func (lx *Lexer) LexBlockQuotes() {
+	lx.Assert(lx.Peek1() == '>', "lexer state confused")
+	lx.Next1()
+	lx.Emit(TokenBlockquoteBegin)
+	for !lx.IsEOF() && lx.Peek1() == '>' {
+		lx.SkipWhitespaceNoNewLine()
+		if lx.Peek(2) == "--" {
+			lx.Emit(TokenBlockquoteAttrAuthor)
+			lx.LexTextUntilSpec(CharInAny(",\n"))
+			if lx.Peek1() == ',' {
+				lx.SkipWhitespaceNoNewLine()
+				lx.Emit(TokenBlockquoteAttrSource)
+				lx.LexTextUntil("\n")
+			}
+			lx.Emit(TokenBlockquoteAttrEnd)
+			break
+		}
+		lx.LexTextUntil("\n")
+		lx.Expect("\n")
+		lx.SkipWhitespaceNoNewLine()
+	}
+	lx.Emit(TokenBlockquoteEnd)
+	// @todo: error if there is more to the block quote after the attribution
 }
 
-// LexHorizontalRule lexes a horizontal rule of the form <WSL>---<WSL> or <WSL>**<WSL>
+// LexHorizontalRule lexes a horizontal rule of the form <WSL>---<WSL> or <WSL>***<WSL>
 // where <WSL> denotes Whitespace including at least one newline.
 //
 // - TokenHorizontalRule "---" or "***"
 func (lx *Lexer) LexHorizontalRule() {
+	lx.SkipWhitespaceNoNewLine()
+	lx.Expect("\n")
+	lx.SkipWhitespace()
+	if !(lx.NextIfMatch("---") || lex.NextIfMatch("***")) {
+		lx.Error(errors.New("expected horizontal rule `---` or `***`"))
+	}
+	lx.Emit(TokenHorizontalRule)
+	lx.SkipWhitespaceNoNewLine()
+	lx.SkipWhitespace()
 }
 
 // LexDefinitionList lexes a definition of the form
@@ -856,6 +890,21 @@ func (lx *Lexer) LexHorizontalRule() {
 // - TokenText "Explanation of term"
 // - TokenDefinitionExplanationEnd
 func (lx *Lexer) LexDefinition() {
+	Assert(lx.IsStartOfLine(), "lexer state confused")
+	term := lx.NextValids(SpecNonWhitespace)
+	if len(term) == 0 {
+		lx.Error(errors.New("term missing from definition"))
+	}
+	lx.Emit(TokenDefinitionTerm)
+	lx.SkipWhitespaceNoNewLine()
+	lx.Expect("\n")
+	lx.SkipWhitespace()
+	lx.Expect(":")
+	lx.SkipWhitespace()
+	lx.Emit(TokenDefinitionExplanationBegin)
+	lx.LexTextUntil("\n")
+	lx.ExpectAndSkip("\n")
+	lx.Emit(TokenDefinitionExplanationEnd)
 }
 
 /*
