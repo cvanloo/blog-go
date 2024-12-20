@@ -58,7 +58,7 @@ func TestLexer(t *testing.T) {
 }*/
 
 func TestLexMeta(t *testing.T) {
-	var metaTests = []TestCase{
+	var testCases = []TestCase{
 		{
 			name: "Empty Meta Block",
 			source: `---
@@ -230,7 +230,7 @@ type TestCase struct{
 
 func RunTests(t *testing.T, testCases []TestCase) {
 	lx := lexer.New()
-	for _, testCase := range metaTests {
+	for _, testCase := range testCases {
 		t.Log("now testing", testCase.name)
 		lx.LexSource(testCase.name, testCase.source)
 		diffTokens := deep.Equal(lx.Lexemes, testCase.expected)
