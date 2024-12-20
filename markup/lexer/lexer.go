@@ -38,13 +38,11 @@ const (
 	TokenMetaBegin
 	TokenMetaKey
 	TokenMetaEnd
-
-	TokenHtmlTagOpen // ??? no paragraphs inside, only TokenText, etc. (but of course can do <p></p> explicitly)
+	TokenHtmlTagOpen
 	TokenHtmlTagAttrKey
 	TokenHtmlTagAttrVal
 	TokenHtmlTagContent
 	TokenHtmlTagClose
-
 	TokenSection1Begin
 	TokenSection1Content
 	TokenSection1End
@@ -52,12 +50,16 @@ const (
 	TokenSection2Content
 	TokenSection2End
 	TokenParagraphBegin
-	//TokenParagraphEnd
+	TokenParagraphEnd
 	TokenText
 	TokenAmpSpecial
 	TokenMono
 	TokenEmphasisBegin
 	TokenEmphasisEnd
+	TokenStrikethroughBegin
+	TokenStrikethroughEnd
+	TokenMarkerBegin
+	TokenMarkerEnd
 	TokenStrongBegin
 	TokenStrongEnd
 	TokenEmphasisStrongBegin
@@ -160,6 +162,20 @@ func (lx *Lexer) IsStartOfLine() bool {
 	return lx.Pos == 0 || lx.Source[lx.Pos-1] == '\n'
 }
 
+func (lx *Lexer) IsEmphasis() bool {
+	return lx.Peek1() == '*' || lx.Peek1() == '_'
+}
+
+func (lx *Lexer) IsStrong() bool {
+	return lx.Peek(2) == "**" || lx.Peek(2) == "__"
+}
+
+func (lx *Lexer) IsEmphasisStrong() bool {
+	return lx.Peek(3) == "***" || lx.Peek(3) == "___"
+}
+
+type Predicate func() bool
+
 var (
 	AmpSpecials = []string{"&hyphen;", "&dash;", "&ndash;", "&mdash;", "&ldquo;", "&rdquo;", "&prime;", "&Prime;", "&tprime;", "&qprime;", "&bprime;", "&laquo;", "&raquo;"}
 	AmpShortSpecials = []string{"…", "...", "~", "\u00A0", "-", "--", "---"}
@@ -173,6 +189,63 @@ func (lx *Lexer) IsAmpSpecial() (bool, string) {
 		}
 	}
 	return false, ""
+}
+
+func (lx *Lexer) IsParagraphEnder() bool {
+	switch {
+	default:
+		return false
+	case lx.IsTermDefinition():
+		fallthrough
+	case lx.Peek(3) == "```":
+		fallthrough
+	case lx.Peek(2) == "![":
+		fallthrough
+	case lx.Peek(2) == "</":
+		fallthrough
+	case lx.Peek(2) == "\n\n":
+		fallthrough
+	case lx.Peek1() == '[':
+		fallthrough
+	case lx.Peek1() == '>':
+		return true
+	}
+}
+
+func (lx *Lexer) IsTermDefinition() bool {
+	lpos := lx.Pos
+	defer lx.ResetToPos(lpos)
+	lx.NextValids(SpecNonWhitespace)
+	lx.SkipWhitespaceNoNewLine()
+	if lx.Peek1() != '\n' {
+		return false
+	}
+	lx.SkipNext1()
+	lx.SkipWhitespaceNoNewLine()
+	if lx.Peek1() != ':' {
+		return false
+	}
+	return true
+}
+
+func (lx *Lexer) IsHorizontalRule() bool {
+	lpos := lx.Pos
+	defer lx.ResetToPos(lpos)
+	lx.SkipWhitespaceNoNewLine()
+	if lx.Peek1() != '\n' {
+		return false
+	}
+	lx.SkipNext1()
+	lx.SkipWhitespaceNoNewLine()
+	if !(lx.Peek(3) == "---" || lx.Peek(3) == "***") {
+		return false
+	}
+	lx.SkipNext(3)
+	lx.SkipWhitespaceNoNewLine()
+	if lx.Peek1() != '\n' {
+		return false
+	}
+	return true
 }
 
 func (lx *Lexer) Diff() string {
@@ -199,7 +272,7 @@ func (lx *Lexer) SkipWhitespaceNoNewLine() {
 
 func (lx *Lexer) SkipNext(n int) {
 	lx.Next(n)
-	lx.Skip(n)
+	lx.Skip()
 }
 
 func (lx *Lexer) SkipNext1() {
@@ -561,11 +634,11 @@ func (lx *Lexer) LexContent() {
 		if lx.Peek1() == '#' {
 			lx.LexSection1()
 		} else if lx.Peek1() == '<' {
-			lx.LexHtmlTag()
+			lx.LexHtmlElement()
 		} else if lx.Peek1() == '[' {
 			lx.LexLinkOrSidenoteDefinition()
 		} else {
-			lx.Error("expected section 1, html tag, or link-, sidenote-, term definition.")
+			lx.Error(errors.New("expected section 1, html tag, or link-, sidenote-, term definition."))
 		}
 		// @todo: term definitions
 	}
@@ -598,7 +671,7 @@ func (lx *Lexer) LexSection1() {
 	Assert(lx.Peek1() == '#', "lexer state confused")
 	hashes := lx.NextValids(CharInAny("#"))
 	if len(hashes) != 1 {
-		lx.Error("expected section level 1")
+		lx.Error(errors.New("expected section level 1"))
 	}
 	lx.Emit(TokenSection1Begin)
 	lx.ExpectAndSkip(" ")
@@ -618,8 +691,21 @@ func (lx *Lexer) LexSection1() {
 // A section 1 ends before another section 1 starts.
 func (lx *Lexer) LexSection1Content() {
 	for !lx.IsEOF() {
-		if {
-		} else if {
+		// @todo: where can we SkipWhitespace without breaking IsHorizontalRule?
+		if lx.IsTermDefinition() {
+			lx.LexDefinition()
+		} else if lx.IsHorizontalRule() {
+			lx.LexHorizontalRule()
+		} else if lx.Peek(3) == "```" {
+			lx.LexCodeBlock()
+		} else if lx.Peek(2) == "##" {
+			lx.LexSection2()
+		} else if lx.Peek1() == '#' {
+			return // this section ends, next section starts
+		} else if lx.Peek1() == '<' {
+			lx.LexHtmlElement()
+		} else if lx.Peek1() == '[' {
+			lx.LexLinkOrSidenoteDefinition()
 		} else {
 			lx.LexParagraph()
 		}
@@ -652,7 +738,7 @@ func (lx *Lexer) LexSection2() {
 	Assert(lx.Peek(2) == "##", "lexer state confused")
 	hashes := lx.NextValids(CharInAny("#"))
 	if len(hashes) != 2 {
-		lx.Error("expected section level 2")
+		lx.Error(errors.New("expected section level 2"))
 	}
 	lx.Emit(TokenSection2Begin)
 	lx.ExpectAndSkip(" ")
@@ -669,49 +755,34 @@ func (lx *Lexer) LexSection2() {
 // A section 2 can contain paragraphs, html elements, horizontal rule, {term,sidenote,link} definitions, code blocks.
 // A section 2 ends before another section 1 or 2 starts.
 func (lx *Lexer) LexSection2Content() {
+	for !lx.IsEOF() {
+		// @todo: where can we SkipWhitespace without breaking IsHorizontalRule?
+		if lx.IsTermDefinition() {
+			lx.LexDefinition()
+		} else if lx.IsHorizontalRule() {
+			lx.LexHorizontalRule()
+		} else if lx.Peek(3) == "```" {
+			lx.LexCodeBlock()
+		} else if lx.Peek(2) == "##" {
+			return // this section ends, next section starts
+		} else if lx.Peek1() == '#' {
+			return // this section ends, next section starts
+		} else if lx.Peek1() == '<' {
+			lx.LexHtmlElement()
+		} else if lx.Peek1() == '[' {
+			lx.LexLinkOrSidenoteDefinition()
+		} else {
+			lx.LexParagraph()
+		}
+	}
 }
 
 func (lx *Lexer) LexParagraph() {
+	lx.SkipWhitespace()
+	lx.Emit(TokenParagraphBegin)
+	lx.LexText()
+	lx.Emit(TokenParagraphEnd)
 }
-
-		if lx.NextMatchSurroundedByNewlines("---") || lx.NextMatchSurroundedByNewlines("***") {
-			lx.Emit(TokenHorizontalRule)
-		} else if lx.IsDefinition() {
-			lx.LexDefinition()
-		} else {
-			lx.SkipWhitespace()
-			if lx.Peek(3) == "```" {
-				lx.LexCodeBlock()
-			} else if lx.Peek(3) == "***" || lx.Peek(3) == "___" {
-				lx.LexEmphasisStrong()
-			} else if lx.Peek(2) == "**" || lx.Peek(2) == "__" {
-				lx.LexStrong()
-			} else if lx.Peek(2) == "/>" {
-				lx.LexHtmlTagClose()
-			} else if lx.Peek(2) == "![" {
-				lx.LexImage()
-			} else if lx.Peek(2) == "~~" {
-				lx.LexStrikethrough()
-			} else if lx.Peek(2) == "==" {
-				lx.LexMarker()
-			} else if lx.Peek1() == '*' || lx.Peek1() == '_' {
-				lx.LexEmphasis()
-			} else if lx.Peek1() == '<' {
-				lx.LexLinkOrHtmlTagOpen()
-			} else if lx.Peek1() == '>' {
-				lx.LexBlockQuote()
-			} else if lx.Peek1() == '#' {
-				lx.LexSection()
-			} else if lx.Peek1() == '`' {
-				lx.LexMono()
-			} else if lx.Peek1() == '[' {
-				lx.LexLinkOrSidenote()
-			} else if lx.Peek1() == '"' {
-				lx.LexEnquote()
-			} else if lx.Peek1() == `\` {
-				lx.LexEscape()
-			}
-		}
 
 // LexCodeBlock lexes a code block.
 // 
@@ -751,7 +822,7 @@ func (lx *Lexer) LexCodeBlock() {
 		lx.LexAttributeList()
 	}
 	lx.Expect("\n")
-	lx.UntilMatch("```")
+	lx.NextUntilMatch("```")
 	lx.Emit(TokenText)
 	lx.Expect("```")
 	lx.Emit(TokenCodeBlockEnd)
@@ -826,8 +897,8 @@ func (lx *Lexer) LexStringValue() {
 	if lx.Peek1() == '\'' {
 		lx.Next1()
 		lx.Skip()
-		text := lx.UntilMatch("'")
-		if len(tex) > 0 {
+		text, _ := lx.NextUntilMatch("'")
+		if len(text) > 0 {
 			lx.Emit(TokenText)
 		}
 		lx.Expect("'")
@@ -887,14 +958,14 @@ func (lx *Lexer) LexLinkOrSidenote() {
 		// reference style sidenote
 		lx.Next(2)
 		lx.Skip()
-		lx.UntilMatch("]")
+		lx.NextUntilMatch("]")
 		lx.Emit(TokenSidenoteRef)
 		lx.ExpectAndSkip("]")
 	} else if lx.Peek1() == '[' {
 		// reference style link
 		lx.Next1()
 		lx.Skip()
-		lx.UntilMatch("]")
+		lx.NextUntilMatch("]")
 		lx.Emit(TokenLinkRef)
 		lx.ExpectAndSkip("]")
 	} else if lx.Peek(2) == "(^" { // @todo: good idea to make my own MD extension?
@@ -908,7 +979,7 @@ func (lx *Lexer) LexLinkOrSidenote() {
 		// (normal) link
 		lx.Next1()
 		lx.Skip()
-		lx.UntilMatch(")")
+		lx.NextUntilMatch(")")
 		lx.Emit(TokenLinkHref)
 		lx.ExpectAndSkip(")")
 	} else {
@@ -917,6 +988,73 @@ func (lx *Lexer) LexLinkOrSidenote() {
 	}
 	lx.Skip() // just for good measure
 	lx.Emit(TokenLinkableEnd)
+}
+
+// LexText lexes text elements, namely:
+// - strings
+// - <https://example.com/> form links
+// - *emphasis*, **strong**, ***emphasis strong***
+// - _emphasis_, __strong__, ___emphasis strong___
+// - &...; specials and ~ (nbsp), -- (en dash), --- (em dash), - (hyphen)
+// - ~~strikethrough~~ and ~strikethrough~
+// - `mono spaced text`
+// - "enquote" and 'enquote' and <<enquote>>
+// - take care of escaped syntax \<>
+//
+// LexText stops lexing once the string at Peek is a syntactic construct that
+// denotes a content (non-text) element.
+func (lx *Lexer) LexText() {
+	for !lx.IsEOF() && !lx.IsParagraphEnder() {
+		if ok, _ := lx.IsAmpSpecial(); ok {
+			lx.EmitIfNonEmpty(TokenText)
+			lx.LexAmpSpecial()
+		} else if lx.Peek(3) == "***" || lx.Peek(3) == "___" {
+			lx.EmitIfNonEmpty(TokenText)
+			lx.LexEmphasisStrong()
+		} else if lx.Peek(2) == "**" || lx.Peek(2) == "__" {
+			lx.EmitIfNonEmpty(TokenText)
+			lx.LexStrong()
+		} else if lx.Peek(2) == "<<" {
+			lx.EmitIfNonEmpty(TokenText)
+			lx.LexEnquoteAngled()
+		} else if lx.Peek(2) == "~~" {
+			lx.EmitIfNonEmpty(TokenText)
+			lx.LexStrikethrough()
+		} else if lx.Peek(2) == "==" {
+			lx.EmitIfNonEmpty(TokenText)
+			lx.LexMarker()
+		} else if lx.Peek1() == '*' || lx.Peek1() == '_' {
+			lx.EmitIfNonEmpty(TokenText)
+			lx.LexEmphasis()
+		} else if lx.Peek1() == '<' {
+			lx.EmitIfNonEmpty(TokenText)
+			lx.LexLinkifyOrHtmlElement()
+		} else if lx.Peek1() == '`' {
+			lx.EmitIfNonEmpty(TokenText)
+			lx.LexMono()
+		} else if lx.Peek1() == '"' {
+			lx.EmitIfNonEmpty(TokenText)
+			lx.LexEnquoteDouble()
+		} else if lx.Peek1() == '\'' {
+			lx.EmitIfNonEmpty(TokenText)
+			lx.LexEnquoteSingle()
+		} else if lx.Peek1() == '\\' && lx.IsEscape() {
+			lx.EmitIfNonEmpty(TokenText)
+			lx.LexEscape()
+		} else {
+			lx.Next1()
+		}
+	}
+}
+
+func (lx *Lexer) LexEscape() {
+	Assert(lx.Peek1() == '\\' && lx.IsEscape(), "lexer state confused")
+	lx.SkipNext1()
+	case '\\', '!', '`', '*', '_', '{', '}', '<', '>', '[', ']', '(', ')', '|', '#', '+', '-', '.':
+	switch lx.Peek1() {
+	default:
+		panic("unreachable (programmer messed up)")
+	}
 }
 
 // LexTextUntil lexes text elements, namely:
@@ -929,6 +1067,8 @@ func (lx *Lexer) LexLinkOrSidenote() {
 // - `mono spaced text`
 // - "enquote" and 'enquote' and <<enquote>>
 // - take care of escaped syntax \<>
+//
+// LexTextUntil stops lexing once match matches at Peek.
 func (lx *Lexer) LexTextUntil(match string) {
 	for !lx.IsEOF() && !lx.MatchAtPos(match) {
 		if lx.IsAmpSpecial() {
@@ -970,6 +1110,127 @@ func (lx *Lexer) LexTextUntil(match string) {
 		} else {
 			lx.Next1()
 		}
+	}
+}
+
+// LexTextUntilSpec lexes text elements, namely:
+// - strings
+// - <https://example.com/> form links
+// - *emphasis*, **strong**, ***emphasis strong***
+// - _emphasis_, __strong__, ___emphasis strong___
+// - &...; specials and ~ (nbsp), -- (en dash), --- (em dash), - (hyphen)
+// - ~~strikethrough~~ and ~strikethrough~
+// - `mono spaced text`
+// - "enquote" and 'enquote' and <<enquote>>
+// - take care of escaped syntax \<>
+//
+// LexTextUntilSpec stops lexing once the spec matches at Peek.
+func (lx *Lexer) LexTextUntilSpec(spec CharSpec) {
+	for !lx.IsEOF() && !spec.IsValid(lx.Peek1()) {
+		if lx.IsAmpSpecial() {
+			lx.EmitIfNonEmpty(TokenText)
+			lx.LexAmpSpecial()
+		} else if lx.Peek(3) == "***" || lx.Peek(3) == "___" {
+			lx.EmitIfNonEmpty(TokenText)
+			lx.LexEmphasisStrong()
+		} else if lx.Peek(2) == "**" || lx.Peek(2) == "__" {
+			lx.EmitIfNonEmpty(TokenText)
+			lx.LexStrong()
+		} else if lx.Peek(2) == "<<" {
+			lx.EmitIfNonEmpty(TokenText)
+			lx.LexEnquoteAngled()
+		} else if lx.Peek(2) == "~~" {
+			lx.EmitIfNonEmpty(TokenText)
+			lx.LexStrikethrough()
+		} else if lx.Peek(2) == "==" {
+			lx.EmitIfNonEmpty(TokenText)
+			lx.LexMarker()
+		} else if lx.Peek1() == '*' || lx.Peek1() == '_' {
+			lx.EmitIfNonEmpty(TokenText)
+			lx.LexEmphasis()
+		} else if lx.Peek1() == '<' {
+			lx.EmitIfNonEmpty(TokenText)
+			lx.LexLinkify()
+		} else if lx.Peek1() == '`' {
+			lx.EmitIfNonEmpty(TokenText)
+			lx.LexMono()
+		} else if lx.Peek1() == '"' {
+			lx.EmitIfNonEmpty(TokenText)
+			lx.LexEnquoteDouble()
+		} else if lx.Peek1() == '\'' {
+			lx.EmitIfNonEmpty(TokenText)
+			lx.LexEnquoteSingle()
+		} else if lx.Peek1() == '\\' {
+			lx.EmitIfNonEmpty(TokenText)
+			lx.LexEscape()
+		} else {
+			lx.Next1()
+		}
+	}
+}
+
+// LexTextUntilPred lexes text elements, namely:
+// - strings
+// - <https://example.com/> form links
+// - *emphasis*, **strong**, ***emphasis strong***
+// - _emphasis_, __strong__, ___emphasis strong___
+// - &...; specials and ~ (nbsp), -- (en dash), --- (em dash), - (hyphen)
+// - ~~strikethrough~~ and ~strikethrough~
+// - `mono spaced text`
+// - "enquote" and 'enquote' and <<enquote>>
+// - take care of escaped syntax \<>
+//
+// LexTextUntilPred stops lexing when the predicate returns true.
+func (lx *Lexer) LexTextUntilSpec(pred Predicate) {
+	for !lx.IsEOF() && !pred() {
+		if lx.IsAmpSpecial() {
+			lx.EmitIfNonEmpty(TokenText)
+			lx.LexAmpSpecial()
+		} else if lx.Peek(3) == "***" || lx.Peek(3) == "___" {
+			lx.EmitIfNonEmpty(TokenText)
+			lx.LexEmphasisStrong()
+		} else if lx.Peek(2) == "**" || lx.Peek(2) == "__" {
+			lx.EmitIfNonEmpty(TokenText)
+			lx.LexStrong()
+		} else if lx.Peek(2) == "<<" {
+			lx.EmitIfNonEmpty(TokenText)
+			lx.LexEnquoteAngled()
+		} else if lx.Peek(2) == "~~" {
+			lx.EmitIfNonEmpty(TokenText)
+			lx.LexStrikethrough()
+		} else if lx.Peek(2) == "==" {
+			lx.EmitIfNonEmpty(TokenText)
+			lx.LexMarker()
+		} else if lx.Peek1() == '*' || lx.Peek1() == '_' {
+			lx.EmitIfNonEmpty(TokenText)
+			lx.LexEmphasis()
+		} else if lx.Peek1() == '<' {
+			lx.EmitIfNonEmpty(TokenText)
+			lx.LexLinkify()
+		} else if lx.Peek1() == '`' {
+			lx.EmitIfNonEmpty(TokenText)
+			lx.LexMono()
+		} else if lx.Peek1() == '"' {
+			lx.EmitIfNonEmpty(TokenText)
+			lx.LexEnquoteDouble()
+		} else if lx.Peek1() == '\'' {
+			lx.EmitIfNonEmpty(TokenText)
+			lx.LexEnquoteSingle()
+		} else if lx.Peek1() == '\\' {
+			lx.EmitIfNonEmpty(TokenText)
+			lx.LexEscape()
+		} else {
+			lx.Next1()
+		}
+	}
+}
+
+func (lx *Lexer) LexLinkifyOrHtmlElement() {
+	Assert(lx.Peek1() == '<', "lexer state confused")
+	if lx.MatchAtPos("<http://") || lx.MatchAtPos("<https://") || lx.MatchAtPos("<mailto:") { // @todo: what about other protocols?
+		lx.LexLinkify()
+	} else {
+		lx.LexHtmlElement()
 	}
 }
 
@@ -1166,110 +1427,151 @@ func (lx *Lexer) LexDefinition() {
 // - TokenMono "This text is in monospace"
 func (lx *Lexer) LexMono() {
 	Assert(lx.Peek1() == '`', "lexer state confused")
-	lx.Next1()
-	lx.Skip()
-	lx.UntilMatch("`")
+	lx.SkipNext1()
+	lx.NextUntilMatch("`")
 	lx.Emit(TokenMono)
 	lx.ExpectAndSkip("`")
 }
 
-/*
+func (lx *Lexer) LexEmphasis() {
+	Assert(lx.Peek1() == '*' || lx.Peek1() == '_', "lexer state confused")
+	lx.Next1()
+	lx.Emit(TokenEmphasisBegin)
+	lx.LexTextUntilPred(lx.IsEmphasis)
+	lx.Emit(TokenEmphasisEnd)
+}
 
-func (lx *Lexer) LexHtmlTagStart() {
-	// skip past <
-	lx.Next(1)
-	lx.Skip()
-	if tagName := lx.NextASCII(); tagName == "" {
-		lx.Error(fmt.Errorf("expected html tag name"))
+func (lx *Lexer) LexStrong() {
+	Assert(lx.Peek(2) == "**" || lx.Peek(2) == "__", "lexer state confused")
+	lx.Next(2)
+	lx.Emit(TokenStrongBegin)
+	lx.LexTextUntilPred(lx.IsStrong)
+	lx.Emit(TokenStrongEnd)
+}
+
+func (lx *Lexer) LexEmphasisStrong() {
+	Assert(lx.Peek(3) == "***" || lx.Peek(3) == "___", "lexer state confused")
+	lx.Next(3)
+	lx.Emit(TokenEmphasisStrongBegin)
+	lx.LexTextUntilPred(lx.IsEmphasisStrong)
+	lx.Emit(TokenEmphasisStrongEnd)
+}
+
+func (lx *Lexer) LexEnquoteSingle() {
+	Assert(lx.Peek1() == '\'', "lexer state confused")
+	lx.Next1()
+	lx.Emit(TokenEnquoteSingleBegin)
+	lx.LexTextUntil("'")
+	lx.Expect("'")
+	lx.Emit(TokenEnquoteSingleEnd)
+}
+
+func (lx *Lexer) LexEnquoteDouble() {
+	Assert(lx.Peek1() == '"', "lexer state confused")
+	lx.Next1()
+	lx.Emit(TokenEnquoteDoubleBegin)
+	lx.LexTextUntil("\"")
+	lx.Expect("\"")
+	lx.Emit(TokenEnquoteDoubleEnd)
+}
+
+func (lx *Lexer) LexEnquoteAngled() {
+	Assert(lx.Peek(2) == '<<', "lexer state confused")
+	lx.Next2()
+	lx.Emit(TokenEnquoteAngledBegin)
+	lx.LexTextUntil(">>")
+	lx.Expect(">>")
+	lx.Emit(TokenEnquoteAngledEnd)
+}
+
+func (lx *Lexer) LexStrikethrough() {
+	Assert(lx.Peek(2) == "~~", "lexer state confused")
+	lx.Next(2)
+	lx.Emit(TokenStrikethroughBegin)
+	lx.LexTextUntil("~~")
+	lx.Expect("~~")
+	lx.Emit(TokenStrikethroughEnd)
+}
+
+func (lx *Lexer) LexMarker() {
+	Assert(lx.Peek(2) == "==", "lexer state confused")
+	lx.Next(2)
+	lx.Emit(TokenMarkerBegin)
+	lx.LexTextUntil("==")
+	lx.Expect("==")
+	lx.Emit(TokenMarkerEnd)
+}
+
+// LexHtmlElement lexes an HTML element like
+//
+//   <tag-name attr="val" ...>
+//      ...
+//   </tag-name>
+//
+// or
+//
+//   <tag-name attr="val" ...>
+//
+// an attribute does not need to have a value
+//
+//   <tag-name attr>
+func (lx *Lexer) LexHtmlElement() {
+	Assert(lx.Peek1() == "<", "lexer state confused")
+	lx.SkipNext1()
+	tag := lx.NextValids(CharInSpec{SpecAscii, CharInAny("-_")})
+	if len(tag) == 0 {
+		lx.Error(errors.New("expected html tag name"))
 	}
 	lx.Emit(TokenHtmlTagOpen)
 	lx.SkipWhitespace()
-	if lx.Peek(1) == ">" {
-		lx.Next(1)
-		lx.Skip()
+	if lx.MatchAtPos(">") {
+		lx.SkipNext1()
 	} else {
-		lx.LexHtmlTagAttrs()
-		lx.Expect(">")
-		lx.Skip()
+		lx.LexHtmlElementAttributes()
+		lx.ExpectAndSkip(">")
 	}
+	lx.LexHtmlElementContent(tag)
 }
 
-func (lx *Lexer) LexHtmlTagAttrs() {
+func (lx *Lexer) LexHtmlElementAttributes() {
 	lx.SkipWhitespace()
-	for lx.Peek(1) != ">" {
-		if attrKey := lx.NextASCII(); attrKey == "" {
-			lx.Error(fmt.Errorf("expected attribute or >, got: %s", lx.Peek(1)))
+	for lx.Peek1() != '>' {
+		attrKey := lx.NextValids(CharInSpec{SpecAscii, CharInAny("-_")})
+		if len(attrKey) == 0 {
+			lx.Error(fmt.Errorf("expected attribute or >, got: %s", lx.Peek(7)))
 			break
 		}
 		lx.Emit(TokenHtmlTagAttrKey)
 		lx.SkipWhitespace()
-		if lx.Peek(1) == "=" {
-			lx.Next(1)
-			lx.SkipWhitespace()
-			lx.Expect("\"")
-			lx.Skip()
-			val, ok := lx.Until("\"")
-			if !ok {
-				lx.Error(fmt.Errorf("expected value delimited by double quotes, got: %s", val))
-			}
+		if lx.Peek1() == '=' {
+			lx.SkipNext1()
+			lx.ExpectAndSkip("\"")
+			attrVal, _ := lx.NextUntilMatch("\"")
 			lx.Emit(TokenHtmlTagAttrVal)
-			// skip past "
-			lx.Next(1)
-			lx.Skip()
+			lx.ExpectAndSkip("\"")
 		}
 		lx.SkipWhitespace()
 	}
 }
 
-func (lx *Lexer) LexHtmlTagEnd() {
-	// skip past </
-	lx.Next(2)
-	lx.Skip()
-	if tagName := lx.NextASCII(); tagName == "" {
-		lx.Error(fmt.Errorf("expected html tag name"))
+func (lx *Lexer) LexHtmlElementContent(tag string) {
+	lx.Emit(TokenHtmlTagContent)
+	if lx.HasCloseTag(tag) {
+		for !lx.IsEOF() {
+			if lx.Peek(2) == "</" {
+				mtag := lx.NextValids(CharInSpec{SpecAscii, CharInAny("-_")})
+				if tag != mtag {
+					lx.Error(fmt.Sprintf("expected <%s> to be closed first, got: </%s>", tag, mtag))
+				}
+				lx.SkipWhitespace()
+				lx.ExpectAndSkip(">")
+				break
+			}
+			lx.LexParagraph()
+		}
 	}
 	lx.Emit(TokenHtmlTagClose)
-	lx.SkipWhitespace()
-	lx.Expect(">")
-	lx.Skip()
 }
-
-func (lx *Lexer) LexParagraph() {
-	lx.Skip()
-	lx.Emit(TokenParagraphBegin)
-	for !lx.IsEOF() {
-		if lx.Peek(1) == "<" {
-			lx.Emit(TokenText)
-			if lx.Peek(2) == "</" {
-				lx.LexHtmlTagEnd()
-			} else {
-				lx.LexHtmlTagStart()
-			}
-			continue
-		}
-		if lx.Peek(1) == "#" || lx.Peek(1) == "\n\n" || lx.Peek(3) == "```" {
-			lx.Emit(TokenText)
-			lx.Emit(TokenParagraphEnd)
-			break
-		}
-		lx.Next(1)
-	}
-}
-
-func (lx *Lexer) LexCodeBlockStart() {
-	// skip past ```
-	lx.Next(3)
-	lx.Skip()
-	lx.NextASCII()
-	lx.Emit(TokenCodeBlockBegin)
-	lx.SkipWhitespace()
-	lx.Until("```")
-	lx.Emit(TokenText)
-	lx.Emit(TokenCodeBlockEnd)
-	lx.Next(3)
-	lx.Skip()
-}
-*/
 
 func WhiteSpaceToVisible(s string) string {
 	var builder strings.Builder

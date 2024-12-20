@@ -177,7 +177,7 @@ oof: rab zab
 }
 
 func TestLexSectionHeader(t *testing.T) {
-	var testCases := []TestCase{
+	testCases := []TestCase{
 		{
 			name: "Section 1 Header",
 			source: `# Hello, World!`,
