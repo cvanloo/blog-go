@@ -452,6 +452,8 @@ var (
 	SpecAsciiLower = CharInRange{'a', 'z'}
 	SpecAsciiUpper = CharInRange{'A', 'Z'}
 	SpecAscii = CharInSpec{SpecAsciiLower, SpecAsciiUpper}
+	SpecNumber = CharInRange{'0', '9'}
+	SpecAsciiID = CharInSpec{SpecAscii, SpecNumber, CharInAny("-_")}
 	SpecValidMetaKey = CharInSpec{SpecAscii, CharInAny("-_")}
 	SpecNonWhitespace = CharNotInSpec{CharInAny(" \u00A0\n\r\v\t")} // @todo: and all the others...
 )
@@ -871,16 +873,29 @@ func (lx *Lexer) LexAttributeList() {
 	lx.Next1()
 	lx.Emit(TokenAttributeListBegin)
 	lx.SkipWhitespace()
+	if lx.Peek1() == '#' {
+		lx.SkipNext1()
+		id := lx.NextValids(SpecAsciiID)
+		if len(id) == 0 {
+			lx.Error(errors.New("must provide id"))
+		}
+		lx.Emit(TokenAttributeListID)
+		lx.SkipWhitespace()
+	}
 	for !lx.IsEOF() && lx.Peek1() != '}' {
-		key := lx.NextValids(SpecAscii)
+		key := lx.NextValids(SpecAsciiID)
 		if len(key) == 0 {
 			lx.Error(errors.New("must provide a key"))
 		}
 		lx.Emit(TokenAttributeListKey)
 		lx.SkipWhitespaceNoNewLine()
-		lx.ExpectAndSkip("=") // @todo: likely error: key contains non-ASCII characters
-		lx.SkipWhitespaceNoNewLine()
-		lx.LexStringValue()
+		if lx.MatchAtPos("=") {
+			lx.SkipNext1()
+			lx.SkipWhitespaceNoNewLine()
+			if lx.Peek1() != '}' {
+				lx.LexStringValue()
+			}
+		}
 		lx.SkipWhitespace()
 	}
 	lx.Expect("}")
@@ -891,7 +906,7 @@ func (lx *Lexer) LexAttributeList() {
 //
 //   oneword
 //
-// or one or multiple words enclosed in single quotes
+// or one or multiple words enclosed in single or double quotes
 //
 //   'one or multiple words enclosed in single quotes'
 //
@@ -901,18 +916,22 @@ func (lx *Lexer) LexAttributeList() {
 // - TokenText "one or multiple words enclosed in single quotes"
 //
 // No token is produced if the string value is empty.
-func (lx *Lexer) LexStringValue() {
+func (lx *Lexer) LexStringValue() { // @todo: rename this function, since it is specific to LexAttributeList
 	if lx.Peek1() == '\'' {
 		lx.Next1()
 		lx.Skip()
-		text, _ := lx.NextUntilMatch("'")
-		if len(text) > 0 {
-			lx.Emit(TokenText)
-		}
-		lx.Expect("'")
+		lx.NextUntilMatch("'")
+		lx.EmitIfNonEmpty(TokenText)
+		lx.ExpectAndSkip("'")
+	} else if lx.Peek1() == '"' {
+		lx.Next1()
+		lx.Skip()
+		lx.NextUntilMatch("\"")
+		lx.EmitIfNonEmpty(TokenText)
+		lx.ExpectAndSkip("\"")
 	} else {
 		lx.NextValids(SpecNonWhitespace)
-		lx.Emit(TokenText)
+		lx.EmitIfNonEmpty(TokenText)
 	}
 }
 

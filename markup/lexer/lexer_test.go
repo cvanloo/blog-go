@@ -309,6 +309,69 @@ func TestLexSectionHeader(t *testing.T) {
 				{Type: lexer.TokenEOF, Text: ""},
 			},
 		},
+		{
+			name: "Section headers with custom id",
+			source: `
+# Section 1 {#section-1}
+`,
+			expected: []lexer.Token{
+				{Type: lexer.TokenSection1Begin, Text: "#"},
+				{Type: lexer.TokenText, Text: "Section 1 "},
+				{Type: lexer.TokenAttributeListBegin, Text: "{"},
+				{Type: lexer.TokenAttributeListID, Text: "section-1"},
+				{Type: lexer.TokenAttributeListEnd, Text: "}"},
+				{Type: lexer.TokenSection1Content, Text: ""},
+				{Type: lexer.TokenSection1End, Text: ""},
+				{Type: lexer.TokenEOF, Text: ""},
+			},
+		},
+		{
+			name: "Section headers with attributes",
+			source: `
+# Section 1 {key1=val1 key2 key3='val 3' key4 = "val 4" key5 =}
+`,
+			expected: []lexer.Token{
+				{Type: lexer.TokenSection1Begin, Text: "#"},
+				{Type: lexer.TokenText, Text: "Section 1 "},
+				{Type: lexer.TokenAttributeListBegin, Text: "{"},
+				{Type: lexer.TokenAttributeListKey, Text: "key1"},
+				{Type: lexer.TokenText, Text: "val1"},
+				{Type: lexer.TokenAttributeListKey, Text: "key2"},
+				{Type: lexer.TokenAttributeListKey, Text: "key3"},
+				{Type: lexer.TokenText, Text: "val 3"},
+				{Type: lexer.TokenAttributeListKey, Text: "key4"},
+				{Type: lexer.TokenText, Text: "val 4"},
+				{Type: lexer.TokenAttributeListKey, Text: "key5"},
+				{Type: lexer.TokenAttributeListEnd, Text: "}"},
+				{Type: lexer.TokenSection1Content, Text: ""},
+				{Type: lexer.TokenSection1End, Text: ""},
+				{Type: lexer.TokenEOF, Text: ""},
+			},
+		},
+		{
+			name: "Section headers with custom id and attributes",
+			source: `
+# Section 1 {#section-1 key1=val1 key2 key3='val 3' key4 = "val 4" key5 =}
+`,
+			expected: []lexer.Token{
+				{Type: lexer.TokenSection1Begin, Text: "#"},
+				{Type: lexer.TokenText, Text: "Section 1 "},
+				{Type: lexer.TokenAttributeListBegin, Text: "{"},
+				{Type: lexer.TokenAttributeListID, Text: "section-1"},
+				{Type: lexer.TokenAttributeListKey, Text: "key1"},
+				{Type: lexer.TokenText, Text: "val1"},
+				{Type: lexer.TokenAttributeListKey, Text: "key2"},
+				{Type: lexer.TokenAttributeListKey, Text: "key3"},
+				{Type: lexer.TokenText, Text: "val 3"},
+				{Type: lexer.TokenAttributeListKey, Text: "key4"},
+				{Type: lexer.TokenText, Text: "val 4"},
+				{Type: lexer.TokenAttributeListKey, Text: "key5"},
+				{Type: lexer.TokenAttributeListEnd, Text: "}"},
+				{Type: lexer.TokenSection1Content, Text: ""},
+				{Type: lexer.TokenSection1End, Text: ""},
+				{Type: lexer.TokenEOF, Text: ""},
+			},
+		},
 	}
 	RunTests(t, testCases)
 }
@@ -320,10 +383,10 @@ func TestLexCodeBlock(t *testing.T) {
 			source: `
 # Showcasing Code Blocks
 
-`+"```"+`
+` + "```" + `
 console.log('1337')
 alert('haxxed!')
-`+"```"+`
+` + "```" + `
 `,
 			expected: []lexer.Token{
 				{Type: lexer.TokenSection1Begin, Text: "#"},
