@@ -729,7 +729,7 @@ func (lx *Lexer) LexSection1() {
 
 // LexSection1Content lexes the contents of a top level section.
 // A section 1 can contain section twos, paragraphs, html elements, horizontal rule, {term,sidenote,link} definitions,
-// code blocks.
+// code blocks, images, block quotes.
 // A section 1 ends before another section 1 starts.
 func (lx *Lexer) LexSection1Content() {
 	lx.SkipWhitespace()
@@ -744,6 +744,10 @@ func (lx *Lexer) LexSection1Content() {
 				lx.LexCodeBlock()
 			} else if lx.Peek(2) == "##" {
 				lx.LexSection2()
+			} else if lx.Peek(2) == "![" {
+				lx.LexImage()
+			} else if lx.Peek1() == '>' {
+				lx.LexBlockQuotes()
 			} else if lx.Peek1() == '#' {
 				return // this section ends, next section starts
 			} else if lx.Peek1() == '<' {
@@ -799,7 +803,8 @@ func (lx *Lexer) LexSection2() {
 }
 
 // LexSection2Content lees the contents of a second level section.
-// A section 2 can contain paragraphs, html elements, horizontal rule, {term,sidenote,link} definitions, code blocks.
+// A section 2 can contain paragraphs, html elements, horizontal rule, {term,sidenote,link} definitions, code blocks,
+// images, block quotes.
 // A section 2 ends before another section 1 or 2 starts.
 func (lx *Lexer) LexSection2Content() {
 	lx.SkipWhitespace()
@@ -814,6 +819,10 @@ func (lx *Lexer) LexSection2Content() {
 				lx.LexCodeBlock()
 			} else if lx.Peek(2) == "##" {
 				return // this section ends, next section starts
+			} else if lx.Peek(2) == "![" {
+				lx.LexImage()
+			} else if lx.Peek1() == '>' {
+				lx.LexBlockQuotes()
 			} else if lx.Peek1() == '#' {
 				return // this section ends, next section starts
 			} else if lx.Peek1() == '<' {
@@ -1103,9 +1112,9 @@ func (lx *Lexer) LexText() {
 		} else if lx.Peek1() == '"' {
 			lx.EmitIfNonEmpty(TokenText)
 			lx.LexEnquoteDouble()
-		} else if lx.Peek1() == '\'' {
-			lx.EmitIfNonEmpty(TokenText)
-			lx.LexEnquoteSingle()
+		//} else if lx.Peek1() == '`' {
+		//	lx.EmitIfNonEmpty(TokenText)
+		//	lx.LexEnquoteSingle()
 		} else if lx.Peek1() == '[' {
 			lx.EmitIfNonEmpty(TokenText)
 			lx.LexLinkOrSidenote()
@@ -1175,9 +1184,9 @@ func (lx *Lexer) LexTextUntil(match string) {
 		} else if lx.Peek1() == '"' {
 			lx.EmitIfNonEmpty(TokenText)
 			lx.LexEnquoteDouble()
-		} else if lx.Peek1() == '\'' {
-			lx.EmitIfNonEmpty(TokenText)
-			lx.LexEnquoteSingle()
+		//} else if lx.Peek1() == '`' {
+		//	lx.EmitIfNonEmpty(TokenText)
+		//	lx.LexEnquoteSingle()
 		} else if lx.Peek1() == '\\' {
 			lx.EmitIfNonEmpty(TokenText)
 			lx.LexEscape()
@@ -1232,9 +1241,9 @@ func (lx *Lexer) LexTextUntilSpec(spec CharSpec) {
 		} else if lx.Peek1() == '"' {
 			lx.EmitIfNonEmpty(TokenText)
 			lx.LexEnquoteDouble()
-		} else if lx.Peek1() == '\'' {
-			lx.EmitIfNonEmpty(TokenText)
-			lx.LexEnquoteSingle()
+		//} else if lx.Peek1() == '`' {
+		//	lx.EmitIfNonEmpty(TokenText)
+		//	lx.LexEnquoteSingle()
 		} else if lx.Peek1() == '\\' {
 			lx.EmitIfNonEmpty(TokenText)
 			lx.LexEscape()
@@ -1289,9 +1298,9 @@ func (lx *Lexer) LexTextUntilPred(pred Predicate) {
 		} else if lx.Peek1() == '"' {
 			lx.EmitIfNonEmpty(TokenText)
 			lx.LexEnquoteDouble()
-		} else if lx.Peek1() == '\'' {
-			lx.EmitIfNonEmpty(TokenText)
-			lx.LexEnquoteSingle()
+		//} else if lx.Peek1() == '`' {
+		//	lx.EmitIfNonEmpty(TokenText)
+		//	lx.LexEnquoteSingle()
 		} else if lx.Peek1() == '\\' {
 			lx.EmitIfNonEmpty(TokenText)
 			lx.LexEscape()
@@ -1411,7 +1420,7 @@ func (lx *Lexer) LexImage() {
 //   > Elea acta est.
 //   > -- Author, Source
 //
-// - TokenBlockquoteBegin ">"
+// - TokenBlockquoteBegin
 // - TokenText "Elea acta est."
 // - TokenBlockquoteAttrAuthor
 // - TokenText "Author"
@@ -1423,20 +1432,23 @@ func (lx *Lexer) LexImage() {
 // @todo: nested block quotes
 func (lx *Lexer) LexBlockQuotes() {
 	Assert(lx.Peek1() == '>', "lexer state confused")
-	lx.Next1()
 	lx.Emit(TokenBlockquoteBegin)
 	for !lx.IsEOF() && lx.Peek1() == '>' {
+		lx.SkipNext1()
 		lx.SkipWhitespaceNoNewLine()
 		if lx.Peek(2) == "--" {
+			lx.SkipNext(2)
 			lx.Emit(TokenBlockquoteAttrAuthor)
+			lx.SkipWhitespaceNoNewLine()
 			lx.LexTextUntilSpec(CharInAny(",\n"))
 			if lx.Peek1() == ',' {
+				lx.SkipNext1()
 				lx.SkipWhitespaceNoNewLine()
 				lx.Emit(TokenBlockquoteAttrSource)
 				lx.LexTextUntil("\n")
 			}
 			lx.Emit(TokenBlockquoteAttrEnd)
-			lx.Expect("\n")
+			lx.ExpectAndSkip("\n")
 			lx.Emit(TokenBlockquoteEnd)
 			lx.SkipWhitespaceNoNewLine()
 			if lx.Peek1() == '>' {
@@ -1532,7 +1544,7 @@ func (lx *Lexer) LexEmphasisStrong() {
 }
 
 func (lx *Lexer) LexEnquoteSingle() {
-	Assert(lx.Peek1() == '\'', "lexer state confused")
+	Assert(lx.Peek1() == '`', "lexer state confused")
 	lx.Next1()
 	lx.Emit(TokenEnquoteSingleBegin)
 	lx.LexTextUntil("'")

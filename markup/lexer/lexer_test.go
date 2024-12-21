@@ -578,10 +578,11 @@ How are you doing?
 				{Type: lexer.TokenText, Text: "\nHow are you doing?"},
 				{Type: lexer.TokenParagraphEnd, Text: ""},
 				{Type: lexer.TokenSidenoteDef, Text: "1"},
-				{Type: lexer.TokenText, Text: "世界 (Sekai) is the Japanese word for "},
-				{Type: lexer.TokenEnquoteSingleBegin, Text: "'"},
-				{Type: lexer.TokenText, Text: "World"},
-				{Type: lexer.TokenEnquoteSingleEnd, Text: "'"},
+				{Type: lexer.TokenText, Text: "世界 (Sekai) is the Japanese word for 'World'"},
+				//{Type: lexer.TokenText, Text: "世界 (Sekai) is the Japanese word for "},
+				//{Type: lexer.TokenEnquoteSingleBegin, Text: "`"},
+				//{Type: lexer.TokenText, Text: "World"},
+				//{Type: lexer.TokenEnquoteSingleEnd, Text: "'"},
 				{Type: lexer.TokenSidenoteDefEnd, Text: ""},
 				{Type: lexer.TokenSection1End, Text: ""},
 				{Type: lexer.TokenEOF, Text: ""},
@@ -611,6 +612,101 @@ How are you doing?
 				{Type: lexer.TokenParagraphEnd, Text: ""},
 				{Type: lexer.TokenLinkDef, Text: "1"},
 				{Type: lexer.TokenText, Text: "https://jisho.org/word/世界"},
+				{Type: lexer.TokenSection1End, Text: ""},
+				{Type: lexer.TokenEOF, Text: ""},
+			},
+		},
+	}
+	RunTests(t, testCases)
+}
+
+func TestLexBlockQuote(t *testing.T) {
+	testCases := []TestCase{
+		{
+			name: "Blockquote without attribution",
+			source: `
+# Quotes and Citations
+
+I forgot who this quote is from:
+> If we stop dreaming big dreams, if we stop looking for a greater purpose,
+> then we may as well be machines ourselves.
+...maybe it had something to do with AI?
+`,
+			expected: []lexer.Token{
+				{Type: lexer.TokenSection1Begin, Text: "#"},
+				{Type: lexer.TokenText, Text: "Quotes and Citations"},
+				{Type: lexer.TokenSection1Content, Text: ""},
+				{Type: lexer.TokenParagraphBegin, Text: ""},
+				{Type: lexer.TokenText, Text: "I forgot who this quote is from:\n"},
+				{Type: lexer.TokenParagraphEnd, Text: ""},
+				{Type: lexer.TokenBlockquoteBegin, Text: ""},
+				{Type: lexer.TokenText, Text: "If we stop dreaming big dreams, if we stop looking for a greater purpose,"},
+				{Type: lexer.TokenText, Text: "then we may as well be machines ourselves."},
+				{Type: lexer.TokenBlockquoteEnd, Text: ""},
+				{Type: lexer.TokenParagraphBegin, Text: ""},
+				{Type: lexer.TokenAmpSpecial, Text: "..."},
+				{Type: lexer.TokenText, Text: "maybe it had something to do with AI?\n"},
+				{Type: lexer.TokenParagraphEnd, Text: ""},
+				{Type: lexer.TokenSection1End, Text: ""},
+				{Type: lexer.TokenEOF, Text: ""},
+			},
+		},
+		{
+			name: "Blockquote with partial attribution",
+			source: `
+# Quotes and Citations
+
+Oh, I remember now:
+
+> If we stop dreaming big dreams, if we stop looking for a greater purpose,
+> then we may as well be machines ourselves.
+> -- Garry Kasparov
+`,
+			expected: []lexer.Token{
+				{Type: lexer.TokenSection1Begin, Text: "#"},
+				{Type: lexer.TokenText, Text: "Quotes and Citations"},
+				{Type: lexer.TokenSection1Content, Text: ""},
+				{Type: lexer.TokenParagraphBegin, Text: ""},
+				{Type: lexer.TokenText, Text: "Oh, I remember now:"},
+				{Type: lexer.TokenParagraphEnd, Text: ""},
+				{Type: lexer.TokenBlockquoteBegin, Text: ""},
+				{Type: lexer.TokenText, Text: "If we stop dreaming big dreams, if we stop looking for a greater purpose,"},
+				{Type: lexer.TokenText, Text: "then we may as well be machines ourselves."},
+				{Type: lexer.TokenBlockquoteAttrAuthor, Text: ""},
+				{Type: lexer.TokenText, Text: "Garry Kasparov"},
+				{Type: lexer.TokenBlockquoteAttrEnd, Text: ""},
+				{Type: lexer.TokenBlockquoteEnd, Text: ""},
+				{Type: lexer.TokenSection1End, Text: ""},
+				{Type: lexer.TokenEOF, Text: ""},
+			},
+		},
+		{
+			name: "Blockquote with full attribution",
+			source: `
+# Quotes and Citations
+
+Btw, it's from this book:
+
+> If we stop dreaming big dreams, if we stop looking for a greater purpose,
+> then we may as well be machines ourselves.
+> -- Garry Kasparov, Deep Thinking
+`,
+			expected: []lexer.Token{
+				{Type: lexer.TokenSection1Begin, Text: "#"},
+				{Type: lexer.TokenText, Text: "Quotes and Citations"},
+				{Type: lexer.TokenSection1Content, Text: ""},
+				{Type: lexer.TokenParagraphBegin, Text: ""},
+				{Type: lexer.TokenText, Text: "Btw, it's from this book:"},
+				{Type: lexer.TokenParagraphEnd, Text: ""},
+				{Type: lexer.TokenBlockquoteBegin, Text: ""},
+				{Type: lexer.TokenText, Text: "If we stop dreaming big dreams, if we stop looking for a greater purpose,"},
+				{Type: lexer.TokenText, Text: "then we may as well be machines ourselves."},
+				{Type: lexer.TokenBlockquoteAttrAuthor, Text: ""},
+				{Type: lexer.TokenText, Text: "Garry Kasparov"},
+				{Type: lexer.TokenBlockquoteAttrSource, Text: ""},
+				{Type: lexer.TokenText, Text: "Deep Thinking"},
+				{Type: lexer.TokenBlockquoteAttrEnd, Text: ""},
+				{Type: lexer.TokenBlockquoteEnd, Text: ""},
 				{Type: lexer.TokenSection1End, Text: ""},
 				{Type: lexer.TokenEOF, Text: ""},
 			},
