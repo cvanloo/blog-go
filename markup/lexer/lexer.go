@@ -212,6 +212,8 @@ func (lx *Lexer) IsParagraphEnder() bool {
 		return false
 	case lx.IsTermDefinition():
 		fallthrough
+	case lx.IsLinkOrSidenoteDefinition():
+		fallthrough
 	case lx.Peek(3) == "```":
 		fallthrough
 	case lx.Peek(2) == "![":
@@ -220,8 +222,8 @@ func (lx *Lexer) IsParagraphEnder() bool {
 		fallthrough
 	case lx.Peek(2) == "\n\n":
 		fallthrough
-	case lx.Peek1() == '[':
-		fallthrough
+	//case lx.Peek1() == '[':
+	//	fallthrough
 	case lx.Peek1() == '>':
 		return true
 	}
@@ -247,9 +249,39 @@ func (lx *Lexer) IsTermDefinition() bool {
 	return true
 }
 
+func (lx *Lexer) IsLinkOrSidenoteDefinition() bool {
+	lpos := lx.Pos
+	lcon := lx.Consumed
+	defer func() {
+		lx.Pos = lpos
+		lx.Consumed = lcon
+	}()
+	lx.SkipWhitespaceNoNewLine()
+	if lx.Peek1() != '[' {
+		return false
+	}
+	lx.SkipNext1()
+	if lx.Peek1() == '^' {
+		lx.SkipNext1()
+	}
+	lx.NextUntilMatch("]")
+	if lx.Peek1() != ']' {
+		return false
+	}
+	lx.SkipNext1()
+	if lx.Peek1() != ':' {
+		return false
+	}
+	return true
+}
+
 func (lx *Lexer) IsHorizontalRule() bool {
 	lpos := lx.Pos
-	defer lx.ResetToPos(lpos)
+	lcon := lx.Consumed
+	defer func() {
+		lx.Pos = lpos
+		lx.Consumed = lcon
+	}()
 	lx.SkipWhitespaceNoNewLine()
 	if lx.Peek1() != '\n' {
 		return false
@@ -702,23 +734,25 @@ func (lx *Lexer) LexSection1() {
 func (lx *Lexer) LexSection1Content() {
 	lx.SkipWhitespace()
 	for !lx.IsEOF() {
-		// @todo: where can we SkipWhitespace without breaking IsHorizontalRule?
 		if lx.IsTermDefinition() {
 			lx.LexDefinition()
 		} else if lx.IsHorizontalRule() {
 			lx.LexHorizontalRule()
-		} else if lx.Peek(3) == "```" {
-			lx.LexCodeBlock()
-		} else if lx.Peek(2) == "##" {
-			lx.LexSection2()
-		} else if lx.Peek1() == '#' {
-			return // this section ends, next section starts
-		} else if lx.Peek1() == '<' {
-			lx.LexHtmlElement()
-		} else if lx.Peek1() == '[' {
-			lx.LexLinkOrSidenoteDefinition()
 		} else {
-			lx.LexParagraph()
+			lx.SkipWhitespace()
+			if lx.Peek(3) == "```" {
+				lx.LexCodeBlock()
+			} else if lx.Peek(2) == "##" {
+				lx.LexSection2()
+			} else if lx.Peek1() == '#' {
+				return // this section ends, next section starts
+			} else if lx.Peek1() == '<' {
+				lx.LexHtmlElement()
+			} else if lx.Peek1() == '[' {
+				lx.LexLinkOrSidenoteDefinition()
+			} else {
+				lx.LexParagraph()
+			}
 		}
 	}
 }
@@ -770,23 +804,25 @@ func (lx *Lexer) LexSection2() {
 func (lx *Lexer) LexSection2Content() {
 	lx.SkipWhitespace()
 	for !lx.IsEOF() {
-		// @todo: where can we SkipWhitespace without breaking IsHorizontalRule?
 		if lx.IsTermDefinition() {
 			lx.LexDefinition()
 		} else if lx.IsHorizontalRule() {
 			lx.LexHorizontalRule()
-		} else if lx.Peek(3) == "```" {
-			lx.LexCodeBlock()
-		} else if lx.Peek(2) == "##" {
-			return // this section ends, next section starts
-		} else if lx.Peek1() == '#' {
-			return // this section ends, next section starts
-		} else if lx.Peek1() == '<' {
-			lx.LexHtmlElement()
-		} else if lx.Peek1() == '[' {
-			lx.LexLinkOrSidenoteDefinition()
 		} else {
-			lx.LexParagraph()
+			lx.SkipWhitespace()
+			if lx.Peek(3) == "```" {
+				lx.LexCodeBlock()
+			} else if lx.Peek(2) == "##" {
+				return // this section ends, next section starts
+			} else if lx.Peek1() == '#' {
+				return // this section ends, next section starts
+			} else if lx.Peek1() == '<' {
+				lx.LexHtmlElement()
+			} else if lx.Peek1() == '[' {
+				lx.LexLinkOrSidenoteDefinition()
+			} else {
+				lx.LexParagraph()
+			}
 		}
 	}
 }
@@ -1070,6 +1106,9 @@ func (lx *Lexer) LexText() {
 		} else if lx.Peek1() == '\'' {
 			lx.EmitIfNonEmpty(TokenText)
 			lx.LexEnquoteSingle()
+		} else if lx.Peek1() == '[' {
+			lx.EmitIfNonEmpty(TokenText)
+			lx.LexLinkOrSidenote()
 		} else if lx.IsEscape() {
 			lx.EmitIfNonEmpty(TokenText)
 			lx.LexEscape()
@@ -1297,26 +1336,26 @@ func (lx *Lexer) LexLinkify() {
 // - TokenSidenoteDefEnd
 func (lx *Lexer) LexLinkOrSidenoteDefinition() {
 	Assert(lx.Peek1() == '[', "lexer state confused")
+	lx.SkipNext1()
 	if lx.Peek1() == '^' {
 		// sidenote definition
-		lx.SkipNext(2)
+		lx.SkipNext1()
 		lx.NextUntilMatch("]")
 		lx.Emit(TokenSidenoteDef)
 		lx.ExpectAndSkip("]:")
 		lx.SkipWhitespaceNoNewLine()
 		lx.LexTextUntil("\n")
-		lx.Expect("\n")
+		lx.ExpectAndSkip("\n")
 		lx.Emit(TokenSidenoteDefEnd)
 	} else {
 		// link definition
-		lx.SkipNext1()
 		lx.NextUntilMatch("]")
 		lx.Emit(TokenLinkDef)
 		lx.ExpectAndSkip("]:")
 		lx.SkipWhitespaceNoNewLine()
 		lx.NextUntilMatch("\n")
 		lx.Emit(TokenText)
-		lx.Expect("\n")
+		lx.ExpectAndSkip("\n")
 	}
 }
 

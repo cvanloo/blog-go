@@ -555,6 +555,38 @@ Where are you going?
 				{Type: lexer.TokenEOF, Text: ""},
 			},
 		},
+		{
+			name: "Paragraph with a sidenote and sidenote definition.",
+			source: `
+# Section 1
+
+Hello, [世界][^1]
+How are you doing?
+
+[^1]: 世界 (Sekai) is the Japanese word for 'World'
+`,
+			expected: []lexer.Token{
+				{Type: lexer.TokenSection1Begin, Text: "#"},
+				{Type: lexer.TokenText, Text: "Section 1"},
+				{Type: lexer.TokenSection1Content, Text: ""},
+				{Type: lexer.TokenParagraphBegin, Text: ""},
+				{Type: lexer.TokenText, Text: "Hello, "},
+				{Type: lexer.TokenLinkableBegin, Text: "["},
+				{Type: lexer.TokenText, Text: "世界"},
+				{Type: lexer.TokenSidenoteRef, Text: "1"},
+				{Type: lexer.TokenLinkableEnd, Text: ""},
+				{Type: lexer.TokenText, Text: "\nHow are you doing?"},
+				{Type: lexer.TokenParagraphEnd, Text: ""},
+				{Type: lexer.TokenSidenoteDef, Text: "1"},
+				{Type: lexer.TokenText, Text: "世界 (Sekai) is the Japanese word for "},
+				{Type: lexer.TokenEnquoteSingleBegin, Text: "'"},
+				{Type: lexer.TokenText, Text: "World"},
+				{Type: lexer.TokenEnquoteSingleEnd, Text: "'"},
+				{Type: lexer.TokenSidenoteDefEnd, Text: ""},
+				{Type: lexer.TokenSection1End, Text: ""},
+				{Type: lexer.TokenEOF, Text: ""},
+			},
+		},
 	}
 	RunTests(t, testCases)
 }
