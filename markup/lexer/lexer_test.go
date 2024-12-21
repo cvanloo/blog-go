@@ -729,6 +729,47 @@ How are you doing?
 			},
 		},
 		{
+			name: "Paragraph with a link and in-place link definition",
+			source: `
+# Section 1
+
+Hello, [世界](https://jisho.org/word/世界)
+How are you doing?
+
+## Section 2
+
+Check out this cool [website](https://blog.vanloo.ch) I found.
+
+`,
+			expected: []lexer.Token{
+				{Type: lexer.TokenSection1Begin, Text: "#"},
+				{Type: lexer.TokenText, Text: "Section 1"},
+				{Type: lexer.TokenSection1Content, Text: ""},
+				{Type: lexer.TokenParagraphBegin, Text: ""},
+				{Type: lexer.TokenText, Text: "Hello, "},
+				{Type: lexer.TokenLinkableBegin, Text: "["},
+				{Type: lexer.TokenText, Text: "世界"},
+				{Type: lexer.TokenLinkHref, Text: "https://jisho.org/word/世界"},
+				{Type: lexer.TokenLinkableEnd, Text: ""},
+				{Type: lexer.TokenText, Text: "\nHow are you doing?"},
+				{Type: lexer.TokenParagraphEnd, Text: ""},
+				{Type: lexer.TokenSection2Begin, Text: "##"},
+				{Type: lexer.TokenText, Text: "Section 2"},
+				{Type: lexer.TokenSection2Content, Text: ""},
+				{Type: lexer.TokenParagraphBegin, Text: ""},
+				{Type: lexer.TokenText, Text: "Check out this cool "},
+				{Type: lexer.TokenLinkableBegin, Text: "["},
+				{Type: lexer.TokenText, Text: "website"},
+				{Type: lexer.TokenLinkHref, Text: "https://blog.vanloo.ch"},
+				{Type: lexer.TokenLinkableEnd, Text: ""},
+				{Type: lexer.TokenText, Text: " I found."},
+				{Type: lexer.TokenParagraphEnd, Text: ""},
+				{Type: lexer.TokenSection2End, Text: ""},
+				{Type: lexer.TokenSection1End, Text: ""},
+				{Type: lexer.TokenEOF, Text: ""},
+			},
+		},
+		{
 			name: "Paragraph with variously enquoted text",
 			source: `
 # Section 1
