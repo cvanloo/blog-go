@@ -616,6 +616,56 @@ How are you doing?
 				{Type: lexer.TokenEOF, Text: ""},
 			},
 		},
+		{
+			name: "Paragraph with variously enquoted text",
+			source: `
+# Section 1
+
+Blah blab <<blah>> blah.
+Bla *blub* **bluuuhh**!!!
+
+## Section 2
+
+What "the" ***frick?!!***
+
+`,
+			expected: []lexer.Token{
+				{Type: lexer.TokenSection1Begin, Text: "#"},
+				{Type: lexer.TokenText, Text: "Section 1"},
+				{Type: lexer.TokenSection1Content, Text: ""},
+				{Type: lexer.TokenParagraphBegin, Text: ""},
+				{Type: lexer.TokenText, Text: "Blah blab "},
+				{Type: lexer.TokenEnquoteAngledBegin, Text: "<<"},
+				{Type: lexer.TokenText, Text: "blah"},
+				{Type: lexer.TokenEnquoteAngledEnd, Text: ">>"},
+				{Type: lexer.TokenText, Text: " blah.\nBla "},
+				{Type: lexer.TokenEmphasisBegin, Text: "*"},
+				{Type: lexer.TokenText, Text: "blub"},
+				{Type: lexer.TokenEmphasisEnd, Text: "*"},
+				{Type: lexer.TokenText, Text: " "},
+				{Type: lexer.TokenStrongBegin, Text: "**"},
+				{Type: lexer.TokenText, Text: "bluuuhh"},
+				{Type: lexer.TokenStrongEnd, Text: "**"},
+				{Type: lexer.TokenText, Text: "!!!"},
+				{Type: lexer.TokenParagraphEnd, Text: ""},
+				{Type: lexer.TokenSection2Begin, Text: "##"},
+				{Type: lexer.TokenText, Text: "Section 2"},
+				{Type: lexer.TokenSection2Content, Text: ""},
+				{Type: lexer.TokenParagraphBegin, Text: ""},
+				{Type: lexer.TokenText, Text: "What "},
+				{Type: lexer.TokenEnquoteDoubleBegin, Text: "\""},
+				{Type: lexer.TokenText, Text: "the"},
+				{Type: lexer.TokenEnquoteDoubleEnd, Text: "\""},
+				{Type: lexer.TokenText, Text: " "},
+				{Type: lexer.TokenEmphasisStrongBegin, Text: "***"},
+				{Type: lexer.TokenText, Text: "frick?!!"},
+				{Type: lexer.TokenEmphasisStrongEnd, Text: "***"},
+				{Type: lexer.TokenParagraphEnd, Text: ""},
+				{Type: lexer.TokenSection2End, Text: ""},
+				{Type: lexer.TokenSection1End, Text: ""},
+				{Type: lexer.TokenEOF, Text: ""},
+			},
+		},
 	}
 	RunTests(t, testCases)
 }

@@ -744,6 +744,9 @@ func (lx *Lexer) LexSection1Content() {
 			lx.LexHorizontalRule()
 		} else {
 			lx.SkipWhitespace()
+			if lx.IsEOF() {
+				break
+			}
 			if lx.Peek(3) == "```" {
 				lx.LexCodeBlock()
 			} else if lx.Peek(2) == "##" {
@@ -819,6 +822,9 @@ func (lx *Lexer) LexSection2Content() {
 			lx.LexHorizontalRule()
 		} else {
 			lx.SkipWhitespace()
+			if lx.IsEOF() {
+				break
+			}
 			if lx.Peek(3) == "```" {
 				lx.LexCodeBlock()
 			} else if lx.Peek(2) == "##" {
@@ -1529,6 +1535,7 @@ func (lx *Lexer) LexEmphasis() {
 	lx.Next1()
 	lx.Emit(TokenEmphasisBegin)
 	lx.LexTextUntilPred(lx.IsEmphasis)
+	lx.Next(1) // should do two different functions for * and _
 	lx.Emit(TokenEmphasisEnd)
 }
 
@@ -1537,6 +1544,7 @@ func (lx *Lexer) LexStrong() {
 	lx.Next(2)
 	lx.Emit(TokenStrongBegin)
 	lx.LexTextUntilPred(lx.IsStrong)
+	lx.Next(2) // should do two different functions for * and _
 	lx.Emit(TokenStrongEnd)
 }
 
@@ -1545,6 +1553,7 @@ func (lx *Lexer) LexEmphasisStrong() {
 	lx.Next(3)
 	lx.Emit(TokenEmphasisStrongBegin)
 	lx.LexTextUntilPred(lx.IsEmphasisStrong)
+	lx.Next(3) // should do two different functions for * and _
 	lx.Emit(TokenEmphasisStrongEnd)
 }
 
