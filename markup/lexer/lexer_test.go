@@ -556,7 +556,7 @@ Where are you going?
 			},
 		},
 		{
-			name: "Paragraph with a sidenote and sidenote definition.",
+			name: "Paragraph with a sidenote and sidenote definition",
 			source: `
 # Section 1
 
@@ -583,6 +583,34 @@ How are you doing?
 				{Type: lexer.TokenText, Text: "World"},
 				{Type: lexer.TokenEnquoteSingleEnd, Text: "'"},
 				{Type: lexer.TokenSidenoteDefEnd, Text: ""},
+				{Type: lexer.TokenSection1End, Text: ""},
+				{Type: lexer.TokenEOF, Text: ""},
+			},
+		},
+		{
+			name: "Paragraph with a link and link definition",
+			source: `
+# Section 1
+
+Hello, [世界][1]
+How are you doing?
+
+[1]: https://jisho.org/word/世界
+`,
+			expected: []lexer.Token{
+				{Type: lexer.TokenSection1Begin, Text: "#"},
+				{Type: lexer.TokenText, Text: "Section 1"},
+				{Type: lexer.TokenSection1Content, Text: ""},
+				{Type: lexer.TokenParagraphBegin, Text: ""},
+				{Type: lexer.TokenText, Text: "Hello, "},
+				{Type: lexer.TokenLinkableBegin, Text: "["},
+				{Type: lexer.TokenText, Text: "世界"},
+				{Type: lexer.TokenLinkRef, Text: "1"},
+				{Type: lexer.TokenLinkableEnd, Text: ""},
+				{Type: lexer.TokenText, Text: "\nHow are you doing?"},
+				{Type: lexer.TokenParagraphEnd, Text: ""},
+				{Type: lexer.TokenLinkDef, Text: "1"},
+				{Type: lexer.TokenText, Text: "https://jisho.org/word/世界"},
 				{Type: lexer.TokenSection1End, Text: ""},
 				{Type: lexer.TokenEOF, Text: ""},
 			},
