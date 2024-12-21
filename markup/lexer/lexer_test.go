@@ -399,6 +399,83 @@ alert('haxxed!')
 				{Type: lexer.TokenEOF, Text: ""},
 			},
 		},
+		{
+			name: "Code Block with Language",
+			source: `
+# Showcasing Code Blocks
+
+` + "```" + `js
+console.log('1337')
+alert('haxxed!')
+` + "```" + `
+`,
+			expected: []lexer.Token{
+				{Type: lexer.TokenSection1Begin, Text: "#"},
+				{Type: lexer.TokenText, Text: "Showcasing Code Blocks"},
+				{Type: lexer.TokenSection1Content, Text: ""},
+				{Type: lexer.TokenCodeBlockBegin, Text: "```"},
+				{Type: lexer.TokenCodeBlockLang, Text: "js"},
+				{Type: lexer.TokenText, Text: "console.log('1337')\nalert('haxxed!')\n"},
+				{Type: lexer.TokenCodeBlockEnd, Text: "```"},
+				{Type: lexer.TokenSection1End, Text: ""},
+				{Type: lexer.TokenEOF, Text: ""},
+			},
+		},
+		{
+			name: "Code Block with Attributes",
+			source: `
+# Showcasing Code Blocks
+
+` + "```" + ` {Source=https://gist.github.com/no/where Lines=1-5}
+console.log('1337')
+alert('haxxed!')
+` + "```" + `
+`,
+			expected: []lexer.Token{
+				{Type: lexer.TokenSection1Begin, Text: "#"},
+				{Type: lexer.TokenText, Text: "Showcasing Code Blocks"},
+				{Type: lexer.TokenSection1Content, Text: ""},
+				{Type: lexer.TokenCodeBlockBegin, Text: "```"},
+				{Type: lexer.TokenAttributeListBegin, Text: "{"},
+				{Type: lexer.TokenAttributeListKey, Text: "Source"},
+				{Type: lexer.TokenText, Text: "https://gist.github.com/no/where"},
+				{Type: lexer.TokenAttributeListKey, Text: "Lines"},
+				{Type: lexer.TokenText, Text: "1-5"},
+				{Type: lexer.TokenAttributeListEnd, Text: "}"},
+				{Type: lexer.TokenText, Text: "console.log('1337')\nalert('haxxed!')\n"},
+				{Type: lexer.TokenCodeBlockEnd, Text: "```"},
+				{Type: lexer.TokenSection1End, Text: ""},
+				{Type: lexer.TokenEOF, Text: ""},
+			},
+		},
+		{
+			name: "Code Block with Language and Attributes",
+			source: `
+# Showcasing Code Blocks
+
+` + "```" + `js {Source=https://gist.github.com/no/where Lines=1-5}
+console.log('1337')
+alert('haxxed!')
+` + "```" + `
+`,
+			expected: []lexer.Token{
+				{Type: lexer.TokenSection1Begin, Text: "#"},
+				{Type: lexer.TokenText, Text: "Showcasing Code Blocks"},
+				{Type: lexer.TokenSection1Content, Text: ""},
+				{Type: lexer.TokenCodeBlockBegin, Text: "```"},
+				{Type: lexer.TokenCodeBlockLang, Text: "js"},
+				{Type: lexer.TokenAttributeListBegin, Text: "{"},
+				{Type: lexer.TokenAttributeListKey, Text: "Source"},
+				{Type: lexer.TokenText, Text: "https://gist.github.com/no/where"},
+				{Type: lexer.TokenAttributeListKey, Text: "Lines"},
+				{Type: lexer.TokenText, Text: "1-5"},
+				{Type: lexer.TokenAttributeListEnd, Text: "}"},
+				{Type: lexer.TokenText, Text: "console.log('1337')\nalert('haxxed!')\n"},
+				{Type: lexer.TokenCodeBlockEnd, Text: "```"},
+				{Type: lexer.TokenSection1End, Text: ""},
+				{Type: lexer.TokenEOF, Text: ""},
+			},
+		},
 	}
 	RunTests(t, testCases)
 }

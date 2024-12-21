@@ -456,6 +456,7 @@ var (
 	SpecAsciiID = CharInSpec{SpecAscii, SpecNumber, CharInAny("-_")}
 	SpecValidMetaKey = CharInSpec{SpecAscii, CharInAny("-_")}
 	SpecNonWhitespace = CharNotInSpec{CharInAny(" \u00A0\n\r\v\t")} // @todo: and all the others...
+	SpecAttrVal = CharNotInSpec{CharInAny(" \u00A0\n\r\v\t}")}
 )
 
 func (c CharInRange) IsValid(r rune) bool {
@@ -930,7 +931,7 @@ func (lx *Lexer) LexStringValue() { // @todo: rename this function, since it is 
 		lx.EmitIfNonEmpty(TokenText)
 		lx.ExpectAndSkip("\"")
 	} else {
-		lx.NextValids(SpecNonWhitespace)
+		lx.NextValids(SpecAttrVal)
 		lx.EmitIfNonEmpty(TokenText)
 	}
 }
