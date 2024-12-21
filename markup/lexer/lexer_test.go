@@ -711,6 +711,31 @@ Btw, it's from this book:
 				{Type: lexer.TokenEOF, Text: ""},
 			},
 		},
+		{
+			name: "Blockquote containing enquote'd text",
+			source: `
+# Quotes and Citations
+
+> Putting "fun" back in "fundamentally flawed."
+`,
+			expected: []lexer.Token{
+				{Type: lexer.TokenSection1Begin, Text: "#"},
+				{Type: lexer.TokenText, Text: "Quotes and Citations"},
+				{Type: lexer.TokenSection1Content, Text: ""},
+				{Type: lexer.TokenBlockquoteBegin, Text: ""},
+				{Type: lexer.TokenText, Text: "Putting "},
+				{Type: lexer.TokenEnquoteDoubleBegin, Text: "\""},
+				{Type: lexer.TokenText, Text: "fun"},
+				{Type: lexer.TokenEnquoteDoubleEnd, Text: "\""},
+				{Type: lexer.TokenText, Text: " back in "},
+				{Type: lexer.TokenEnquoteDoubleBegin, Text: "\""},
+				{Type: lexer.TokenText, Text: "fundamentally flawed."},
+				{Type: lexer.TokenEnquoteDoubleEnd, Text: "\""},
+				{Type: lexer.TokenBlockquoteEnd, Text: ""},
+				{Type: lexer.TokenSection1End, Text: ""},
+				{Type: lexer.TokenEOF, Text: ""},
+			},
+		},
 	}
 	RunTests(t, testCases)
 }
