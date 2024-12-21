@@ -799,6 +799,50 @@ I hope you like it.
 	RunTests(t, testCases)
 }
 
+func TestLexEscape(t *testing.T) {
+	testCases := []TestCase{
+		{
+			name: "Escaped amp special",
+			source: `
+# Section 1
+
+## Section 2 {#escape-tut}
+
+The following \&nbsp; turns into a non-break space.
+
+Here you have it in mono space: `+"`"+`&nbsp;`+"`"+`
+`,
+			expected: []lexer.Token{
+				{Type: lexer.TokenSection1Begin, Text: "#"},
+				{Type: lexer.TokenText, Text: "Section 1"},
+				{Type: lexer.TokenSection1Content, Text: ""},
+				{Type: lexer.TokenSection2Begin, Text: "##"},
+				{Type: lexer.TokenText, Text: "Section 2 "},
+				{Type: lexer.TokenAttributeListBegin, Text: "{"},
+				{Type: lexer.TokenAttributeListID, Text: "escape-tut"},
+				{Type: lexer.TokenAttributeListEnd, Text: "}"},
+				{Type: lexer.TokenSection2Content, Text: ""},
+				{Type: lexer.TokenParagraphBegin, Text: ""},
+				{Type: lexer.TokenText, Text: "The following "},
+				{Type: lexer.TokenText, Text: "&"},
+				{Type: lexer.TokenText, Text: "nbsp; turns into a non"},
+				{Type: lexer.TokenAmpSpecial, Text: "-"},
+				{Type: lexer.TokenText, Text: "break space."},
+				{Type: lexer.TokenParagraphEnd, Text: ""},
+				{Type: lexer.TokenParagraphBegin, Text: ""},
+				{Type: lexer.TokenText, Text: "Here you have it in mono space: "},
+				{Type: lexer.TokenMono, Text: "&nbsp;"},
+				{Type: lexer.TokenText, Text: "\n"},
+				{Type: lexer.TokenParagraphEnd, Text: ""},
+				{Type: lexer.TokenSection2End, Text: ""},
+				{Type: lexer.TokenSection1End, Text: ""},
+				{Type: lexer.TokenEOF, Text: ""},
+			},
+		},
+	}
+	RunTests(t, testCases)
+}
+
 type TestCase struct {
 	name, source   string
 	expected       []lexer.Token

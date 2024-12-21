@@ -1,32 +1,32 @@
 package lexer
 
 import (
-	"fmt"
-	"unicode"
-	"strings"
 	"errors"
+	"fmt"
+	"strings"
+	"unicode"
 
 	. "github.com/cvanloo/blog-go/assert"
 )
 
 type (
 	Lexer struct {
-		Filename string
-		Source []rune
+		Filename      string
+		Source        []rune
 		Pos, Consumed int
-		Lexemes []Token
-		Errors []error
+		Lexemes       []Token
+		Errors        []error
 	}
 	LexerError struct {
 		Filename string
-		Pos int
-		Inner error
+		Pos      int
+		Inner    error
 	}
 	Token struct {
-		Type TokenType
+		Type     TokenType
 		Filename string `deep:"-"`
-		Pos int `deep:"-"`
-		Text string
+		Pos      int    `deep:"-"`
+		Text     string
 	}
 )
 
@@ -186,15 +186,18 @@ func (lx *Lexer) IsEscape() bool {
 		return false
 	case '\\', '!', '`', '*', '_', '{', '}', '<', '>', '[', ']', '(', ')', '|', '#', '+', '-', '.':
 		return true
+	case '&':
+		ok, _ := lx.IsAmpSpecial()
+		return ok
 	}
 }
 
 type Predicate func() bool
 
 var (
-	AmpSpecials = []string{"&hyphen;", "&dash;", "&ndash;", "&mdash;", "&ldquo;", "&rdquo;", "&prime;", "&Prime;", "&tprime;", "&qprime;", "&bprime;", "&laquo;", "&raquo;"}
+	AmpSpecials      = []string{"&hyphen;", "&dash;", "&ndash;", "&mdash;", "&ldquo;", "&rdquo;", "&prime;", "&Prime;", "&tprime;", "&qprime;", "&bprime;", "&laquo;", "&raquo;", "&nbsp;"}
 	AmpShortSpecials = []string{"---", "--", "-", "...", "…", "~", "\u00A0"} // list longer char sequences first (--- must come before -- and -)
-	AmpAllSpecials = append(AmpSpecials, AmpShortSpecials...)
+	AmpAllSpecials   = append(AmpSpecials, AmpShortSpecials...)
 )
 
 func (lx *Lexer) IsAmpSpecial() (bool, string) {
@@ -355,9 +358,9 @@ func (lx *Lexer) Next(n int) string {
 		return ""
 	}
 	start := lx.Pos
-	m := min(n, len(lx.Source) - start)
+	m := min(n, len(lx.Source)-start)
 	lx.Pos += m
-	return string(lx.Source[start:start+m])
+	return string(lx.Source[start : start+m])
 }
 
 func (lx *Lexer) Next1() rune {
@@ -387,7 +390,7 @@ func (lx *Lexer) NextUntilSpec(spec CharSpec) (string, bool) {
 func (lx *Lexer) NextUntilMatch(search string) (string, bool) {
 	lpos := lx.Pos
 	for {
-		if len(lx.Source) - lx.Pos >= len(search) {
+		if len(lx.Source)-lx.Pos >= len(search) {
 			if lx.Peek(len(search)) == search {
 				return string(lx.Source[lpos:lx.Pos]), true
 			} else {
@@ -415,9 +418,9 @@ func (lx *Lexer) NextEmptyLine() bool {
 func (lx *Lexer) Emit(tokenType TokenType) {
 	lx.Lexemes = append(lx.Lexemes, Token{
 		Filename: lx.Filename,
-		Type: tokenType,
-		Pos: lx.Consumed,
-		Text: string(lx.Source[lx.Consumed:lx.Pos]),
+		Type:     tokenType,
+		Pos:      lx.Consumed,
+		Text:     string(lx.Source[lx.Consumed:lx.Pos]),
 	})
 	lx.Consumed = lx.Pos
 }
@@ -454,8 +457,8 @@ func (lx *Lexer) ExpectAndSkip(expected string) bool {
 func (lx *Lexer) Error(err error) {
 	lx.Errors = append(lx.Errors, LexerError{
 		Filename: lx.Filename,
-		Pos: lx.Pos,
-		Inner: err,
+		Pos:      lx.Pos,
+		Inner:    err,
 	})
 }
 
@@ -478,22 +481,22 @@ type (
 	CharSpec interface {
 		IsValid(r rune) bool
 	}
-	CharInRange [2]rune
-	CharInAny string
-	CharInSpec []CharSpec
+	CharInRange   [2]rune
+	CharInAny     string
+	CharInSpec    []CharSpec
 	CharNotInSpec []CharSpec
 )
 
 var (
-	SpecAsciiLower = CharInRange{'a', 'z'}
-	SpecAsciiUpper = CharInRange{'A', 'Z'}
-	SpecAscii = CharInSpec{SpecAsciiLower, SpecAsciiUpper}
-	SpecNumber = CharInRange{'0', '9'}
-	SpecAsciiID = CharInSpec{SpecAscii, SpecNumber, CharInAny("-_")}
-	SpecValidMetaKey = CharInSpec{SpecAscii, CharInAny("-_")}
+	SpecAsciiLower    = CharInRange{'a', 'z'}
+	SpecAsciiUpper    = CharInRange{'A', 'Z'}
+	SpecAscii         = CharInSpec{SpecAsciiLower, SpecAsciiUpper}
+	SpecNumber        = CharInRange{'0', '9'}
+	SpecAsciiID       = CharInSpec{SpecAscii, SpecNumber, CharInAny("-_")}
+	SpecValidMetaKey  = CharInSpec{SpecAscii, CharInAny("-_")}
 	SpecNonWhitespace = CharNotInSpec{CharInAny(" \u00A0\n\r\v\t")} // @todo: and all the others...
-	SpecAttrVal = CharNotInSpec{CharInAny(" \u00A0\n\r\v\t}")}
-	SpecImagePath = CharNotInSpec{CharInAny(" \u00A0\n\r\v\t)")}
+	SpecAttrVal       = CharNotInSpec{CharInAny(" \u00A0\n\r\v\t}")}
+	SpecImagePath     = CharNotInSpec{CharInAny(" \u00A0\n\r\v\t)")}
 )
 
 func (c CharInRange) IsValid(r rune) bool {
@@ -546,10 +549,10 @@ func (lx *Lexer) LexAmpSpecial() bool {
 
 // LexMetaOrContent lexes an optional meta data block of the form
 //
-//   ---
-//   key: value
-//   other_key: some longer string value with spaces
-//   ---
+//	---
+//	key: value
+//	other_key: some longer string value with spaces
+//	---
 //
 // Instead of `---` it is also possible to use `+++`.
 // And instead of `key: value` it is also okay to use `key = value`.
@@ -689,7 +692,7 @@ func (lx *Lexer) LexContent() {
 
 // LexSection1 lexes a top-level section.
 //
-//   # Section 1
+//	# Section 1
 //
 // - TokenSection1Begin "#"
 // - TokenText "Section 1"
@@ -699,7 +702,7 @@ func (lx *Lexer) LexContent() {
 //
 // A section can be given a custom id, as in the following example:
 //
-//   # Some Heading {#custom-id}
+//	# Some Heading {#custom-id}
 //
 // - TokenSection1Begin "##"
 // - TokenText "Some Heading"
@@ -764,7 +767,7 @@ func (lx *Lexer) LexSection1Content() {
 
 // LexSection2 lexes a second level section.
 //
-//   ## Section 2
+//	## Section 2
 //
 // - TokenSection2Begin "##"
 // - TokenText "Section 2"
@@ -774,7 +777,7 @@ func (lx *Lexer) LexSection1Content() {
 //
 // A section can be given a custom id, as in the following example:
 //
-//   ## Some Heading {#custom-id}
+//	## Some Heading {#custom-id}
 //
 // - TokenSection2Begin "##"
 // - TokenText "Some Heading"
@@ -845,23 +848,23 @@ func (lx *Lexer) LexParagraph() {
 }
 
 // LexCodeBlock lexes a code block.
-// 
-//   ```
-//   console.log('Hello, 世界')
-//   ```
+//
+//	```
+//	console.log('Hello, 世界')
+//	```
 //
 // A code block can have an option language:
 //
-//   ```js
-//   console.log('Hello, 世界')
-//   ```
+//	```js
+//	console.log('Hello, 世界')
+//	```
 //
 // A code block can also have an attribute list after the opening tag and optional language:
 //
-//   ```js {link=https://gist.github.com/no/where lines=L1-2}
-//   console.log('Hello, 世界')
-//   console.log('Hello, 金星')
-//   ```
+//	```js {link=https://gist.github.com/no/where lines=L1-2}
+//	console.log('Hello, 世界')
+//	console.log('Hello, 金星')
+//	```
 //
 // The lexer produces the tokens:
 // - TokenCodeBlockBegin "```"
@@ -890,8 +893,8 @@ func (lx *Lexer) LexCodeBlock() {
 }
 
 // LexAttributeList lexes an attribute list of the form
-// 
-//   {key1=val1 key2 =val2 key3 = val3 key4 = 'with spaces between' key5= key6=val6}
+//
+//	{key1=val1 key2 =val2 key3 = val3 key4 = 'with spaces between' key5= key6=val6}
 //
 // with a variable amount of key-value pairs.
 // An empty attribute list looks like this: {}.
@@ -910,7 +913,7 @@ func (lx *Lexer) LexCodeBlock() {
 //
 // An attribute list can contain a custom id as the very first element:
 //
-//   {#some-id key1=val1 key2=val2}
+//	{#some-id key1=val1 key2=val2}
 //
 // - TokenAttributeListBegin
 // - TokenAttributeListID "some-id"
@@ -955,13 +958,13 @@ func (lx *Lexer) LexAttributeList() {
 
 // LexStringValue lexes a string value that is either a single word like
 //
-//   oneword
+//	oneword
 //
 // or one or multiple words enclosed in single or double quotes
 //
-//   'one or multiple words enclosed in single quotes'
+//	'one or multiple words enclosed in single quotes'
 //
-// or simply empty (the absence of any characters or '').
+// or simply empty (the absence of any characters or ”).
 //
 // The lexer produces the token:
 // - TokenText "one or multiple words enclosed in single quotes"
@@ -988,21 +991,21 @@ func (lx *Lexer) LexStringValue() { // @todo: rename this function, since it is 
 
 // LexLinkOrSidenote lexes the following elements:
 //
-//   [Link Text](https://example.com)
+//	[Link Text](https://example.com)
 //
 // - TokenLinkableBegin "["
 // - TokenText "Link Text"
 // - TokenLinkHref "https://example.com"
 // - TokenLinkableEnd
 //
-//   [Link Text][0]
+//	[Link Text][0]
 //
 // - TokenLinkableBegin "["
 // - TokenText "Link Text"
 // - TokenLinkRef "0"
 // - TokenLinkableEnd
 //
-//   [Sidenote Text][^0]
+//	[Sidenote Text][^0]
 //
 // - TokenLinkableBegin "["
 // - TokenText "Sidenote Text"
@@ -1011,7 +1014,7 @@ func (lx *Lexer) LexStringValue() { // @todo: rename this function, since it is 
 //
 // The following is allowed, it makes an <a> with an empty href
 //
-//   [Link Text]
+//	[Link Text]
 //
 // - TokenLinkableBegin "["
 // - TokenText "Link Text"
@@ -1019,7 +1022,7 @@ func (lx *Lexer) LexStringValue() { // @todo: rename this function, since it is 
 //
 // A bit exotic, but also allowed
 //
-//   [Sidenote Text](^Sidenote content)
+//	[Sidenote Text](^Sidenote content)
 //
 // - TokenLinkableBegin "["
 // - TokenText "Sidenote Text"
@@ -1113,9 +1116,9 @@ func (lx *Lexer) LexText() {
 		} else if lx.Peek1() == '"' {
 			lx.EmitIfNonEmpty(TokenText)
 			lx.LexEnquoteDouble()
-		//} else if lx.Peek1() == '`' {
-		//	lx.EmitIfNonEmpty(TokenText)
-		//	lx.LexEnquoteSingle()
+			//} else if lx.Peek1() == '`' {
+			//	lx.EmitIfNonEmpty(TokenText)
+			//	lx.LexEnquoteSingle()
 		} else if lx.Peek1() == '[' {
 			lx.EmitIfNonEmpty(TokenText)
 			lx.LexLinkOrSidenote()
@@ -1133,7 +1136,7 @@ func (lx *Lexer) LexEscape() {
 	Assert(lx.Peek1() == '\\' && lx.IsEscape(), "lexer state confused")
 	lx.SkipNext1()
 	switch lx.Peek1() {
-	case '\\', '!', '`', '*', '_', '{', '}', '<', '>', '[', ']', '(', ')', '|', '#', '+', '-', '.':
+	case '\\', '!', '`', '*', '_', '{', '}', '<', '>', '[', ']', '(', ')', '|', '#', '+', '-', '.', '&':
 		lx.Next1()
 		lx.Emit(TokenText)
 	default:
@@ -1185,9 +1188,9 @@ func (lx *Lexer) LexTextUntil(match string) {
 		} else if lx.Peek1() == '"' {
 			lx.EmitIfNonEmpty(TokenText)
 			lx.LexEnquoteDouble()
-		//} else if lx.Peek1() == '`' {
-		//	lx.EmitIfNonEmpty(TokenText)
-		//	lx.LexEnquoteSingle()
+			//} else if lx.Peek1() == '`' {
+			//	lx.EmitIfNonEmpty(TokenText)
+			//	lx.LexEnquoteSingle()
 		} else if lx.Peek1() == '\\' {
 			lx.EmitIfNonEmpty(TokenText)
 			lx.LexEscape()
@@ -1242,9 +1245,9 @@ func (lx *Lexer) LexTextUntilSpec(spec CharSpec) {
 		} else if lx.Peek1() == '"' {
 			lx.EmitIfNonEmpty(TokenText)
 			lx.LexEnquoteDouble()
-		//} else if lx.Peek1() == '`' {
-		//	lx.EmitIfNonEmpty(TokenText)
-		//	lx.LexEnquoteSingle()
+			//} else if lx.Peek1() == '`' {
+			//	lx.EmitIfNonEmpty(TokenText)
+			//	lx.LexEnquoteSingle()
 		} else if lx.Peek1() == '\\' {
 			lx.EmitIfNonEmpty(TokenText)
 			lx.LexEscape()
@@ -1299,9 +1302,9 @@ func (lx *Lexer) LexTextUntilPred(pred Predicate) {
 		} else if lx.Peek1() == '"' {
 			lx.EmitIfNonEmpty(TokenText)
 			lx.LexEnquoteDouble()
-		//} else if lx.Peek1() == '`' {
-		//	lx.EmitIfNonEmpty(TokenText)
-		//	lx.LexEnquoteSingle()
+			//} else if lx.Peek1() == '`' {
+			//	lx.EmitIfNonEmpty(TokenText)
+			//	lx.LexEnquoteSingle()
 		} else if lx.Peek1() == '\\' {
 			lx.EmitIfNonEmpty(TokenText)
 			lx.LexEscape()
@@ -1334,12 +1337,12 @@ func (lx *Lexer) LexLinkify() {
 
 // LexLinkOrSidenoteDefinition lexes the definition of the link or sidenote.
 //
-//   [0]: https://example.com
+//	[0]: https://example.com
 //
 // - TokenLinkDef "0"
 // - TokenText "https://example.com"
 //
-//   [^0]: This is the side note content.
+//	[^0]: This is the side note content.
 //
 // - TokenSidenoteDef "0"
 // - TokenText "This is the sidenote content."
@@ -1371,13 +1374,14 @@ func (lx *Lexer) LexLinkOrSidenoteDefinition() {
 
 // LexImage lexes an image of the form
 //
-//   ![Alt Text](/path/to/image)
+//	![Alt Text](/path/to/image)
 //
 // - TokenImageBegin "!["
 // - TokenImageAltText "Alt Text"
 // - TokenImagePath "/path/to/image"
 //
-//   ![Alt Text](/path/to/image "Optional Image Title")
+//	![Alt Text](/path/to/image "Optional Image Title")
+//
 // - TokenImageBegin "!["
 // - TokenImageAltText "Alt Text"
 // - TokenImagePath "/path/to/image"
@@ -1418,8 +1422,8 @@ func (lx *Lexer) LexImage() {
 
 // LexBlockQuotes lexes block quotes of the form
 //
-//   > Elea acta est.
-//   > -- Author, Source
+//	> Elea acta est.
+//	> -- Author, Source
 //
 // - TokenBlockquoteBegin
 // - TokenText "Elea acta est."
@@ -1509,7 +1513,7 @@ func (lx *Lexer) LexDefinition() {
 
 // LexMono lexes a monospaced text block like
 //
-//   `This text is in monospace`
+//	`This text is in monospace`
 //
 // - TokenMono "This text is in monospace"
 func (lx *Lexer) LexMono() {
@@ -1591,17 +1595,17 @@ func (lx *Lexer) LexMarker() {
 
 // LexHtmlElement lexes an HTML element like
 //
-//   <tag-name attr="val" ...>
-//      ...
-//   </tag-name>
+//	<tag-name attr="val" ...>
+//	   ...
+//	</tag-name>
 //
 // or
 //
-//   <tag-name attr="val" ...>
+//	<tag-name attr="val" ...>
 //
 // an attribute does not need to have a value
 //
-//   <tag-name attr>
+//	<tag-name attr>
 func (lx *Lexer) LexHtmlElement() {
 	Assert(lx.Peek1() == '<', "lexer state confused")
 	lx.SkipNext1()
