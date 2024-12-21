@@ -828,11 +828,12 @@ func (lx *Lexer) LexCodeBlock() {
 	if lx.Peek1() == '{' {
 		lx.LexAttributeList()
 	}
-	lx.Expect("\n")
+	lx.ExpectAndSkip("\n")
 	lx.NextUntilMatch("```")
 	lx.Emit(TokenText)
 	lx.Expect("```")
 	lx.Emit(TokenCodeBlockEnd)
+	lx.ExpectAndSkip("\n")
 }
 
 // LexAttributeList lexes an attribute list of the form

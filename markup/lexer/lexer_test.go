@@ -211,6 +211,23 @@ oof: rab zab
 				"expected: `+++`, got: `---`",
 			},
 		},
+		{
+			name: "Meta Block with +++, =, and Amp Specials",
+			source: `
++++
+author = Colin van~Loo
++++
+`,
+			expected: []lexer.Token{
+				{Type: lexer.TokenMetaBegin, Text: "+++"},
+				{Type: lexer.TokenMetaKey, Text: "author"},
+				{Type: lexer.TokenText, Text: "Colin van"},
+				{Type: lexer.TokenAmpSpecial, Text: "~"},
+				{Type: lexer.TokenText, Text: "Loo"},
+				{Type: lexer.TokenMetaEnd, Text: "+++"},
+				{Type: lexer.TokenEOF, Text: ""},
+			},
+		},
 	}
 	RunTests(t, testCases)
 }
@@ -297,6 +314,30 @@ func TestLexSectionHeader(t *testing.T) {
 }
 
 func TestLexCodeBlock(t *testing.T) {
+	testCases := []TestCase{
+		{
+			name: "Code Block without Language or Attributes",
+			source: `
+# Showcasing Code Blocks
+
+`+"```"+`
+console.log('1337')
+alert('haxxed!')
+`+"```"+`
+`,
+			expected: []lexer.Token{
+				{Type: lexer.TokenSection1Begin, Text: "#"},
+				{Type: lexer.TokenText, Text: "Showcasing Code Blocks"},
+				{Type: lexer.TokenSection1Content, Text: ""},
+				{Type: lexer.TokenCodeBlockBegin, Text: "```"},
+				{Type: lexer.TokenText, Text: "console.log('1337')\nalert('haxxed!')\n"},
+				{Type: lexer.TokenCodeBlockEnd, Text: "```"},
+				{Type: lexer.TokenSection1End, Text: ""},
+				{Type: lexer.TokenEOF, Text: ""},
+			},
+		},
+	}
+	RunTests(t, testCases)
 }
 
 type TestCase struct {
