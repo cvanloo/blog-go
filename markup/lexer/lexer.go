@@ -609,7 +609,9 @@ func (lx *Lexer) LexAsMultiLineStringOrAmpSpecial() {
 			lx.EmitIfNonEmpty(TokenText)
 			lx.SkipNext1() // don't skip newline, it should be part of string (@todo: or what behaviour do we actually want here?)
 			lx.Next1()
-		} else if lx.Peek1() != '\n' {
+		} else if lx.Peek1() == '\n' {
+			break
+		} else {
 			if ok, _ := lx.IsAmpSpecial(); ok {
 				lx.EmitIfNonEmpty(TokenText)
 				lx.LexAmpSpecial()
@@ -632,8 +634,6 @@ func (lx *Lexer) LexContent() {
 			lx.LexHtmlElement()
 		} else if lx.Peek1() == '[' {
 			lx.LexLinkOrSidenoteDefinition()
-		} else {
-			lx.Error(errors.New("expected section 1, html tag, or link-, sidenote-, term definition."))
 		}
 		// @todo: term definitions
 	}
