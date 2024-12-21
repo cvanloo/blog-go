@@ -677,6 +677,7 @@ func (lx *Lexer) LexSection1() {
 	}
 	lx.Emit(TokenSection1Begin)
 	lx.ExpectAndSkip(" ")
+	lx.SkipWhitespaceNoNewLine()
 	lx.LexTextUntilSpec(CharInAny("{\n")) // @todo: do we really want to allow all of these text elements inside a title? (wasn't there the same problem for sidenotes?)
 	lx.SkipWhitespaceNoNewLine()
 	if lx.Peek1() == '{' {
@@ -692,6 +693,7 @@ func (lx *Lexer) LexSection1() {
 // code blocks.
 // A section 1 ends before another section 1 starts.
 func (lx *Lexer) LexSection1Content() {
+	lx.SkipWhitespace()
 	for !lx.IsEOF() {
 		// @todo: where can we SkipWhitespace without breaking IsHorizontalRule?
 		if lx.IsTermDefinition() {
@@ -744,11 +746,13 @@ func (lx *Lexer) LexSection2() {
 	}
 	lx.Emit(TokenSection2Begin)
 	lx.ExpectAndSkip(" ")
+	lx.SkipWhitespaceNoNewLine()
 	lx.LexTextUntilSpec(CharInAny("{\n")) // @todo: do we really want to allow all of these text elements inside a title? (wasn't there the same problem for sidenotes?)
 	lx.SkipWhitespaceNoNewLine()
 	if lx.Peek1() == '{' {
 		lx.LexAttributeList()
 	}
+	lx.Emit(TokenSection2Content)
 	lx.LexSection2Content()
 	lx.Emit(TokenSection2End)
 }
@@ -757,6 +761,7 @@ func (lx *Lexer) LexSection2() {
 // A section 2 can contain paragraphs, html elements, horizontal rule, {term,sidenote,link} definitions, code blocks.
 // A section 2 ends before another section 1 or 2 starts.
 func (lx *Lexer) LexSection2Content() {
+	lx.SkipWhitespace()
 	for !lx.IsEOF() {
 		// @todo: where can we SkipWhitespace without breaking IsHorizontalRule?
 		if lx.IsTermDefinition() {
@@ -1115,6 +1120,7 @@ func (lx *Lexer) LexTextUntil(match string) {
 			lx.Next1()
 		}
 	}
+	lx.EmitIfNonEmpty(TokenText)
 }
 
 // LexTextUntilSpec lexes text elements, namely:
@@ -1171,6 +1177,7 @@ func (lx *Lexer) LexTextUntilSpec(spec CharSpec) {
 			lx.Next1()
 		}
 	}
+	lx.EmitIfNonEmpty(TokenText)
 }
 
 // LexTextUntilPred lexes text elements, namely:
@@ -1227,6 +1234,7 @@ func (lx *Lexer) LexTextUntilPred(pred Predicate) {
 			lx.Next1()
 		}
 	}
+	lx.EmitIfNonEmpty(TokenText)
 }
 
 func (lx *Lexer) LexLinkifyOrHtmlElement() {

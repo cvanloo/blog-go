@@ -218,42 +218,51 @@ oof: rab zab
 func TestLexSectionHeader(t *testing.T) {
 	testCases := []TestCase{
 		{
-			name: "Section 1 Header",
+			name:   "Section 1 Header",
 			source: `# Hello, World!`,
 			expected: []lexer.Token{
-				{Type: lexer.TokenSection1Begin, Text: "# "},
+				{Type: lexer.TokenSection1Begin, Text: "#"},
 				{Type: lexer.TokenText, Text: "Hello, World!"},
 				{Type: lexer.TokenSection1Content, Text: ""},
+				{Type: lexer.TokenSection1End, Text: ""},
 				{Type: lexer.TokenEOF, Text: ""},
 			},
 		},
 		{
 			name: "Section 2 Header",
-			source: `## Hello, World!`,
+			source: `
+# こんにちは、世界！
+
+## Hello, World!
+`,
 			expected: []lexer.Token{
-				{Type: lexer.TokenSection2Begin, Text: "## "},
+				{Type: lexer.TokenSection1Begin, Text: "#"},
+				{Type: lexer.TokenText, Text: "こんにちは、世界！"},
+				{Type: lexer.TokenSection1Content, Text: ""},
+				{Type: lexer.TokenSection2Begin, Text: "##"},
 				{Type: lexer.TokenText, Text: "Hello, World!"},
 				{Type: lexer.TokenSection2Content, Text: ""},
+				{Type: lexer.TokenSection2End, Text: ""},
+				{Type: lexer.TokenSection1End, Text: ""},
 				{Type: lexer.TokenEOF, Text: ""},
 			},
 		},
 		{
 			name: "Section 2 Header With Whitespace Around",
 			source: `   
+#   Goodnight, Moon! 
 
-## Hello, World!   
+##   	  Hello, World!   	
   `,
 			expected: []lexer.Token{
-				{Type: lexer.TokenSection2Begin, Text: "## "},
-				{Type: lexer.TokenText, Text: "Hello, World!   "},
+				{Type: lexer.TokenSection1Begin, Text: "#"},
+				{Type: lexer.TokenText, Text: "Goodnight, Moon! "},
+				{Type: lexer.TokenSection1Content, Text: ""},
+				{Type: lexer.TokenSection2Begin, Text: "##"},
+				{Type: lexer.TokenText, Text: "Hello, World!   \t"},
 				{Type: lexer.TokenSection2Content, Text: ""},
-				{Type: lexer.TokenEOF, Text: "  "},
-			},
-		},
-		{
-			name: "",
-			source: ``,
-			expected: []lexer.Token{
+				{Type: lexer.TokenSection2End, Text: ""},
+				{Type: lexer.TokenSection1End, Text: ""},
 				{Type: lexer.TokenEOF, Text: ""},
 			},
 		},
@@ -261,9 +270,9 @@ func TestLexSectionHeader(t *testing.T) {
 	RunTests(t, testCases)
 }
 
-type TestCase struct{
-	name, source string
-	expected []lexer.Token
+type TestCase struct {
+	name, source   string
+	expected       []lexer.Token
 	expectedErrors []string
 }
 
