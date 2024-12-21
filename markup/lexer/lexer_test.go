@@ -266,8 +266,37 @@ func TestLexSectionHeader(t *testing.T) {
 				{Type: lexer.TokenEOF, Text: ""},
 			},
 		},
+		{
+			name: "Section headers containing amp specials",
+			source: `   
+#   Goodnight,~Moon! 
+
+##   	  &ldquo;Hello, --- World...   	
+  `,
+			expected: []lexer.Token{
+				{Type: lexer.TokenSection1Begin, Text: "#"},
+				{Type: lexer.TokenText, Text: "Goodnight,"},
+				{Type: lexer.TokenAmpSpecial, Text: "~"},
+				{Type: lexer.TokenText, Text: "Moon! "},
+				{Type: lexer.TokenSection1Content, Text: ""},
+				{Type: lexer.TokenSection2Begin, Text: "##"},
+				{Type: lexer.TokenAmpSpecial, Text: "&ldquo;"},
+				{Type: lexer.TokenText, Text: "Hello, "},
+				{Type: lexer.TokenAmpSpecial, Text: "---"},
+				{Type: lexer.TokenText, Text: " World"},
+				{Type: lexer.TokenAmpSpecial, Text: "..."},
+				{Type: lexer.TokenText, Text: "   \t"},
+				{Type: lexer.TokenSection2Content, Text: ""},
+				{Type: lexer.TokenSection2End, Text: ""},
+				{Type: lexer.TokenSection1End, Text: ""},
+				{Type: lexer.TokenEOF, Text: ""},
+			},
+		},
 	}
 	RunTests(t, testCases)
+}
+
+func TestLexCodeBlock(t *testing.T) {
 }
 
 type TestCase struct {

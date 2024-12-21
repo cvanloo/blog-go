@@ -1,7 +1,7 @@
 package parser
 
 import (
-	"errors"
+	//"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -122,7 +122,9 @@ const (
 	ParsingBlockquote
 	ParsingBlockquoteAttrAuthor
 	ParsingBlockquoteAttrSource
-	ParsingEnquote
+	ParsingEnquoteSingle
+	ParsingEnquoteDouble
+	ParsingEnquoteAngled
 	ParsingEmphasis
 	ParsingStrong
 	ParsingEmphasisStrong
@@ -130,6 +132,7 @@ const (
 )
 
 func Parse(lx LexResult) (blog gen.Blog, err error) {
+	/*
 	state := ParsingStart
 	levels := Levels{}
 	var (
@@ -331,21 +334,27 @@ func Parse(lx LexResult) (blog gen.Blog, err error) {
 					Content: gen.StringOnlyContent(level.TextValues),
 				})
 				state = level.ReturnToState
-			case lexeme.Type == lexer.TokenEmphasis:
+			case lexeme.Type == lexer.TokenEmphasisBegin:
 				levels.Push(&Level{ReturnToState: ParsingParagraph})
 				state = ParsingEmphasis
-			case lexeme.Type == lexer.TokenStrong:
+			case lexeme.Type == lexer.TokenStrongBegin:
 				levels.Push(&Level{ReturnToState: ParsingParagraph})
 				state = ParsingStrong
-			case lexeme.Type == lexer.TokenEmphasisStrong:
+			case lexeme.Type == lexer.TokenEmphasisStrongBegin:
 				levels.Push(&Level{ReturnToState: ParsingParagraph})
 				state = ParsingEmphasisStrong
-			case lexeme.Type == lexer.TokenEnquoteBegin:
+			case lexeme.Type == lexer.TokenEnquoteSingleBegin:
 				levels.Push(&Level{ReturnToState: ParsingParagraph})
-				state = ParsingEnquote
-			case lexeme.Type == lexer.TokenLink:
+				state = ParsingEnquoteSingle
+			case lexeme.Type == lexer.TokenEnquoteDoubleBegin:
 				levels.Push(&Level{ReturnToState: ParsingParagraph})
-				state = ParsingLink
+				state = ParsingEnquoteDouble
+			case lexeme.Type == lexer.TokenEnquoteAngledBegin:
+				levels.Push(&Level{ReturnToState: ParsingParagraph})
+				state = ParsingEnquoteAngled
+			//case lexeme.Type == lexer.TokenLink:
+			//	levels.Push(&Level{ReturnToState: ParsingParagraph})
+			//	state = ParsingLink
 			case lexeme.Type == lexer.TokenHtmlTagOpen:
 				// @todo: this is a tad bit tricky (StringRenderable is part of the paragraph, Renderable ends the paragraph, and comes after it)
 				levels.Push(&Level{ReturnToState: ParsingParagraph})
@@ -540,7 +549,7 @@ func Parse(lx LexResult) (blog gen.Blog, err error) {
 				Assert(level.ReturnToState == ParsingBlockquote, "confused parser state")
 				state = level.ReturnToState
 			}
-		case ParsingEnquote:
+		case ParsingEnquoteSingle:
 			level := levels.Top()
 			switch {
 			default:
@@ -548,18 +557,66 @@ func Parse(lx LexResult) (blog gen.Blog, err error) {
 			case isTextContent(lexeme.Type):
 				level.PushText(newTextContent(lexeme))
 			case lexeme.Type == lexer.TokenEmphasis:
-				levels.Push(&Level{ReturnToState: ParsingEnquote})
+				levels.Push(&Level{ReturnToState: ParsingEnquoteSingle})
 				state = ParsingEmphasis
 			case lexeme.Type == lexer.TokenStrong:
-				levels.Push(&Level{ReturnToState: ParsingEnquote})
+				levels.Push(&Level{ReturnToState: ParsingEnquoteSingle})
 				state = ParsingStrong
 			case lexeme.Type == lexer.TokenEmphasisStrong:
-				levels.Push(&Level{ReturnToState: ParsingEnquote})
+				levels.Push(&Level{ReturnToState: ParsingEnquoteSingle})
 				state = ParsingEmphasisStrong
 			case lexeme.Type == lexer.TokenEnquoteEnd:
 				level := levels.Pop()
 				paren := levels.Top()
-				paren.PushText(gen.Enquote{
+				paren.PushText(gen.EnquoteSingle{
+					gen.StringOnlyContent(level.TextValues),
+				})
+				state = level.ReturnToState
+			}
+		case ParsingEnquoteDouble:
+			level := levels.Top()
+			switch {
+			default:
+				err = errors.Join(err, newError(lexeme, state, errors.New("enquote can only contain text content")))
+			case isTextContent(lexeme.Type):
+				level.PushText(newTextContent(lexeme))
+			case lexeme.Type == lexer.TokenEmphasis:
+				levels.Push(&Level{ReturnToState: ParsingEnquoteDouble})
+				state = ParsingEmphasis
+			case lexeme.Type == lexer.TokenStrong:
+				levels.Push(&Level{ReturnToState: ParsingEnquoteDouble})
+				state = ParsingStrong
+			case lexeme.Type == lexer.TokenEmphasisStrong:
+				levels.Push(&Level{ReturnToState: ParsingEnquoteDouble})
+				state = ParsingEmphasisStrong
+			case lexeme.Type == lexer.TokenEnquoteEnd:
+				level := levels.Pop()
+				paren := levels.Top()
+				paren.PushText(gen.EnquoteDouble{
+					gen.StringOnlyContent(level.TextValues),
+				})
+				state = level.ReturnToState
+			}
+		case ParsingEnquoteAngled:
+			level := levels.Top()
+			switch {
+			default:
+				err = errors.Join(err, newError(lexeme, state, errors.New("enquote can only contain text content")))
+			case isTextContent(lexeme.Type):
+				level.PushText(newTextContent(lexeme))
+			case lexeme.Type == lexer.TokenEmphasis:
+				levels.Push(&Level{ReturnToState: ParsingEnquoteAngled})
+				state = ParsingEmphasis
+			case lexeme.Type == lexer.TokenStrong:
+				levels.Push(&Level{ReturnToState: ParsingEnquoteAngled})
+				state = ParsingStrong
+			case lexeme.Type == lexer.TokenEmphasisStrong:
+				levels.Push(&Level{ReturnToState: ParsingEnquoteAngled})
+				state = ParsingEmphasisStrong
+			case lexeme.Type == lexer.TokenEnquoteEnd:
+				level := levels.Pop()
+				paren := levels.Top()
+				paren.PushText(gen.EnquoteAngled{
 					gen.StringOnlyContent(level.TextValues),
 				})
 				state = level.ReturnToState
@@ -647,6 +704,7 @@ func Parse(lx LexResult) (blog gen.Blog, err error) {
 			}
 		}
 	}
+	*/
 	return
 }
 

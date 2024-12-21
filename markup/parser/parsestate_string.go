@@ -26,16 +26,18 @@ func _() {
 	_ = x[ParsingBlockquote-15]
 	_ = x[ParsingBlockquoteAttrAuthor-16]
 	_ = x[ParsingBlockquoteAttrSource-17]
-	_ = x[ParsingEnquote-18]
-	_ = x[ParsingEmphasis-19]
-	_ = x[ParsingStrong-20]
-	_ = x[ParsingEmphasisStrong-21]
-	_ = x[ParsingLink-22]
+	_ = x[ParsingEnquoteSingle-18]
+	_ = x[ParsingEnquoteDouble-19]
+	_ = x[ParsingEnquoteAngled-20]
+	_ = x[ParsingEmphasis-21]
+	_ = x[ParsingStrong-22]
+	_ = x[ParsingEmphasisStrong-23]
+	_ = x[ParsingLink-24]
 }
 
-const _ParseState_name = "ParsingStartParsingMetaParsingMetaValParsingDocumentParsingSection1ParsingSection1ContentParsingSection2ParsingSection2ContentParsingHtmlTagParsingHtmlTagContentParsingParagraphParsingCodeBlockParsingImageParsingImageTitleParsingImageAltParsingBlockquoteParsingBlockquoteAttrAuthorParsingBlockquoteAttrSourceParsingEnquoteParsingEmphasisParsingStrongParsingEmphasisStrongParsingLink"
+const _ParseState_name = "ParsingStartParsingMetaParsingMetaValParsingDocumentParsingSection1ParsingSection1ContentParsingSection2ParsingSection2ContentParsingHtmlTagParsingHtmlTagContentParsingParagraphParsingCodeBlockParsingImageParsingImageTitleParsingImageAltParsingBlockquoteParsingBlockquoteAttrAuthorParsingBlockquoteAttrSourceParsingEnquoteSingleParsingEnquoteDoubleParsingEnquoteAngledParsingEmphasisParsingStrongParsingEmphasisStrongParsingLink"
 
-var _ParseState_index = [...]uint16{0, 12, 23, 37, 52, 67, 89, 104, 126, 140, 161, 177, 193, 205, 222, 237, 254, 281, 308, 322, 337, 350, 371, 382}
+var _ParseState_index = [...]uint16{0, 12, 23, 37, 52, 67, 89, 104, 126, 140, 161, 177, 193, 205, 222, 237, 254, 281, 308, 328, 348, 368, 383, 396, 417, 428}
 
 func (i ParseState) String() string {
 	if i < 0 || i >= ParseState(len(_ParseState_index)-1) {
