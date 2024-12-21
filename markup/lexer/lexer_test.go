@@ -445,6 +445,33 @@ Some text
 				{Type: lexer.TokenEOF, Text: ""},
 			},
 		},
+		{
+			name: "Section 2 followed by Section 1",
+			source: `
+# Here we go...
+
+## ...a section two
+
+# And a section one again
+`,
+			expected: []lexer.Token{
+				{Type: lexer.TokenSection1Begin, Text: "#"},
+				{Type: lexer.TokenText, Text: "Here we go"},
+				{Type: lexer.TokenAmpSpecial, Text: "..."},
+				{Type: lexer.TokenSection1Content, Text: ""},
+				{Type: lexer.TokenSection2Begin, Text: "##"},
+				{Type: lexer.TokenAmpSpecial, Text: "..."},
+				{Type: lexer.TokenText, Text: "a section two"},
+				{Type: lexer.TokenSection2Content, Text: ""},
+				{Type: lexer.TokenSection2End, Text: ""},
+				{Type: lexer.TokenSection1End, Text: ""},
+				{Type: lexer.TokenSection1Begin, Text: "#"},
+				{Type: lexer.TokenText, Text: "And a section one again"},
+				{Type: lexer.TokenSection1Content, Text: ""},
+				{Type: lexer.TokenSection1End, Text: ""},
+				{Type: lexer.TokenEOF, Text: ""},
+			},
+		},
 	}
 	RunTests(t, testCases)
 }
@@ -526,6 +553,8 @@ alert('haxxed!')
 			source: `
 # Showcasing Code Blocks
 
+## The Full Thing
+
 ` + "```" + `js {Source=https://gist.github.com/no/where Lines=1-5}
 console.log('1337')
 alert('haxxed!')
@@ -535,6 +564,9 @@ alert('haxxed!')
 				{Type: lexer.TokenSection1Begin, Text: "#"},
 				{Type: lexer.TokenText, Text: "Showcasing Code Blocks"},
 				{Type: lexer.TokenSection1Content, Text: ""},
+				{Type: lexer.TokenSection2Begin, Text: "##"},
+				{Type: lexer.TokenText, Text: "The Full Thing"},
+				{Type: lexer.TokenSection2Content, Text: ""},
 				{Type: lexer.TokenCodeBlockBegin, Text: "```"},
 				{Type: lexer.TokenCodeBlockLang, Text: "js"},
 				{Type: lexer.TokenAttributeListBegin, Text: "{"},
@@ -545,6 +577,7 @@ alert('haxxed!')
 				{Type: lexer.TokenAttributeListEnd, Text: "}"},
 				{Type: lexer.TokenText, Text: "console.log('1337')\nalert('haxxed!')\n"},
 				{Type: lexer.TokenCodeBlockEnd, Text: "```"},
+				{Type: lexer.TokenSection2End, Text: ""},
 				{Type: lexer.TokenSection1End, Text: ""},
 				{Type: lexer.TokenEOF, Text: ""},
 			},
@@ -669,6 +702,8 @@ How are you doing?
 Hello, [世界][1]
 How are you doing?
 
+## Da da da
+
 [1]: https://jisho.org/word/世界
 `,
 			expected: []lexer.Token{
@@ -683,8 +718,12 @@ How are you doing?
 				{Type: lexer.TokenLinkableEnd, Text: ""},
 				{Type: lexer.TokenText, Text: "\nHow are you doing?"},
 				{Type: lexer.TokenParagraphEnd, Text: ""},
+				{Type: lexer.TokenSection2Begin, Text: "##"},
+				{Type: lexer.TokenText, Text: "Da da da"},
+				{Type: lexer.TokenSection2Content, Text: ""},
 				{Type: lexer.TokenLinkDef, Text: "1"},
 				{Type: lexer.TokenText, Text: "https://jisho.org/word/世界"},
+				{Type: lexer.TokenSection2End, Text: ""},
 				{Type: lexer.TokenSection1End, Text: ""},
 				{Type: lexer.TokenEOF, Text: ""},
 			},
@@ -852,6 +891,8 @@ Oh, I remember now:
 			source: `
 # Quotes and Citations
 
+## I remembered the book title too
+
 Btw, it's from this book:
 
 > If we stop dreaming big dreams, if we stop looking for a greater purpose,
@@ -862,6 +903,9 @@ Btw, it's from this book:
 				{Type: lexer.TokenSection1Begin, Text: "#"},
 				{Type: lexer.TokenText, Text: "Quotes and Citations"},
 				{Type: lexer.TokenSection1Content, Text: ""},
+				{Type: lexer.TokenSection2Begin, Text: "##"},
+				{Type: lexer.TokenText, Text: "I remembered the book title too"},
+				{Type: lexer.TokenSection2Content, Text: ""},
 				{Type: lexer.TokenParagraphBegin, Text: ""},
 				{Type: lexer.TokenText, Text: "Btw, it's from this book:"},
 				{Type: lexer.TokenParagraphEnd, Text: ""},
@@ -874,6 +918,7 @@ Btw, it's from this book:
 				{Type: lexer.TokenText, Text: "Deep Thinking"},
 				{Type: lexer.TokenBlockquoteAttrEnd, Text: ""},
 				{Type: lexer.TokenBlockquoteEnd, Text: ""},
+				{Type: lexer.TokenSection2End, Text: ""},
 				{Type: lexer.TokenSection1End, Text: ""},
 				{Type: lexer.TokenEOF, Text: ""},
 			},
@@ -940,6 +985,8 @@ I hope you like it.
 			source: `
 # Image Test
 
+## With Alt Text
+
 Hello, here is an image:
 ![Image alt text](/path/to/image.png "Some image title")
 I hope you like it.
@@ -948,6 +995,9 @@ I hope you like it.
 				{Type: lexer.TokenSection1Begin, Text: "#"},
 				{Type: lexer.TokenText, Text: "Image Test"},
 				{Type: lexer.TokenSection1Content, Text: ""},
+				{Type: lexer.TokenSection2Begin, Text: "##"},
+				{Type: lexer.TokenText, Text: "With Alt Text"},
+				{Type: lexer.TokenSection2Content, Text: ""},
 				{Type: lexer.TokenParagraphBegin, Text: ""},
 				{Type: lexer.TokenText, Text: "Hello, here is an image:\n"},
 				{Type: lexer.TokenParagraphEnd, Text: ""},
@@ -958,6 +1008,7 @@ I hope you like it.
 				{Type: lexer.TokenParagraphBegin, Text: ""},
 				{Type: lexer.TokenText, Text: "I hope you like it.\n"},
 				{Type: lexer.TokenParagraphEnd, Text: ""},
+				{Type: lexer.TokenSection2End, Text: ""},
 				{Type: lexer.TokenSection1End, Text: ""},
 				{Type: lexer.TokenEOF, Text: ""},
 			},
