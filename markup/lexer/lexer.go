@@ -229,7 +229,11 @@ func (lx *Lexer) IsParagraphEnder() bool {
 
 func (lx *Lexer) IsTermDefinition() bool {
 	lpos := lx.Pos
-	defer lx.ResetToPos(lpos)
+	lcon := lx.Consumed
+	defer func() {
+		lx.Pos = lpos
+		lx.Consumed = lcon
+	}()
 	lx.NextValids(SpecNonWhitespace)
 	lx.SkipWhitespaceNoNewLine()
 	if lx.Peek1() != '\n' {
@@ -1073,6 +1077,7 @@ func (lx *Lexer) LexText() {
 			lx.Next1()
 		}
 	}
+	lx.EmitIfNonEmpty(TokenText)
 }
 
 func (lx *Lexer) LexEscape() {

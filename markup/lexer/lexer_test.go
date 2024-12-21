@@ -480,6 +480,85 @@ alert('haxxed!')
 	RunTests(t, testCases)
 }
 
+func TestLexParagraph(t *testing.T) {
+	testCases := []TestCase{
+		{
+			name: "Text-only paragraph",
+			source: `
+# Section 1
+
+Hello, World!
+How are you doing?
+`,
+			expected: []lexer.Token{
+				{Type: lexer.TokenSection1Begin, Text: "#"},
+				{Type: lexer.TokenText, Text: "Section 1"},
+				{Type: lexer.TokenSection1Content, Text: ""},
+				{Type: lexer.TokenParagraphBegin, Text: ""},
+				{Type: lexer.TokenText, Text: "Hello, World!\nHow are you doing?\n"},
+				{Type: lexer.TokenParagraphEnd, Text: ""},
+				{Type: lexer.TokenSection1End, Text: ""},
+				{Type: lexer.TokenEOF, Text: ""},
+			},
+		},
+		{
+			name: "Multiple text-only paragraphs",
+			source: `
+# Section 1
+
+Hello, World!
+How are you doing?
+
+Good evening, Moon.
+Where are you going?
+`,
+			expected: []lexer.Token{
+				{Type: lexer.TokenSection1Begin, Text: "#"},
+				{Type: lexer.TokenText, Text: "Section 1"},
+				{Type: lexer.TokenSection1Content, Text: ""},
+				{Type: lexer.TokenParagraphBegin, Text: ""},
+				{Type: lexer.TokenText, Text: "Hello, World!\nHow are you doing?"},
+				{Type: lexer.TokenParagraphEnd, Text: ""},
+				{Type: lexer.TokenParagraphBegin, Text: ""},
+				{Type: lexer.TokenText, Text: "Good evening, Moon.\nWhere are you going?\n"},
+				{Type: lexer.TokenParagraphEnd, Text: ""},
+				{Type: lexer.TokenSection1End, Text: ""},
+				{Type: lexer.TokenEOF, Text: ""},
+			},
+		},
+		{
+			name: "Multiple paragraphs with amp specials",
+			source: `
+# Section 1
+
+Hello... World!
+How are you doing?
+
+Good--evening, Moon.
+Where are you going?
+`,
+			expected: []lexer.Token{
+				{Type: lexer.TokenSection1Begin, Text: "#"},
+				{Type: lexer.TokenText, Text: "Section 1"},
+				{Type: lexer.TokenSection1Content, Text: ""},
+				{Type: lexer.TokenParagraphBegin, Text: ""},
+				{Type: lexer.TokenText, Text: "Hello"},
+				{Type: lexer.TokenAmpSpecial, Text: "..."},
+				{Type: lexer.TokenText, Text: " World!\nHow are you doing?"},
+				{Type: lexer.TokenParagraphEnd, Text: ""},
+				{Type: lexer.TokenParagraphBegin, Text: ""},
+				{Type: lexer.TokenText, Text: "Good"},
+				{Type: lexer.TokenAmpSpecial, Text: "--"},
+				{Type: lexer.TokenText, Text: "evening, Moon.\nWhere are you going?\n"},
+				{Type: lexer.TokenParagraphEnd, Text: ""},
+				{Type: lexer.TokenSection1End, Text: ""},
+				{Type: lexer.TokenEOF, Text: ""},
+			},
+		},
+	}
+	RunTests(t, testCases)
+}
+
 type TestCase struct {
 	name, source   string
 	expected       []lexer.Token
