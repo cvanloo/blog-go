@@ -666,6 +666,50 @@ What "the" ***frick?!!***
 				{Type: lexer.TokenEOF, Text: ""},
 			},
 		},
+		{
+			name: "Paragraph with strikethrough and marked text",
+			source: `
+# Section 1
+
+I ~~love~~ hate ==JavaScript==.
+
+## Section 2
+
+==JavaScript== is the ~~best~~ worst language.
+`,
+			expected: []lexer.Token{
+				{Type: lexer.TokenSection1Begin, Text: "#"},
+				{Type: lexer.TokenText, Text: "Section 1"},
+				{Type: lexer.TokenSection1Content, Text: ""},
+				{Type: lexer.TokenParagraphBegin, Text: ""},
+				{Type: lexer.TokenText, Text: "I "},
+				{Type: lexer.TokenStrikethroughBegin, Text: "~~"},
+				{Type: lexer.TokenText, Text: "love"},
+				{Type: lexer.TokenStrikethroughEnd, Text: "~~"},
+				{Type: lexer.TokenText, Text: " hate "},
+				{Type: lexer.TokenMarkerBegin, Text: "=="},
+				{Type: lexer.TokenText, Text: "JavaScript"},
+				{Type: lexer.TokenMarkerEnd, Text: "=="},
+				{Type: lexer.TokenText, Text: "."},
+				{Type: lexer.TokenParagraphEnd, Text: ""},
+				{Type: lexer.TokenSection2Begin, Text: "##"},
+				{Type: lexer.TokenText, Text: "Section 2"},
+				{Type: lexer.TokenSection2Content, Text: ""},
+				{Type: lexer.TokenParagraphBegin, Text: ""},
+				{Type: lexer.TokenMarkerBegin, Text: "=="},
+				{Type: lexer.TokenText, Text: "JavaScript"},
+				{Type: lexer.TokenMarkerEnd, Text: "=="},
+				{Type: lexer.TokenText, Text: " is the "},
+				{Type: lexer.TokenStrikethroughBegin, Text: "~~"},
+				{Type: lexer.TokenText, Text: "best"},
+				{Type: lexer.TokenStrikethroughEnd, Text: "~~"},
+				{Type: lexer.TokenText, Text: " worst language.\n"},
+				{Type: lexer.TokenParagraphEnd, Text: ""},
+				{Type: lexer.TokenSection2End, Text: ""},
+				{Type: lexer.TokenSection1End, Text: ""},
+				{Type: lexer.TokenEOF, Text: ""},
+			},
+		},
 	}
 	RunTests(t, testCases)
 }

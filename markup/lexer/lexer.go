@@ -203,6 +203,9 @@ var (
 func (lx *Lexer) IsAmpSpecial() (bool, string) {
 	for _, special := range AmpAllSpecials {
 		if lx.MatchAtPos(special) {
+			if special == "~" && lx.MatchAtPos("~~") { // @todo: a bit ugly, isn't it?
+				continue
+			}
 			return true, special
 		}
 	}
