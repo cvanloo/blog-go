@@ -172,6 +172,45 @@ oof: rab zab
 				"expected: `\\n`, got: ``", // @todo: better errors
 			},
 		},
+		{
+			name: "Non-Empty Meta Block using +++ instead of ---",
+			source: `
++++
+foo: bar baz
+oof: rab zab
++++
+`,
+			expected: []lexer.Token{
+				{Type: lexer.TokenMetaBegin, Text: "+++"},
+				{Type: lexer.TokenMetaKey, Text: "foo"},
+				{Type: lexer.TokenText, Text: "bar baz"},
+				{Type: lexer.TokenMetaKey, Text: "oof"},
+				{Type: lexer.TokenText, Text: "rab zab"},
+				{Type: lexer.TokenMetaEnd, Text: "+++"},
+				{Type: lexer.TokenEOF, Text: ""},
+			},
+		},
+		{
+			name: "Non-Empty Meta Block with mixed +++ and ---",
+			source: `
++++
+foo: bar baz
+oof: rab zab
+---
+`,
+			expected: []lexer.Token{
+				{Type: lexer.TokenMetaBegin, Text: "+++"},
+				{Type: lexer.TokenMetaKey, Text: "foo"},
+				{Type: lexer.TokenText, Text: "bar baz"},
+				{Type: lexer.TokenMetaKey, Text: "oof"},
+				{Type: lexer.TokenText, Text: "rab zab"},
+				{Type: lexer.TokenMetaEnd, Text: "---"},
+				{Type: lexer.TokenEOF, Text: ""},
+			},
+			expectedErrors: []string{
+				"expected: `+++`, got: `---`",
+			},
+		},
 	}
 	RunTests(t, testCases)
 }

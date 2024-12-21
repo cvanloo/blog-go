@@ -536,17 +536,24 @@ func (lx *Lexer) LexMetaWithDelimiter(metaDelim string) {
 	lx.Emit(TokenMetaBegin)
 	lx.SkipWhitespaceNoNewLine()
 	if lx.ExpectAndSkip("\n") {
-		lx.LexMetaKeyValuePairs(metaDelim)
-		lx.Expect(metaDelim)
+		lx.LexMetaKeyValuePairs()
+		if lx.Peek(3) != metaDelim {
+			lx.Error(fmt.Errorf("expected: `%s`, got: `%s`", metaDelim, lx.Peek(3)))
+			if len(lx.Peek(3)) == 3 {
+				lx.Next(3)
+			}
+		} else {
+			lx.Next(3)
+		}
 		lx.Emit(TokenMetaEnd)
 		lx.SkipWhitespaceNoNewLine()
 		lx.ExpectAndSkip("\n")
 	}
 }
 
-func (lx *Lexer) LexMetaKeyValuePairs(metaDelim string) {
+func (lx *Lexer) LexMetaKeyValuePairs() {
 	lx.SkipWhitespace()
-	for !lx.IsEOF() && !lx.MatchAtPos(metaDelim) {
+	for !lx.IsEOF() && !lx.MatchAtPos("+++") && !lx.MatchAtPos("---") {
 		lx.LexMetaKey()
 		if lx.Peek1() == ':' || lx.Peek1() == '=' {
 			lx.SkipNext1()
