@@ -372,6 +372,79 @@ func TestLexSectionHeader(t *testing.T) {
 				{Type: lexer.TokenEOF, Text: ""},
 			},
 		},
+		{
+			name: "Multiple (empty) Section 1s",
+			source: `
+# Section 1
+
+# Section 2
+`,
+			expected: []lexer.Token{
+				{Type: lexer.TokenSection1Begin, Text: "#"},
+				{Type: lexer.TokenText, Text: "Section 1"},
+				{Type: lexer.TokenSection1Content, Text: ""},
+				{Type: lexer.TokenSection1End, Text: ""},
+				{Type: lexer.TokenSection1Begin, Text: "#"},
+				{Type: lexer.TokenText, Text: "Section 2"},
+				{Type: lexer.TokenSection1Content, Text: ""},
+				{Type: lexer.TokenSection1End, Text: ""},
+				{Type: lexer.TokenEOF, Text: ""},
+			},
+		},
+		{
+			name: "Multiple Section 1s",
+			source: `
+# Section 1
+
+Some text
+
+# Section 2
+`,
+			expected: []lexer.Token{
+				{Type: lexer.TokenSection1Begin, Text: "#"},
+				{Type: lexer.TokenText, Text: "Section 1"},
+				{Type: lexer.TokenSection1Content, Text: ""},
+				{Type: lexer.TokenParagraphBegin, Text: ""},
+				{Type: lexer.TokenText, Text: "Some text"},
+				{Type: lexer.TokenParagraphEnd, Text: ""},
+				{Type: lexer.TokenSection1End, Text: ""},
+				{Type: lexer.TokenSection1Begin, Text: "#"},
+				{Type: lexer.TokenText, Text: "Section 2"},
+				{Type: lexer.TokenSection1Content, Text: ""},
+				{Type: lexer.TokenSection1End, Text: ""},
+				{Type: lexer.TokenEOF, Text: ""},
+			},
+		},
+		{
+			name: "Multiple Section 2s",
+			source: `
+# Section 1
+
+## Section 1.1
+
+Some text
+
+## Section 1.2
+`,
+			expected: []lexer.Token{
+				{Type: lexer.TokenSection1Begin, Text: "#"},
+				{Type: lexer.TokenText, Text: "Section 1"},
+				{Type: lexer.TokenSection1Content, Text: ""},
+				{Type: lexer.TokenSection2Begin, Text: "##"},
+				{Type: lexer.TokenText, Text: "Section 1.1"},
+				{Type: lexer.TokenSection2Content, Text: ""},
+				{Type: lexer.TokenParagraphBegin, Text: ""},
+				{Type: lexer.TokenText, Text: "Some text"},
+				{Type: lexer.TokenParagraphEnd, Text: ""},
+				{Type: lexer.TokenSection2End, Text: ""},
+				{Type: lexer.TokenSection2Begin, Text: "##"},
+				{Type: lexer.TokenText, Text: "Section 1.2"},
+				{Type: lexer.TokenSection2Content, Text: ""},
+				{Type: lexer.TokenSection2End, Text: ""},
+				{Type: lexer.TokenSection1End, Text: ""},
+				{Type: lexer.TokenEOF, Text: ""},
+			},
+		},
 	}
 	RunTests(t, testCases)
 }
