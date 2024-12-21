@@ -937,6 +937,29 @@ Here you have it in mono space: `+"`"+`&nbsp;`+"`"+`
 	RunTests(t, testCases)
 }
 
+func TestLexHtmlElement(t *testing.T) {
+	testCases := []TestCase{
+		{
+			name: "Html Tag at Top Level",
+			source: `
+<Abstract>
+	Html element content
+</Abstract>
+`,
+			expected: []lexer.Token{
+				{Type: lexer.TokenHtmlTagOpen, Text: "Abstract"},
+				{Type: lexer.TokenHtmlTagContent, Text: ""},
+				{Type: lexer.TokenParagraphBegin, Text: ""},
+				{Type: lexer.TokenText, Text: "Html element content\n"},
+				{Type: lexer.TokenParagraphEnd, Text: ""},
+				{Type: lexer.TokenHtmlTagClose, Text: ""},
+				{Type: lexer.TokenEOF, Text: ""},
+			},
+		},
+	}
+	RunTests(t, testCases)
+}
+
 type TestCase struct {
 	name, source   string
 	expected       []lexer.Token

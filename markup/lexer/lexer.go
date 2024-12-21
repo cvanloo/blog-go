@@ -1663,6 +1663,8 @@ func (lx *Lexer) LexHtmlElementContent(tag string) {
 	if lx.HasCloseTag(tag) {
 		for !lx.IsEOF() {
 			if lx.Peek(2) == "</" {
+				lx.SkipNext(2)
+				lx.SkipWhitespace()
 				mtag := lx.NextValids(CharInSpec{SpecAscii, CharInAny("-_")})
 				if tag != mtag {
 					lx.Error(fmt.Errorf("expected <%s> to be closed first, got: </%s>", tag, mtag))
@@ -1671,6 +1673,7 @@ func (lx *Lexer) LexHtmlElementContent(tag string) {
 				lx.ExpectAndSkip(">")
 				break
 			}
+			// @todo: first check if there is a nested html element
 			lx.LexParagraph()
 		}
 	}
@@ -1679,6 +1682,7 @@ func (lx *Lexer) LexHtmlElementContent(tag string) {
 
 func (lx *Lexer) HasCloseTag(tag string) bool {
 	// @todo: this is so incredibly stupid
+	// @todo: this also doesn't work with nested elements
 	lpos := lx.Pos
 	lcon := lx.Consumed
 	defer func() {
@@ -1689,8 +1693,10 @@ func (lx *Lexer) HasCloseTag(tag string) bool {
 		if lx.MatchAtPos(`\</`) {
 			lx.Next(3)
 		} else if lx.MatchAtPos("</") {
+			lx.SkipNext(2)
 			lx.SkipWhitespace()
 			if lx.MatchAtPos(tag) {
+				lx.SkipNext(len(tag))
 				lx.SkipWhitespace()
 				return lx.MatchAtPos(">")
 			}
