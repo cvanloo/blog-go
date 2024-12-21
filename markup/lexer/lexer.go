@@ -493,6 +493,7 @@ var (
 	SpecValidMetaKey = CharInSpec{SpecAscii, CharInAny("-_")}
 	SpecNonWhitespace = CharNotInSpec{CharInAny(" \u00A0\n\r\v\t")} // @todo: and all the others...
 	SpecAttrVal = CharNotInSpec{CharInAny(" \u00A0\n\r\v\t}")}
+	SpecImagePath = CharNotInSpec{CharInAny(" \u00A0\n\r\v\t)")}
 )
 
 func (c CharInRange) IsValid(r rune) bool {
@@ -1400,7 +1401,7 @@ func (lx *Lexer) LexImage() {
 			lx.Emit(TokenImagePath)
 			lx.ExpectAndSkip("\"")
 		} else {
-			lx.NextValids(SpecNonWhitespace)
+			lx.NextValids(SpecImagePath)
 			lx.Emit(TokenImagePath)
 		}
 		lx.SkipWhitespaceNoNewLine()

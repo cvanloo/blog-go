@@ -740,6 +740,65 @@ Btw, it's from this book:
 	RunTests(t, testCases)
 }
 
+func TestLexImage(t *testing.T) {
+	testCases := []TestCase{
+		{
+			name: "Image without title text",
+			source: `
+# Image Test
+
+Hello, here is an image:
+![Image alt text](/path/to/image.png)
+I hope you like it.
+`,
+			expected: []lexer.Token{
+				{Type: lexer.TokenSection1Begin, Text: "#"},
+				{Type: lexer.TokenText, Text: "Image Test"},
+				{Type: lexer.TokenSection1Content, Text: ""},
+				{Type: lexer.TokenParagraphBegin, Text: ""},
+				{Type: lexer.TokenText, Text: "Hello, here is an image:\n"},
+				{Type: lexer.TokenParagraphEnd, Text: ""},
+				{Type: lexer.TokenImageBegin, Text: "!["},
+				{Type: lexer.TokenImageAltText, Text: "Image alt text"},
+				{Type: lexer.TokenImagePath, Text: "/path/to/image.png"},
+				{Type: lexer.TokenParagraphBegin, Text: ""},
+				{Type: lexer.TokenText, Text: "I hope you like it.\n"},
+				{Type: lexer.TokenParagraphEnd, Text: ""},
+				{Type: lexer.TokenSection1End, Text: ""},
+				{Type: lexer.TokenEOF, Text: ""},
+			},
+		},
+		{
+			name: "Image with title text",
+			source: `
+# Image Test
+
+Hello, here is an image:
+![Image alt text](/path/to/image.png "Some image title")
+I hope you like it.
+`,
+			expected: []lexer.Token{
+				{Type: lexer.TokenSection1Begin, Text: "#"},
+				{Type: lexer.TokenText, Text: "Image Test"},
+				{Type: lexer.TokenSection1Content, Text: ""},
+				{Type: lexer.TokenParagraphBegin, Text: ""},
+				{Type: lexer.TokenText, Text: "Hello, here is an image:\n"},
+				{Type: lexer.TokenParagraphEnd, Text: ""},
+				{Type: lexer.TokenImageBegin, Text: "!["},
+				{Type: lexer.TokenImageAltText, Text: "Image alt text"},
+				{Type: lexer.TokenImagePath, Text: "/path/to/image.png"},
+				{Type: lexer.TokenImageTitle, Text: "Some image title"},
+				{Type: lexer.TokenParagraphBegin, Text: ""},
+				{Type: lexer.TokenText, Text: "I hope you like it.\n"},
+				{Type: lexer.TokenParagraphEnd, Text: ""},
+				{Type: lexer.TokenSection1End, Text: ""},
+				{Type: lexer.TokenEOF, Text: ""},
+			},
+		},
+	}
+	RunTests(t, testCases)
+}
+
 type TestCase struct {
 	name, source   string
 	expected       []lexer.Token
