@@ -293,7 +293,7 @@ func (lx *Lexer) IsHorizontalRule() bool {
 		return false
 	}
 	lx.SkipNext1()
-	lx.SkipWhitespaceNoNewLine()
+	lx.SkipWhitespace()
 	if !(lx.Peek(3) == "---" || lx.Peek(3) == "***") {
 		return false
 	}
@@ -1489,7 +1489,6 @@ func (lx *Lexer) LexHorizontalRule() {
 		lx.Error(errors.New("expected horizontal rule `---` or `***`"))
 	}
 	lx.Emit(TokenHorizontalRule)
-	lx.SkipWhitespaceNoNewLine()
 	lx.SkipWhitespace()
 }
 

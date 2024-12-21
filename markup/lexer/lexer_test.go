@@ -957,6 +957,75 @@ func TestLexHtmlElement(t *testing.T) {
 			},
 		},
 	}
+	// @todo: needs way more tests, but the current implementation is also very broken
+	RunTests(t, testCases)
+}
+
+func TestLexHorizontalRule(t *testing.T) {
+	testCases := []TestCase{
+		{
+			name: "Horizontal Rule (---) between two paragraphs (in Section 1)",
+			source: `
+# Section 1
+
+Paragraph 1.
+More text.
+
+---
+
+Paragraph 2.
+Even more text.
+`,
+			expected: []lexer.Token{
+				{Type: lexer.TokenSection1Begin, Text: "#"},
+				{Type: lexer.TokenText, Text: "Section 1"},
+				{Type: lexer.TokenSection1Content, Text: ""},
+				{Type: lexer.TokenParagraphBegin, Text: ""},
+				{Type: lexer.TokenText, Text: "Paragraph 1.\nMore text."},
+				{Type: lexer.TokenParagraphEnd, Text: ""},
+				{Type: lexer.TokenHorizontalRule, Text: "---"},
+				{Type: lexer.TokenParagraphBegin, Text: ""},
+				{Type: lexer.TokenText, Text: "Paragraph 2.\nEven more text.\n"},
+				{Type: lexer.TokenParagraphEnd, Text: ""},
+				{Type: lexer.TokenSection1End, Text: ""},
+				{Type: lexer.TokenEOF, Text: ""},
+			},
+		},
+		{
+			name: "Horizontal Rule (***) between two paragraphs (in Section 2)",
+			source: `
+# Section 1
+
+## Section 2
+
+Paragraph 1.
+More text.
+
+***
+
+Paragraph 2.
+Even more text.
+`,
+			expected: []lexer.Token{
+				{Type: lexer.TokenSection1Begin, Text: "#"},
+				{Type: lexer.TokenText, Text: "Section 1"},
+				{Type: lexer.TokenSection1Content, Text: ""},
+				{Type: lexer.TokenSection2Begin, Text: "##"},
+				{Type: lexer.TokenText, Text: "Section 2"},
+				{Type: lexer.TokenSection2Content, Text: ""},
+				{Type: lexer.TokenParagraphBegin, Text: ""},
+				{Type: lexer.TokenText, Text: "Paragraph 1.\nMore text."},
+				{Type: lexer.TokenParagraphEnd, Text: ""},
+				{Type: lexer.TokenHorizontalRule, Text: "***"},
+				{Type: lexer.TokenParagraphBegin, Text: ""},
+				{Type: lexer.TokenText, Text: "Paragraph 2.\nEven more text.\n"},
+				{Type: lexer.TokenParagraphEnd, Text: ""},
+				{Type: lexer.TokenSection2End, Text: ""},
+				{Type: lexer.TokenSection1End, Text: ""},
+				{Type: lexer.TokenEOF, Text: ""},
+			},
+		},
+	}
 	RunTests(t, testCases)
 }
 
