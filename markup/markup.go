@@ -15,6 +15,7 @@ import (
 type (
 	Markup struct{
 		Sources []source
+		StaticSources []string
 		OutDir string
 	}
 	MarkupOption func(*Markup)
@@ -40,6 +41,15 @@ func Source(name string, in io.Reader) MarkupOption {
 	}
 }
 
+func FileSources(names []string, fds []*os.File) MarkupOption {
+	Assert(len(names) == len(fds), "")
+	return func(m *Markup) {
+		for i := range names {
+			m.Sources = append(m.Sources, source{Name: names[i], In: fds[i]})
+		}
+	}
+}
+
 func OutDir(path string) MarkupOption {
 	return func(m *Markup) {
 		m.OutDir = path
@@ -47,13 +57,6 @@ func OutDir(path string) MarkupOption {
 }
 
 func (m Markup) Run() (err error) {
-	// @todo: accept a io.Writer, instead of handling output dir here
-	{
-		_, err := os.Stat(m.OutDir)
-		if err != nil {
-			return err
-		}
-	}
 	for _, src := range m.Sources {
 		lex := lexer.New()
 		bs, rerr := io.ReadAll(src.In)
