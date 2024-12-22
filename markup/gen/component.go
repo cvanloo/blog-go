@@ -19,7 +19,7 @@ import (
 var htmls embed.FS
 
 var (
-	pages = Template{template.New("")}
+	pages = Template{Template: template.New("")}
 	site = Site{
 		Address: Must(url.Parse("https://blog.vanloo.ch")), // @todo
 	}
@@ -28,6 +28,9 @@ var (
 func init() {
 	pages.Funcs(template.FuncMap{
 		"Render": Render,
+		"GetBlog": func() *Blog {
+			return pages.blog
+		},
 	})
 
 	template.Must(pages.ParseFS(htmls, "html/*.gohtml"))
@@ -41,6 +44,7 @@ func Render(element Renderable) (template.HTML, error) {
 type (
 	Template struct {
 		*template.Template
+		blog *Blog
 	}
 	Renderable interface {
 		Render() (template.HTML, error)
@@ -56,17 +60,20 @@ func (t *Template) Execute(w io.Writer, name string, data any) error {
 }
 
 func WriteBlog(w io.Writer, blog *Blog) error {
+	pages.blog = blog
 	return pages.Execute(w, "entry.gohtml", blog)
 }
 
 func String(blog *Blog) (string, error) {
 	bs := &bytes.Buffer{}
+	pages.blog = blog
 	err := pages.Execute(bs, "entry.gohtml", blog)
 	return bs.String(), err
 }
 
 func Handler(blog *Blog, onError func(error)) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		pages.blog = blog
 		err := pages.Execute(w, "entry.gohtml", blog)
 		if err != nil {
 			onError(err)
@@ -325,7 +332,7 @@ func (l Link) Text() string {
 	bs := &bytes.Buffer{}
 	err := pages.Execute(bs, "link.gohtml", l)
 	_ = err // @todo
-	return bs.String()
+	return strings.TrimSpace(bs.String())
 }
 
 func (l Link) NameOrHref(blog *Blog) string {

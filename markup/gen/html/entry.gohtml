@@ -137,7 +137,7 @@
                 <!-- @todo: link to copyleft licence? -->
                 {{if .Author.Email}}
                 <address>&copy; {{.CopyrightYear}} <a href="mailto:{{.ObfuscatedEmail}}">{{Render .Author.Name}}</a></address>
-                {{else}}}
+                {{else}}
                 <address>&copy; {{.CopyrightYear}} {{Render .Author.Name}}</address>
                 {{end}}
                 <span class="credits">
