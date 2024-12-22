@@ -3,16 +3,16 @@ package parser
 import (
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
-	"strconv"
 
 	//"github.com/kr/pretty"
 
 	. "github.com/cvanloo/blog-go/assert"
-	. "github.com/cvanloo/blog-go/stack"
-	"github.com/cvanloo/blog-go/markup/lexer"
 	"github.com/cvanloo/blog-go/markup/gen"
+	"github.com/cvanloo/blog-go/markup/lexer"
+	. "github.com/cvanloo/blog-go/stack"
 )
 
 type (
@@ -45,9 +45,9 @@ func (err ParserError) Error() string {
 type (
 	Level struct {
 		ReturnToState ParseState
-		Strings Stack[string]
-		Content Stack[gen.Renderable]
-		TextValues Stack[gen.StringRenderable]
+		Strings       Stack[string]
+		Content       Stack[gen.Renderable]
+		TextValues    Stack[gen.StringRenderable]
 	}
 	Levels struct {
 		levels []*Level
@@ -144,24 +144,26 @@ const (
 )
 
 var (
-	ErrInvalidToken = errors.New("invalid token")
-	ErrInvalidMetaKey = errors.New("invalid meta key")
+	ErrInvalidToken          = errors.New("invalid token")
+	ErrInvalidMetaKey        = errors.New("invalid meta key")
 	ErrSectionMissingHeading = errors.New("section must have a heading")
 )
 
 func Parse(lx LexResult) (blog gen.Blog, err error) {
+	blog.LinkDefinitions = map[string]string{}
+	blog.SidenoteDefinitions = map[string]gen.StringRenderable{}
 	state := ParsingStart
 	levels := Levels{}
 	levels.Push(&Level{ReturnToState: ParsingStart})
 	var (
 		currentSection1, currentSection2 gen.Section
-		currentAttributes gen.Attributes
-		currentHTMLElement = HtmlTag{Args: map[string]string{}}
-		currentCodeBlock gen.CodeBlock
-		currentImage gen.Image
-		currentBlockquote gen.Blockquote
-		currentSidenote gen.Sidenote
-		currentDefinition string
+		currentAttributes                gen.Attributes
+		currentHTMLElement               = HtmlTag{Args: map[string]string{}}
+		currentCodeBlock                 gen.CodeBlock
+		currentImage                     gen.Image
+		currentBlockquote                gen.Blockquote
+		currentSidenote                  gen.Sidenote
+		currentDefinition                string
 		//currentTerm string
 	)
 	for lexeme := range lx.Tokens() {
@@ -327,7 +329,7 @@ func Parse(lx LexResult) (blog gen.Blog, err error) {
 					err = errors.Join(err, newError(lexeme, state, ErrSectionMissingHeading))
 				}
 				currentSection1 = gen.Section{
-					Level: 1,
+					Level:   1,
 					Heading: gen.StringOnlyContent(level.TextValues),
 				}
 				level.EmptyText()
@@ -343,8 +345,8 @@ func Parse(lx LexResult) (blog gen.Blog, err error) {
 				}
 				currentSection1 = gen.Section{
 					Attributes: currentAttributes,
-					Level: 1,
-					Heading: gen.StringOnlyContent(level.TextValues),
+					Level:      1,
+					Heading:    gen.StringOnlyContent(level.TextValues),
 				}
 				level.EmptyText()
 				currentAttributes = gen.Attributes{}
@@ -377,6 +379,7 @@ func Parse(lx LexResult) (blog gen.Blog, err error) {
 				state = ParsingHtmlElement
 			case lexer.TokenLinkDef:
 				levels.Push(&Level{ReturnToState: ParsingSection1Content})
+				currentDefinition = lexeme.Text
 				state = ParsingLinkDefinition
 			case lexer.TokenSidenoteDef:
 				levels.Push(&Level{ReturnToState: ParsingSection1Content})
@@ -405,7 +408,7 @@ func Parse(lx LexResult) (blog gen.Blog, err error) {
 					err = errors.Join(err, newError(lexeme, state, ErrSectionMissingHeading))
 				}
 				currentSection2 = gen.Section{
-					Level: 2,
+					Level:   2,
 					Heading: gen.StringOnlyContent(level.TextValues),
 				}
 				level.EmptyText()
@@ -421,8 +424,8 @@ func Parse(lx LexResult) (blog gen.Blog, err error) {
 				}
 				currentSection2 = gen.Section{
 					Attributes: currentAttributes,
-					Level: 2,
-					Heading: gen.StringOnlyContent(level.TextValues),
+					Level:      2,
+					Heading:    gen.StringOnlyContent(level.TextValues),
 				}
 				level.EmptyText()
 				currentAttributes = gen.Attributes{}
@@ -452,6 +455,7 @@ func Parse(lx LexResult) (blog gen.Blog, err error) {
 				state = ParsingHtmlElement
 			case lexer.TokenLinkDef:
 				levels.Push(&Level{ReturnToState: ParsingSection2Content})
+				currentDefinition = lexeme.Text
 				state = ParsingLinkDefinition
 			case lexer.TokenSidenoteDef:
 				levels.Push(&Level{ReturnToState: ParsingSection2Content})
@@ -675,7 +679,7 @@ func Parse(lx LexResult) (blog gen.Blog, err error) {
 				levels.Pop()
 				parent := levels.Top()
 				parent.PushText(gen.Link{
-					Ref: level.PopString(),
+					Ref:  level.PopString(),
 					Name: gen.StringOnlyContent(level.TextValues),
 				})
 				state = level.ReturnToState
@@ -847,72 +851,72 @@ func Parse(lx LexResult) (blog gen.Blog, err error) {
 }
 
 /*
-		switch state {
-		case ParsingHtmlTag:
-			level := levels.Top()
-			switch lexeme.Type {
-			default:
-			case lexer.TokenHtmlTagAttrKey:
-				level.PushString(lexeme.Text)
-			case lexer.TokenHtmlTagAttrVal:
-				attrKey := level.PopString()
-				currentHtmlTag.Args[attrKey] = lexeme.Text
-			case lexer.TokenHtmlTagContent:
-				Assert(len(level.Strings) == 0, "key/value pair mismatch")
-				state = ParsingHtmlTagContent
-			case lexer.TokenHtmlTagClose:
-				_ = levels.Pop()
-				content, evalErr := evaluateHtmlTag(&blog, currentHtmlTag)
-				err = errors.Join(err, evalErr)
-				if content != nil {
-					if levels.Len() == 0 {
-						err = errors.Join(err, newError(lexeme, state, errors.New("all content must be contained within a section")))
-					} else {
-						paren := levels.Top()
-						switch c := content.(type) {
-						case gen.StringRenderable:
-							paren.PushText(c)
-						case gen.Renderable:
-							paren.PushContent(c)
-						}
+	switch state {
+	case ParsingHtmlTag:
+		level := levels.Top()
+		switch lexeme.Type {
+		default:
+		case lexer.TokenHtmlTagAttrKey:
+			level.PushString(lexeme.Text)
+		case lexer.TokenHtmlTagAttrVal:
+			attrKey := level.PopString()
+			currentHtmlTag.Args[attrKey] = lexeme.Text
+		case lexer.TokenHtmlTagContent:
+			Assert(len(level.Strings) == 0, "key/value pair mismatch")
+			state = ParsingHtmlTagContent
+		case lexer.TokenHtmlTagClose:
+			_ = levels.Pop()
+			content, evalErr := evaluateHtmlTag(&blog, currentHtmlTag)
+			err = errors.Join(err, evalErr)
+			if content != nil {
+				if levels.Len() == 0 {
+					err = errors.Join(err, newError(lexeme, state, errors.New("all content must be contained within a section")))
+				} else {
+					paren := levels.Top()
+					switch c := content.(type) {
+					case gen.StringRenderable:
+						paren.PushText(c)
+					case gen.Renderable:
+						paren.PushContent(c)
 					}
 				}
-				currentHtmlTag = HtmlTag{Args: map[string]string{}}
-				state = level.ReturnToState
 			}
-		case ParsingHtmlTagContent:
-			level := levels.Top()
-			switch {
-			case isTextContent(lexeme.Type):
-				level.PushText(newTextContent(lexeme))
-				fallthrough
-			case lexeme.Type == lexer.TokenText:
-				level.PushString(lexeme.Text)
-			case lexeme.Type == lexer.TokenHtmlTagOpen:
-				levels.Push(&Level{ReturnToState: ParsingHtmlTagContent})
-				state = ParsingHtmlTag
-			case lexeme.Type == lexer.TokenHtmlTagClose:
-				_ = levels.Pop()
-				currentHtmlTag.Strings = level.Strings
-				currentHtmlTag.Text = level.TextValues
-				content, evalErr := evaluateHtmlTag(&blog, currentHtmlTag)
-				err = errors.Join(err, newError(lexeme, state, evalErr))
-				if content != nil {
-					if levels.Len() == 0 {
-						err = errors.Join(err, newError(lexeme, state, errors.New("all content must be contained within a section")))
-					} else {
-						paren := levels.Top()
-						switch c := content.(type) {
-						case gen.StringRenderable:
-							paren.PushText(c)
-						case gen.Renderable:
-							paren.PushContent(c)
-						}
+			currentHtmlTag = HtmlTag{Args: map[string]string{}}
+			state = level.ReturnToState
+		}
+	case ParsingHtmlTagContent:
+		level := levels.Top()
+		switch {
+		case isTextContent(lexeme.Type):
+			level.PushText(newTextContent(lexeme))
+			fallthrough
+		case lexeme.Type == lexer.TokenText:
+			level.PushString(lexeme.Text)
+		case lexeme.Type == lexer.TokenHtmlTagOpen:
+			levels.Push(&Level{ReturnToState: ParsingHtmlTagContent})
+			state = ParsingHtmlTag
+		case lexeme.Type == lexer.TokenHtmlTagClose:
+			_ = levels.Pop()
+			currentHtmlTag.Strings = level.Strings
+			currentHtmlTag.Text = level.TextValues
+			content, evalErr := evaluateHtmlTag(&blog, currentHtmlTag)
+			err = errors.Join(err, newError(lexeme, state, evalErr))
+			if content != nil {
+				if levels.Len() == 0 {
+					err = errors.Join(err, newError(lexeme, state, errors.New("all content must be contained within a section")))
+				} else {
+					paren := levels.Top()
+					switch c := content.(type) {
+					case gen.StringRenderable:
+						paren.PushText(c)
+					case gen.Renderable:
+						paren.PushContent(c)
 					}
 				}
-				currentHtmlTag = HtmlTag{Args: map[string]string{}}
-				state = level.ReturnToState
 			}
+			currentHtmlTag = HtmlTag{Args: map[string]string{}}
+			state = level.ReturnToState
+		}
 */
 
 func isTextContent(tokenType lexer.TokenType) bool {
@@ -968,20 +972,20 @@ func newTextContent(lexeme lexer.Token) gen.StringRenderable {
 
 func checkMetaKey(key string) bool {
 	recognizedKeys := map[string]struct{}{
-		"author": {},
-		"email": {},
-		"tags": {},
-		"template": {},
-		"title": {},
-		"alt-title": {},
-		"url-path": {},
-		"rel-me": {}, // @todo: this should actually be an array
-		"fedi-creator": {},
-		"lang": {},
-		"published": {},
-		"revised": {},
-		"est-reading": {},
-		"series": {}, // @todo: only parse `series` name and then determine the correct order (with prev and next) depending on all other parsed articles that have the same series name and their published dates.
+		"author":                  {},
+		"email":                   {},
+		"tags":                    {},
+		"template":                {},
+		"title":                   {},
+		"alt-title":               {},
+		"url-path":                {},
+		"rel-me":                  {}, // @todo: this should actually be an array
+		"fedi-creator":            {},
+		"lang":                    {},
+		"published":               {},
+		"revised":                 {},
+		"est-reading":             {},
+		"series":                  {}, // @todo: only parse `series` name and then determine the correct order (with prev and next) depending on all other parsed articles that have the same series name and their published dates.
 		"enable-revision-warning": {},
 	}
 	_, ok := recognizedKeys[key]
@@ -997,7 +1001,7 @@ func setMetaKeyValuePair(blog *gen.Blog, key string, value gen.StringRenderable)
 	case "email":
 		blog.Author.Email = value
 	case "tags":
-		for _, tag := range strings.Split(value./*@todo: Clean*/Text(), " ") {
+		for _, tag := range strings.Split(value. /*@todo: Clean*/ Text(), " ") {
 			blog.Tags = append(blog.Tags, gen.Tag(tag))
 		}
 	case "title":
@@ -1005,17 +1009,17 @@ func setMetaKeyValuePair(blog *gen.Blog, key string, value gen.StringRenderable)
 	case "alt-title":
 		blog.AltTitle = value
 	case "url-path":
-		blog.UrlPath = value./*Clean*/Text()
+		blog.UrlPath = value. /*Clean*/ Text()
 	case "rel-me":
 		blog.Author.RelMe = value
 	case "fedi-creator":
 		blog.Author.FediCreator = value
 	case "lang":
-		blog.Lang = value./*Clean*/Text()
+		blog.Lang = value. /*Clean*/ Text()
 	case "published":
-		blog.Published.Published, err = time.Parse("2006-01-02", value./*Clean*/Text())
+		blog.Published.Published, err = time.Parse("2006-01-02", value. /*Clean*/ Text())
 		if err != nil {
-			blog.Published.Published, err = time.Parse(time.RFC3339, value./*Clean*/Text())
+			blog.Published.Published, err = time.Parse(time.RFC3339, value. /*Clean*/ Text())
 			if err != nil {
 				err = fmt.Errorf("invalid date format, use 2006-01-02 or RFC3339")
 			}
@@ -1024,15 +1028,15 @@ func setMetaKeyValuePair(blog *gen.Blog, key string, value gen.StringRenderable)
 		timeRef := func(t time.Time, err error) (*time.Time, error) {
 			return &t, err
 		}
-		blog.Published.Revised, err = timeRef(time.Parse("2006-01-02", value./*Clean*/Text()))
+		blog.Published.Revised, err = timeRef(time.Parse("2006-01-02", value. /*Clean*/ Text()))
 		if err != nil {
-			blog.Published.Revised, err = timeRef(time.Parse(time.RFC3339, value./*Clean*/Text()))
+			blog.Published.Revised, err = timeRef(time.Parse(time.RFC3339, value. /*Clean*/ Text()))
 			if err != nil {
 				err = fmt.Errorf("invalid date format, use 2006-01-02 or RFC3339")
 			}
 		}
 	case "est-reading":
-		blog.EstReading, err = strconv.Atoi(value./*Clean*/Text())
+		blog.EstReading, err = strconv.Atoi(value. /*Clean*/ Text())
 	case "series":
 		// @todo
 	case "enable-revision-warning":

@@ -49,7 +49,9 @@ Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliqu
 
 # さようなら
 
-Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
+Ut enim ad minim [veniam][0], quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
+
+[0]: https://example.com/
 
 `
 
@@ -104,8 +106,15 @@ var LexerTestTokens = MockTokens{
 	{Type: lexer.TokenText, Text: "さようなら"},
 	{Type: lexer.TokenSection1Content, Text: ""},
 	{Type: lexer.TokenParagraphBegin, Text: ""},
-	{Type: lexer.TokenText, Text: "Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat."},
+	{Type: lexer.TokenText, Text: "Ut enim ad minim "},
+	{Type: lexer.TokenLinkableBegin, Text: "["},
+	{Type: lexer.TokenText, Text: "veniam"},
+	{Type: lexer.TokenLinkRef, Text: "0"},
+	{Type: lexer.TokenLinkableEnd, Text: ""},
+	{Type: lexer.TokenText, Text: ", quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat."},
 	{Type: lexer.TokenParagraphEnd, Text: ""},
+	{Type: lexer.TokenLinkDef, Text: "0"},
+	{Type: lexer.TokenText, Text: "https://example.com/"},
 	{Type: lexer.TokenSection1End, Text: ""},
 	{Type: lexer.TokenEOF, Text: ""},
 }
@@ -168,9 +177,20 @@ var BlogTestStruct = gen.Blog{
 			Heading: gen.StringOnlyContent{gen.Text("さようなら")},
 			Content: []gen.Renderable{
 				gen.Paragraph{
-					Content: gen.StringOnlyContent{gen.Text("Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.")},
+					Content: gen.StringOnlyContent{
+						gen.Text("Ut enim ad minim "),
+						gen.Link{
+							Ref: "0",
+							Name: gen.StringOnlyContent{gen.Text("veniam")},
+						},
+						gen.Text(", quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat."),
+					},
 				},
 			},
 		},
+	},
+	SidenoteDefinitions: map[string]gen.StringRenderable{},
+	LinkDefinitions: map[string]string{
+		"0": "https://example.com/",
 	},
 }
