@@ -81,7 +81,7 @@ type (
 		SetAttr(key, val string)
 		GetAttr(key string) (string, bool)
 	}
-	Attributes {
+	Attributes struct {
 		ID string
 		Fields map[string]string
 	}
@@ -99,6 +99,8 @@ type (
 		Abstract StringRenderable
 		Sections []Section
 		Relevant *RelevantBox
+		SidenoteDefinitions map[string]StringRenderable
+		LinkDefinitions map[string]string // ID -> Href
 	}
 	Site struct {
 		Address *url.URL // e.g. https://blog.vanloo.ch
@@ -151,11 +153,20 @@ type (
 	EmphasisStrong struct {
 		StringOnlyContent
 	}
-	Enquote struct {
+	EnquoteDouble struct {
+		StringOnlyContent
+	}
+	EnquoteAngled struct {
+		StringOnlyContent
+	}
+	Strikethrough struct {
+		StringOnlyContent
+	}
+	Marker struct {
 		StringOnlyContent
 	}
 	Link struct {
-		Href string
+		Ref, Href string
 		Name StringRenderable
 	}
 	CodeBlock struct {
@@ -194,7 +205,8 @@ func (a Attributes) SetAttr(key, val string) {
 }
 
 func (a Attributes) GetAttr(key string) (string, bool) {
-	return a.Fields[key]
+	val, ok := a.Fields[key]
+	return val, ok
 }
 
 func (a Attributes) SetID(id string) {
@@ -262,12 +274,36 @@ func (m Mono) Text() string {
 	return fmt.Sprintf("<code>%s</code>", m)
 }
 
-func (q Enquote) Render() (template.HTML, error) {
+func (q EnquoteDouble) Render() (template.HTML, error) {
 	return template.HTML(q.Text()), nil
 }
 
-func (q Enquote) Text() string {
+func (q EnquoteDouble) Text() string {
 	return fmt.Sprintf("&ldquo;%s&rdquo;", q.StringOnlyContent.Text())
+}
+
+func (q EnquoteAngled) Render() (template.HTML, error) {
+	return template.HTML(q.Text()), nil
+}
+
+func (q EnquoteAngled) Text() string {
+	return fmt.Sprintf("&laquo;%s&raquo;", q.StringOnlyContent.Text())
+}
+
+func (s Strikethrough) Text() string {
+	return fmt.Sprintf("<s>%s</s>", s.StringOnlyContent.Text())
+}
+
+func (s Strikethrough) Render() (template.HTML, error) {
+	return template.HTML(s.Text()), nil
+}
+
+func (m Marker) Text() string {
+	return fmt.Sprintf("<mark>%s</mark>", m.StringOnlyContent.Text())
+}
+
+func (m Marker) Render() (template.HTML, error) {
+	return template.HTML(m.Text()), nil
 }
 
 func (l Link) Render() (template.HTML, error) {

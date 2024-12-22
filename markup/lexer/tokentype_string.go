@@ -57,28 +57,29 @@ func _() {
 	_ = x[TokenImageAltText-46]
 	_ = x[TokenImagePath-47]
 	_ = x[TokenImageTitle-48]
-	_ = x[TokenSidenoteRef-49]
-	_ = x[TokenSidenoteDef-50]
-	_ = x[TokenSidenoteDefEnd-51]
-	_ = x[TokenSidenoteContent-52]
-	_ = x[TokenLinkify-53]
-	_ = x[TokenLinkHref-54]
-	_ = x[TokenLinkRef-55]
-	_ = x[TokenLinkDef-56]
-	_ = x[TokenLinkableBegin-57]
-	_ = x[TokenLinkableEnd-58]
-	_ = x[TokenCodeBlockBegin-59]
-	_ = x[TokenCodeBlockLang-60]
-	_ = x[TokenCodeBlockEnd-61]
-	_ = x[TokenAttributeListBegin-62]
-	_ = x[TokenAttributeListID-63]
-	_ = x[TokenAttributeListKey-64]
-	_ = x[TokenAttributeListEnd-65]
+	_ = x[TokenImageEnd-49]
+	_ = x[TokenSidenoteRef-50]
+	_ = x[TokenSidenoteDef-51]
+	_ = x[TokenSidenoteDefEnd-52]
+	_ = x[TokenSidenoteContent-53]
+	_ = x[TokenLinkify-54]
+	_ = x[TokenLinkHref-55]
+	_ = x[TokenLinkRef-56]
+	_ = x[TokenLinkDef-57]
+	_ = x[TokenLinkableBegin-58]
+	_ = x[TokenLinkableEnd-59]
+	_ = x[TokenCodeBlockBegin-60]
+	_ = x[TokenCodeBlockLang-61]
+	_ = x[TokenCodeBlockEnd-62]
+	_ = x[TokenAttributeListBegin-63]
+	_ = x[TokenAttributeListID-64]
+	_ = x[TokenAttributeListKey-65]
+	_ = x[TokenAttributeListEnd-66]
 }
 
-const _TokenType_name = "EOFMetaBeginMetaKeyMetaEndHtmlTagOpenHtmlTagAttrKeyHtmlTagAttrValHtmlTagContentHtmlTagCloseSection1BeginSection1ContentSection1EndSection2BeginSection2ContentSection2EndParagraphBeginParagraphEndTextAmpSpecialMonoEmphasisBeginEmphasisEndStrikethroughBeginStrikethroughEndMarkerBeginMarkerEndStrongBeginStrongEndEmphasisStrongBeginEmphasisStrongEndEnquoteSingleBeginEnquoteSingleEndEnquoteDoubleBeginEnquoteDoubleEndEnquoteAngledBeginEnquoteAngledEndDefinitionTermDefinitionExplanationBeginDefinitionExplanationEndHorizontalRuleBlockquoteBeginBlockquoteAttrAuthorBlockquoteAttrSourceBlockquoteAttrEndBlockquoteEndImageBeginImageAltTextImagePathImageTitleSidenoteRefSidenoteDefSidenoteDefEndSidenoteContentLinkifyLinkHrefLinkRefLinkDefLinkableBeginLinkableEndCodeBlockBeginCodeBlockLangCodeBlockEndAttributeListBeginAttributeListIDAttributeListKeyAttributeListEnd"
+const _TokenType_name = "EOFMetaBeginMetaKeyMetaEndHtmlTagOpenHtmlTagAttrKeyHtmlTagAttrValHtmlTagContentHtmlTagCloseSection1BeginSection1ContentSection1EndSection2BeginSection2ContentSection2EndParagraphBeginParagraphEndTextAmpSpecialMonoEmphasisBeginEmphasisEndStrikethroughBeginStrikethroughEndMarkerBeginMarkerEndStrongBeginStrongEndEmphasisStrongBeginEmphasisStrongEndEnquoteSingleBeginEnquoteSingleEndEnquoteDoubleBeginEnquoteDoubleEndEnquoteAngledBeginEnquoteAngledEndDefinitionTermDefinitionExplanationBeginDefinitionExplanationEndHorizontalRuleBlockquoteBeginBlockquoteAttrAuthorBlockquoteAttrSourceBlockquoteAttrEndBlockquoteEndImageBeginImageAltTextImagePathImageTitleImageEndSidenoteRefSidenoteDefSidenoteDefEndSidenoteContentLinkifyLinkHrefLinkRefLinkDefLinkableBeginLinkableEndCodeBlockBeginCodeBlockLangCodeBlockEndAttributeListBeginAttributeListIDAttributeListKeyAttributeListEnd"
 
-var _TokenType_index = [...]uint16{0, 3, 12, 19, 26, 37, 51, 65, 79, 91, 104, 119, 130, 143, 158, 169, 183, 195, 199, 209, 213, 226, 237, 255, 271, 282, 291, 302, 311, 330, 347, 365, 381, 399, 415, 433, 449, 463, 489, 513, 527, 542, 562, 582, 599, 612, 622, 634, 643, 653, 664, 675, 689, 704, 711, 719, 726, 733, 746, 757, 771, 784, 796, 814, 829, 845, 861}
+var _TokenType_index = [...]uint16{0, 3, 12, 19, 26, 37, 51, 65, 79, 91, 104, 119, 130, 143, 158, 169, 183, 195, 199, 209, 213, 226, 237, 255, 271, 282, 291, 302, 311, 330, 347, 365, 381, 399, 415, 433, 449, 463, 489, 513, 527, 542, 562, 582, 599, 612, 622, 634, 643, 653, 661, 672, 683, 697, 712, 719, 727, 734, 741, 754, 765, 779, 792, 804, 822, 837, 853, 869}
 
 func (i TokenType) String() string {
 	if i < 0 || i >= TokenType(len(_TokenType_index)-1) {

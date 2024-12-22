@@ -83,6 +83,7 @@ const (
 	TokenImageAltText
 	TokenImagePath
 	TokenImageTitle
+	TokenImageEnd
 	TokenSidenoteRef
 	TokenSidenoteDef
 	TokenSidenoteDefEnd
@@ -1512,7 +1513,7 @@ func (lx *Lexer) LexHorizontalRule() {
 // - TokenDefinitionExplanationBegin
 // - TokenText "Explanation of term"
 // - TokenDefinitionExplanationEnd
-func (lx *Lexer) LexDefinition() {
+func (lx *Lexer) LexDefinition() { // @todo: rename to LexDefinitionList and lex multiple definitions in a row
 	Assert(lx.IsStartOfLine(), "lexer state confused")
 	term := lx.NextValids(SpecNonWhitespace)
 	if len(term) == 0 {
