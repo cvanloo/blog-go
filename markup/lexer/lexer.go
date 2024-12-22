@@ -690,6 +690,7 @@ func (lx *Lexer) LexContent() {
 			lx.LexLinkOrSidenoteDefinition()
 		}
 		// @todo: term definitions
+		// @todo: invalid stuff... (don't get stuck here forever)
 	}
 	lx.Emit(TokenEOF)
 }

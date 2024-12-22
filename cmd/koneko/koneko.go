@@ -11,35 +11,13 @@ import (
 	"flag"
 	"os"
 	"errors"
-	"io"
 	"strings"
 	"log"
 
-	. "github.com/cvanloo/blog-go/assert"
+	//. "github.com/cvanloo/blog-go/assert"
 	"github.com/cvanloo/blog-go/markup"
-	"github.com/cvanloo/blog-go/markup/lexer"
+	//"github.com/cvanloo/blog-go/markup/lexer"
 )
-
-func main2() {
-	inName := "-"
-	inFile := os.Stdin
-	inNameDisplay := "<stdin>"
-	if len(os.Args) > 1 {
-		inName = os.Args[1]
-	}
-	if inName != "-" {
-		inNameDisplay = inName
-		inFile = Must(os.Open(inName))
-	}
-	lx := lexer.New()
-	lx.LexSource(inNameDisplay, string(Must(io.ReadAll(inFile))))
-	if len(lx.Errors) > 0 {
-		fmt.Println(errors.Join(lx.Errors...))
-	}
-	for token := range lx.Tokens() {
-		fmt.Println(token)
-	}
-}
 
 type ArrayFlag []string
 
@@ -95,7 +73,7 @@ func app() int {
 }
 
 func openSources(paths []string) (names []string, fds []*os.File, err error) {
-	if len(paths) == 1 && paths[0] == "-" {
+	if len(paths) == 0 || (len(paths) == 1 && paths[0] == "-") {
 		return []string{"<stdin>"}, []*os.File{os.Stdin}, nil
 	}
 	for _, path := range paths {
