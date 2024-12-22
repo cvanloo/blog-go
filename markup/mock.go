@@ -38,7 +38,7 @@ Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu 
 
 ## Lorem Ipsum
 
-Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
+Ut enim ad minim [veniam](https://example.com/), quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
 
 Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.
 
@@ -81,7 +81,12 @@ var LexerTestTokens = MockTokens{
 	{Type: lexer.TokenText, Text: "Lorem Ipsum"},
 	{Type: lexer.TokenSection2Content, Text: ""},
 	{Type: lexer.TokenParagraphBegin, Text: ""},
-	{Type: lexer.TokenText, Text: "Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat."},
+	{Type: lexer.TokenText, Text: "Ut enim ad minim "},
+	{Type: lexer.TokenLinkableBegin, Text: "["},
+	{Type: lexer.TokenText, Text: "veniam"},
+	{Type: lexer.TokenLinkHref, Text: "https://example.com/"},
+	{Type: lexer.TokenLinkableEnd, Text: ""},
+	{Type: lexer.TokenText, Text: ", quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat."},
 	{Type: lexer.TokenParagraphEnd, Text: ""},
 	{Type: lexer.TokenParagraphBegin, Text: ""},
 	{Type: lexer.TokenText, Text: "Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur."},
@@ -133,7 +138,14 @@ var BlogTestStruct = gen.Blog{
 					Heading: gen.StringOnlyContent{gen.Text("Lorem Ipsum")},
 					Content: []gen.Renderable{
 						gen.Paragraph{
-							Content: gen.StringOnlyContent{gen.Text("Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.")},
+							Content: gen.StringOnlyContent{
+								gen.Text("Ut enim ad minim "),
+								gen.Link{
+									Href: "https://example.com/",
+									Name: gen.StringOnlyContent{gen.Text("veniam")},
+								},
+								gen.Text(", quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat."),
+							},
 						},
 						gen.Paragraph{
 							Content: gen.StringOnlyContent{gen.Text("Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.")},
