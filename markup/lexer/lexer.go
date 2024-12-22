@@ -750,7 +750,11 @@ func (lx *Lexer) LexSection1Content() {
 			if lx.IsEOF() {
 				break
 			}
-			if lx.Peek(3) == "```" {
+			if lx.IsTermDefinition() { // @todo: i don't like this
+				lx.LexDefinition()
+			} else if lx.IsHorizontalRule() {
+				lx.LexHorizontalRule()
+			} else if lx.Peek(3) == "```" {
 				lx.LexCodeBlock()
 			} else if lx.Peek(2) == "##" {
 				lx.LexSection2()
@@ -828,7 +832,11 @@ func (lx *Lexer) LexSection2Content() {
 			if lx.IsEOF() {
 				break
 			}
-			if lx.Peek(3) == "```" {
+			if lx.IsTermDefinition() { // @todo: i don't like this
+				lx.LexDefinition()
+			} else if lx.IsHorizontalRule() {
+				lx.LexHorizontalRule()
+			} else if lx.Peek(3) == "```" {
 				lx.LexCodeBlock()
 			} else if lx.Peek(2) == "##" {
 				return // this section ends, next section starts

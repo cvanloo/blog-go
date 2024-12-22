@@ -770,6 +770,70 @@ Check out this cool [website](https://blog.vanloo.ch) I found.
 			},
 		},
 		{
+			name: "Paragraph followed by a term definition (section 1)",
+			source: `
+# Section 1
+
+Download more RAM
+
+RAM
+: Random Access Memory
+
+`,
+			expected: []lexer.Token{
+				{Type: lexer.TokenSection1Begin, Text: "#"},
+				{Type: lexer.TokenText, Text: "Section 1"},
+				{Type: lexer.TokenSection1Content, Text: ""},
+				{Type: lexer.TokenParagraphBegin, Text: ""},
+				{Type: lexer.TokenText, Text: "Download more RAM"},
+				{Type: lexer.TokenParagraphEnd, Text: ""},
+				{Type: lexer.TokenDefinitionTerm, Text: "RAM"},
+				{Type: lexer.TokenDefinitionExplanationBegin, Text: ""},
+				{Type: lexer.TokenText, Text: "Random Access Memory"},
+				{Type: lexer.TokenDefinitionExplanationEnd, Text: ""},
+				{Type: lexer.TokenSection1End, Text: ""},
+				{Type: lexer.TokenEOF, Text: ""},
+			},
+		},
+		{
+			name: "Paragraph followed by a term definition (section 2)",
+			source: `
+# Section 1
+
+## Section 2
+
+Download more RAM and improve CPU speed.
+
+RAM
+: Random Access Memory
+CPU
+: Cheese Processing Unit
+
+`,
+			expected: []lexer.Token{
+				{Type: lexer.TokenSection1Begin, Text: "#"},
+				{Type: lexer.TokenText, Text: "Section 1"},
+				{Type: lexer.TokenSection1Content, Text: ""},
+				{Type: lexer.TokenSection2Begin, Text: "##"},
+				{Type: lexer.TokenText, Text: "Section 2"},
+				{Type: lexer.TokenSection2Content, Text: ""},
+				{Type: lexer.TokenParagraphBegin, Text: ""},
+				{Type: lexer.TokenText, Text: "Download more RAM and improve CPU speed."},
+				{Type: lexer.TokenParagraphEnd, Text: ""},
+				{Type: lexer.TokenDefinitionTerm, Text: "RAM"},
+				{Type: lexer.TokenDefinitionExplanationBegin, Text: ""},
+				{Type: lexer.TokenText, Text: "Random Access Memory"},
+				{Type: lexer.TokenDefinitionExplanationEnd, Text: ""},
+				{Type: lexer.TokenDefinitionTerm, Text: "CPU"},
+				{Type: lexer.TokenDefinitionExplanationBegin, Text: ""},
+				{Type: lexer.TokenText, Text: "Cheese Processing Unit"},
+				{Type: lexer.TokenDefinitionExplanationEnd, Text: ""},
+				{Type: lexer.TokenSection2End, Text: ""},
+				{Type: lexer.TokenSection1End, Text: ""},
+				{Type: lexer.TokenEOF, Text: ""},
+			},
+		},
+		{
 			name: "Paragraph with variously enquoted text",
 			source: `
 # Section 1
