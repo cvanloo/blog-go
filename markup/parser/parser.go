@@ -132,6 +132,8 @@ func Parse(lx LexResult) (blog gen.Blog, err error) {
 		currentAttributes gen.Attributes
 		currentHtmlTag = HtmlTag{Args: map[string]string{}}
 		currentCodeBlock gen.CodeBlock
+		currentImage gen.Image
+		currentBlockquote gen.Blockquote
 	)
 	for lexeme := range lx.Tokens() {
 		level := levels.Top()
@@ -510,6 +512,82 @@ func Parse(lx LexResult) (blog gen.Blog, err error) {
 				currentCodeBlock = gen.CodeBlock{}
 				state = level.ReturnToState
 			}
+		case ParsingImage:
+			switch lexeme.Type {
+			default:
+				err = errors.Join(err, newError(lexeme, state, ErrInvalidToken))
+			case lexer.TokenImageAlt:
+				currentImage.Alt = gen.Text(lexeme.Text)
+			case lexer.TokenImagePath:
+				currentImage.Path = lexeme.Text
+			case lexer.TokenImageTitle:
+				currentImage.Title = gen.Text(lexeme.Text)
+			case lexer.TokenImageEnd:
+				levels.Pop()
+				parent := levels.Top()
+				parent.PushContent(currentImage)
+				currentImage = gen.Image{}
+				state = level.ReturnToState
+			}
+		case ParsingBlockquote:
+			switch lexeme.Type {
+			default:
+				if isTextContent(lexeme.Type) {
+					level.PushText(newTextContent(lexeme))
+				} else {
+					err = errors.Join(err, newError(lexeme, state, ErrInvalidToken))
+				}
+			case lexer.TokenBlockquoteAttrAuthor:
+				currentBlockquote.QuoteText = gen.StringOnlyContent(level.TextValues)
+				level.EmptyText()
+				state = ParsingBlockquoteAuthor
+			case lexer.TokenBlockquoteEnd:
+				levels.Pop()
+				parent := levels.Top()
+				currentBlockquote.QuoteText = gen.StringOnlyContent(level.TextValues)
+				parent.PushContent(currentBlockquote)
+				state = level.ReturnToState
+			}
+		case ParsingBlockquoteAuthor:
+			switch lexeme.Type {
+			default:
+				if isTextContent(lexeme.Type) {
+					level.PushText(newTextContent(lexeme))
+				} else {
+					err = errors.Join(err, newError(lexeme, state, ErrInvalidToken))
+				}
+			case lexer.TokenBlockquoteAttrSource:
+				currentBlockquote.Author = gen.StringOnlyContent(level.TextValues)
+				level.EmptyText()
+				state = ParsingBlockquoteSource
+			case lexer.TokenBlockquoteAttrEnd:
+				currentBlockquote.Author = gen.StringOnlyContent(level.TextValues)
+				level.EmptyText()
+				state = ParsingBlockquoteAfterAttrEnd
+			}
+		case ParsingBlockquoteSource:
+			switch lexeme.Type {
+			default:
+				if isTextContent(lexeme.Type) {
+					level.PushText(newTextContent(lexeme))
+				} else {
+					err = errors.Join(err, newError(lexeme, state, ErrInvalidToken))
+				}
+			case lexer.TokenBlockquoteAttrEnd:
+				currentBlockquote.Source = gen.StringOnlyContent(level.TextValues)
+				level.EmptyText()
+				state = ParsingBlockquoteAfterAttrEnd
+			}
+		case ParsingBlockquoteAfterAttrEnd:
+			switch lexeme.Type {
+			default:
+				err = errors.Join(err, newError(lexeme, state, ErrInvalidToken))
+			case lexer.TokenBlockquoteEnd:
+				levels.Pop()
+				parent := levels.Top()
+				parent.PushContent(currentBlockquote)
+				state = level.ReturnToState
+			}
 		}
 	}
 	return
@@ -591,52 +669,6 @@ func Parse(lx LexResult) (blog gen.Blog, err error) {
 					}
 				}
 				currentHtmlTag = HtmlTag{Args: map[string]string{}}
-				state = level.ReturnToState
-			}
-		case ParsingImage:
-			level := levels.Top()
-			switch lexeme.Type {
-			default:
-				err = errors.Join(err, newError(lexeme, state, errors.New("invalid token")))
-			case lexer.TokenImageTitle:
-				levels.Push(&Level{ReturnToState: ParsingImage})
-				state = ParsingImageTitle
-			case lexer.TokenImageAlt:
-				levels.Push(&Level{ReturnToState: ParsingImage})
-				state = ParsingImageAlt
-			case lexer.TokenImagePath:
-				currentImage.Name = lexeme.Text
-			case lexer.TokenImageEnd:
-				_ = levels.Pop()
-				paren := levels.Top()
-				paren.PushContent(currentImage)
-				currentImage = gen.Image{}
-				state = level.ReturnToState
-			}
-		case ParsingImageTitle:
-			level := levels.Top()
-			switch {
-			default:
-				err = errors.Join(err, newError(lexeme, state, errors.New("invalid token")))
-			case isTextContent(lexeme.Type):
-				level.PushText(newTextContent(lexeme))
-			case lexeme.Type == lexer.TokenImageAttrEnd:
-				_ = levels.Pop()
-				currentImage.Title = gen.StringOnlyContent(level.TextValues)
-				Assert(level.ReturnToState == ParsingImage, "confused parser state")
-				state = level.ReturnToState
-			}
-		case ParsingImageAlt:
-			level := levels.Top()
-			switch {
-			default:
-				err = errors.Join(err, newError(lexeme, state, errors.New("invalid token")))
-			case isTextContent(lexeme.Type):
-				level.PushText(newTextContent(lexeme))
-			case lexeme.Type == lexer.TokenImageAttrEnd:
-				_ = levels.Pop()
-				currentImage.Alt = gen.StringOnlyContent(level.TextValues)
-				Assert(level.ReturnToState == ParsingImage, "confused parser state")
 				state = level.ReturnToState
 			}
 		case ParsingBlockquote:

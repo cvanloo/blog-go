@@ -1396,6 +1396,7 @@ func (lx *Lexer) LexLinkOrSidenoteDefinition() {
 // - TokenImageBegin "!["
 // - TokenImageAltText "Alt Text"
 // - TokenImagePath "/path/to/image"
+// - TokenImageEnd
 //
 //	![Alt Text](/path/to/image "Optional Image Title")
 //
@@ -1403,14 +1404,14 @@ func (lx *Lexer) LexLinkOrSidenoteDefinition() {
 // - TokenImageAltText "Alt Text"
 // - TokenImagePath "/path/to/image"
 // - TokenImageTitle "Optional Image Title"
+// - TokenImageEnd
 func (lx *Lexer) LexImage() {
 	Assert(lx.Peek(2) == "![", "lexer state confused")
 	lx.Next(2)
 	lx.Emit(TokenImageBegin)
 	lx.NextUntilMatch("]")
 	lx.Emit(TokenImageAltText)
-	lx.Next1()
-	lx.Skip()
+	lx.ExpectAndSkip("]")
 	if lx.Expect("(") {
 		lx.SkipWhitespaceNoNewLine()
 		if lx.Peek1() == '\'' {
@@ -1433,8 +1434,10 @@ func (lx *Lexer) LexImage() {
 			lx.Emit(TokenImageTitle)
 			lx.ExpectAndSkip(`"`)
 		}
+		lx.SkipWhitespaceNoNewLine()
 		lx.ExpectAndSkip(`)`)
 	}
+	lx.Emit(TokenImageEnd)
 }
 
 // LexBlockQuotes lexes block quotes of the form
