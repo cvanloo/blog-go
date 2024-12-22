@@ -5,11 +5,10 @@ import (
 
 	"github.com/go-test/deep"
 
-	//"github.com/cvanloo/blog-go/markup"
+	"github.com/cvanloo/blog-go/markup"
 	"github.com/cvanloo/blog-go/markup/lexer"
 )
 
-/*
 func TestLexer(t *testing.T) {
 	testBlog := markup.BlogTestSource
 	testExpected := markup.LexerTestTokens
@@ -25,7 +24,7 @@ func TestLexer(t *testing.T) {
 		t.FailNow()
 	}
 	if len(lx.Lexemes) != len(testExpected) {
-		t.Errorf("expected %d tokens, got %d tokens", len(lx.Lexemes), len(testExpected))
+		t.Errorf("expected %d tokens, got %d tokens", len(testExpected), len(lx.Lexemes))
 		l := min(len(lx.Lexemes), len(testExpected))
 		for i := range l {
 			if lx.Lexemes[i].Type != testExpected[i].Type {
@@ -36,26 +35,27 @@ func TestLexer(t *testing.T) {
 			c := len(lx.Lexemes) - len(testExpected)
 			t.Errorf("lexer produced too many tokens: +%d", c)
 			for i := range c {
-				t.Errorf("unexpected token: %s", lx.Lexemes[len(lx.Lexemes)-1+i].Type)
+				t.Errorf("unexpected token: %s", lx.Lexemes[len(testExpected)+i].Type)
 			}
 		} else {
 			c := len(testExpected) - len(lx.Lexemes)
 			t.Errorf("lexer produced too few tokens: -%d", c)
 			for i := range c {
-				t.Errorf("missing token: %s", testExpected[len(testExpected)-1+i].Type)
+				t.Errorf("missing token: %s", testExpected[len(lx.Lexemes)+i].Type)
+			}
+		}
+	} else {
+		for i, tok := range lx.Lexemes {
+			e := testExpected[i]
+			if e.Type != tok.Type {
+				t.Errorf("wrong token type at index: %d, expected: %s, got: %s", i, e.Type, tok.Type)
+			}
+			if e.Text != "" && tok.Text != e.Text {
+				t.Errorf("error at index: %d, token: %s, expected: `%s`, got: `%s`", i, tok.Type, e.Text, tok.Text)
 			}
 		}
 	}
-	for i, tok := range lx.Lexemes {
-		e := testExpected[i]
-		if e.Type != tok.Type {
-			t.Errorf("wrong token type at index: %d, expected: %s, got: %s", i, e.Type, tok.Type)
-		}
-		if e.Text != "" && tok.Text != e.Text {
-			t.Errorf("error at index: %d, token: %s, expected: `%s`, got: `%s`", i, tok.Type, e.Text, tok.Text)
-		}
-	}
-}*/
+}
 
 func TestLexMeta(t *testing.T) {
 	var testCases = []TestCase{

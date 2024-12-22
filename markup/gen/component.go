@@ -13,6 +13,7 @@ import (
 	"net/url"
 
 	. "github.com/cvanloo/blog-go/assert"
+	. "github.com/cvanloo/blog-go/stack"
 )
 
 //go:embed html
@@ -85,7 +86,7 @@ type (
 		ID string
 		Fields map[string]string
 	}
-	Blog struct {
+	Blog struct { // @todo: make Meta struct{}
 		UrlPath string
 		Author Author
 		Lang string
@@ -99,7 +100,7 @@ type (
 		Abstract StringRenderable
 		Sections []Section
 		Relevant *RelevantBox
-		SidenoteDefinitions map[string]StringRenderable
+		SidenoteDefinitions map[string]StringRenderable // ID -> Content
 		LinkDefinitions map[string]string // ID -> Href
 	}
 	Site struct {
@@ -174,7 +175,7 @@ type (
 		Lines []string
 	}
 	Sidenote struct {
-		ID string
+		Ref string
 		// @todo: For the title attribute we can't have <b> and stuff...
 		Word, Content StringRenderable
 	}
@@ -344,16 +345,16 @@ func (e EscapedString) Text() string {
 }
 
 const (
-	NoBreakSpace EscapedString = "&nbsp;"
-	EMDash EscapedString = "&mdash;"
-	LeftDoubleQuote EscapedString = "&ldquo;"
-	RightDoubleQuote EscapedString = "&rdquo;"
-	Ellipsis EscapedString = "…"
-	Prime EscapedString = "&prime;"
-	DoublePrime EscapedString = "&Prime;"
-	TripplePrime EscapedString = "&tprime;"
-	QuadruplePrime EscapedString = "&qprime;"
-	ReversedPrime EscapedString = "&bprime;"
+	AmpNoBreakSpace EscapedString = "&nbsp;"
+	AmpEMDash EscapedString = "&mdash;"
+	AmpLeftDoubleQuote EscapedString = "&ldquo;"
+	AmpRightDoubleQuote EscapedString = "&rdquo;"
+	AmpEllipsis EscapedString = "…"
+	AmpPrime EscapedString = "&prime;"
+	AmpDoublePrime EscapedString = "&Prime;"
+	AmpTripplePrime EscapedString = "&tprime;"
+	AmpQuadruplePrime EscapedString = "&qprime;"
+	AmpReversedPrime EscapedString = "&bprime;"
 )
 
 func (sn Sidenote) Render() (template.HTML, error) {
@@ -364,6 +365,74 @@ func (sn Sidenote) Text() string {
 	bs := &bytes.Buffer{}
 	PanicIf(pages.Execute(bs, "sidenote.gohtml", sn)) // @todo: how do we do error handling here? I guess Text() must also return an error after all?
 	return bs.String()
+}
+
+func (sn Sidenote) ID() string {
+	// @todo: implement incrementing counter
+	return ""
+}
+
+func (b *Blog) ResolveReferences() {
+	for id, href := range b.LinkDefinitions {
+		for link := range b.Links() {
+			if link.Ref == id {
+				link.Href = href
+			}
+		}
+	}
+	//for id, content := range b.SidenoteDefinitions {
+	//}
+}
+
+func (b *Blog) Links() func(func(*Link) bool) { // @todo: actually make this work
+	return func(yield func(*Link) bool) {
+		contents := Stack[Renderable]{}
+		for _, section := range b.Sections {
+			for _, content := range section.Content {
+				contents = contents.Push(content)
+			}
+		}
+		for len(contents) > 0 {
+			contents, content := contents.Pop()
+			switch el := content.(type) {
+			case Section:
+				for _, c := range el.Content {
+					contents = contents.Push(c)
+				}
+			case Paragraph:
+				contents = contents.Push(el.Content)
+			case StringOnlyContent:
+				for _, c := range el {
+					contents = contents.Push(c)
+				}
+			case Strong:
+				for _, c := range el.StringOnlyContent {
+					contents = contents.Push(c)
+				}
+			case Emphasis:
+			case EmphasisStrong:
+			case EnquoteDouble:
+			case EnquoteAngled:
+			case Strikethrough:
+			case Marker:
+			case *Link:
+				if !yield(el) {
+					return
+				}
+			case Sidenote:
+				contents = contents.Push(el.Word)
+				contents = contents.Push(el.Content)
+			case Image:
+				contents = contents.Push(el.Title)
+				contents = contents.Push(el.Alt)
+			case Blockquote:
+				contents = contents.Push(el.QuoteText)
+				contents = contents.Push(el.Author)
+				contents = contents.Push(el.Source)
+				// reading items?
+			}
+		}
+	}
 }
 
 func (b *Blog) Canonical() string {

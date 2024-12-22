@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/go-test/deep"
-	"github.com/kr/pretty"
+	//"github.com/kr/pretty"
 
 	"github.com/cvanloo/blog-go/markup"
 	"github.com/cvanloo/blog-go/markup/parser"
@@ -18,5 +18,5 @@ func TestParsingBlog(t *testing.T) {
 	if diff := deep.Equal(blog, markup.BlogTestStruct); diff != nil {
 		t.Error(diff)
 	}
-	t.Logf("%# v", pretty.Formatter(blog))
+	//t.Logf("%# v", pretty.Formatter(blog))
 }

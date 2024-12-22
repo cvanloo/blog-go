@@ -124,7 +124,7 @@ func sidenoteHtmlTagHandler(blog *gen.Blog, htmlTag HtmlTag) (gen.StringRenderab
 		content = gen.StringOnlyContent(c1.Text)
 	}
 	return gen.Sidenote{
-		ID: fmt.Sprintf("%d", gen.NextID()),
+		Ref: fmt.Sprintf("%d", gen.NextID()),
 		Word: word,
 		Content: content,
 	}, nil

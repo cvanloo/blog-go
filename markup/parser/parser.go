@@ -10,6 +10,7 @@ import (
 	//"github.com/kr/pretty"
 
 	. "github.com/cvanloo/blog-go/assert"
+	. "github.com/cvanloo/blog-go/stack"
 	"github.com/cvanloo/blog-go/markup/lexer"
 	"github.com/cvanloo/blog-go/markup/gen"
 )
@@ -639,7 +640,7 @@ func Parse(lx LexResult) (blog gen.Blog, err error) {
 				state = ParsingLinkableAfterRef
 			case lexer.TokenSidenoteRef:
 				currentSidenote.Word = gen.StringOnlyContent(level.TextValues)
-				currentSidenote.ID = lexeme.Text
+				currentSidenote.Ref = lexeme.Text
 				state = ParsingSidenoteAfterRef
 			case lexer.TokenSidenoteContent:
 				currentSidenote.Word = gen.StringOnlyContent(level.TextValues)
@@ -941,25 +942,25 @@ func newTextContent(lexeme lexer.Token) gen.StringRenderable {
 		default:
 			panic("programmer error: lexer and parser out of sync about what constitutes a &<...>; special character")
 		case "~", "\u00A0":
-			return gen.NoBreakSpace
+			return gen.AmpNoBreakSpace
 		case "---", "&mdash;":
-			return gen.EMDash
+			return gen.AmpEMDash
 		case "&ldquo;":
-			return gen.LeftDoubleQuote
+			return gen.AmpLeftDoubleQuote
 		case "&rdquo;":
-			return gen.RightDoubleQuote
+			return gen.AmpRightDoubleQuote
 		case "...", "…":
-			return gen.Ellipsis
+			return gen.AmpEllipsis
 		case "&prime;":
-			return gen.Prime
+			return gen.AmpPrime
 		case "&Prime;":
-			return gen.DoublePrime
+			return gen.AmpDoublePrime
 		case "&tprime;":
-			return gen.TripplePrime
+			return gen.AmpTripplePrime
 		case "&qprime;":
-			return gen.QuadruplePrime
+			return gen.AmpQuadruplePrime
 		case "&bprime;":
-			return gen.ReversedPrime
+			return gen.AmpReversedPrime
 		}
 	}
 	panic("unreachable")
@@ -1044,40 +1045,5 @@ func setMetaKeyValuePair(blog *gen.Blog, key string, value gen.StringRenderable)
 			blog.EnableRevisionWarning = false
 		}
 	}
-	return
-}
-
-type (
-	Stack[T any] []T
-	Maybe[T any] struct {
-		HasValue bool
-		Value T
-	}
-)
-
-func (s Stack[T]) Push(v T) Stack[T] {
-	return append(s, v)
-}
-
-func (s Stack[T]) Pop() (Stack[T], T) {
-	l := len(s)
-	Assert(l > 0, "Pop called on empty stack (maybe you want to use SafePop?)")
-	return s[:l-1], s[l-1]
-}
-
-func (s Stack[T]) SafePop() (Stack[T], Maybe[T]) {
-	l := len(s)
-	if l > 0 {
-		return s[:l-1], Maybe[T]{true, s[l-1]}
-	}
-	return s, Maybe[T]{HasValue: false}
-}
-
-func (s Stack[T]) Peek() T {
-	l := len(s)
-	return s[l-1]
-}
-
-func (s Stack[T]) Empty() (empty Stack[T]) {
 	return
 }

@@ -1,7 +1,7 @@
 .PHONY: all .FORCE
 
 RUN=Test*
-RUN=TestLex*
+#RUN=TestLex*
 #RUN=TestParse*
 
 all: .FORCE
