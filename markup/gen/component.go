@@ -159,6 +159,7 @@ type (
 		Name StringRenderable
 	}
 	CodeBlock struct {
+		Attributes
 		Lines []string
 	}
 	Sidenote struct {
@@ -289,6 +290,13 @@ func (l Link) Text() string {
 	err := pages.Execute(bs, "link.gohtml", l)
 	_ = err // @todo
 	return bs.String()
+}
+
+func (l Link) NameOrHref() string {
+	if l.Name != nil {
+		return l.Name.Text()
+	}
+	return l.Href
 }
 
 func (e EscapedString) Render() (template.HTML, error) {

@@ -131,6 +131,7 @@ func Parse(lx LexResult) (blog gen.Blog, err error) {
 		currentSection1, currentSection2 gen.Section
 		currentAttributes gen.Attributes
 		currentHtmlTag = HtmlTag{Args: map[string]string{}}
+		currentCodeBlock gen.CodeBlock
 	)
 	for lexeme := range lx.Tokens() {
 		level := levels.Top()
@@ -431,6 +432,84 @@ func Parse(lx LexResult) (blog gen.Blog, err error) {
 				state = level.ReturnToState
 			}
 		case ParsingParagraph:
+			// @todo: case lexer.TokenEnquoteSingleBegin:
+			switch lexeme.Type {
+			default:
+				if isTextContent(lexeme.Type) {
+					level.PushText(newTextContent(lexeme))
+				} else {
+					err = errors.Join(err, newError(lexeme, state, ErrInvalidToken))
+				}
+			case lexer.TokenEmphasisBegin:
+				levels.Push(&Level{ReturnToState: ParsingParagraph})
+				state = ParsingEmphasis
+			case lexer.TokenStrongBegin:
+				levels.Push(&Level{ReturnToState: ParsingParagraph})
+				state = ParsingStrong
+			case lexer.TokenEmphasisStrongBegin:
+				levels.Push(&Level{ReturnToState: ParsingParagraph})
+				state = ParsingEmphasisStrong
+			case lexer.TokenEnquoteDoubleBegin:
+				levels.Push(&Level{ReturnToState: ParsingParagraph})
+				state = ParsingEnquoteDouble
+			case lexer.TokenEnquoteAngledBegin:
+				levels.Push(&Level{ReturnToState: ParsingParagraph})
+				state = ParsingEnquoteAngled
+			case lexer.TokenStrikethroughBegin:
+				levels.Push(&Level{ReturnToState: ParsingParagraph})
+				state = ParsingStrikethrough
+			case lexer.TokenMarkerBegin:
+				levels.Push(&Level{ReturnToState: ParsingParagraph})
+				state = ParsingMarker
+			case lexer.TokenHtmlTagOpen:
+				levels.Push(&Level{ReturnToState: ParsingParagraph})
+				currentHtmlTag.Name = lexeme.Text
+				state = ParsingHtmlElement
+			case lexer.TokenLinkableBegin:
+				levels.Push(&Level{ReturnToState: ParsingParagraph})
+				state = ParsingLinkable
+			case lexer.TokenParagraphEnd:
+				levels.Pop()
+				parent := levels.Top()
+				parent.PushContent(gen.Paragraph{
+					Content: gen.StringOnlyContent(level.TextValues),
+				})
+				state = level.ReturnToState
+			}
+		case ParsingCodeBlock:
+			switch lexeme.Type {
+			default:
+				err = errors.Join(err, newError(lexeme, state, ErrInvalidToken))
+			case lexer.TokenCodeBlockLang:
+				currentCodeBlock.Attributes.SetAttr("Lang", lexeme.Text)
+			case lexer.TokenAttributeListBegin:
+				levels.Push(&Level{ReturnToState: ParsingCodeBlockAfterAttr})
+				state = ParsingAttributeList
+			case lexer.TokenText:
+				level.PushString(lexeme.Text)
+				state = ParsingCodeBlockAfterAttr
+			case lexer.TokenCodeBlockEnd:
+				// empty code block
+				levels.Pop()
+				parent := levels.Top()
+				parent.PushContent(currentCodeBlock)
+				currentCodeBlock = gen.CodeBlock{}
+				state = level.ReturnToState
+			}
+		case ParsingCodeBlockAfterAttr:
+			switch lexeme.Type {
+			default:
+				err = errors.Join(err, newError(lexeme, state, ErrInvalidToken))
+			case lexer.TokenText:
+				level.PushString(lexeme.Text)
+			case lexer.TokenCodeBlockEnd:
+				levels.Pop()
+				parent := levels.Top()
+				currentCodeBlock.Lines = level.Strings,
+				parent.PushContent(currentCodeBlock)
+				currentCodeBlock = gen.CodeBlock{}
+				state = level.ReturnToState
+			}
 		}
 	}
 	return
@@ -449,47 +528,6 @@ func Parse(lx LexResult) (blog gen.Blog, err error) {
 	for lexeme := range lx.Tokens() {
 		//log.Printf("[%s/%s] %# v", state, lexeme, pretty.Formatter(levels))
 		switch state {
-		case ParsingParagraph:
-			level := levels.Top()
-			switch {
-			default:
-				err = errors.Join(err, newError(lexeme, state, errors.New("invalid token, expected one of ParagraphEnd, or text content")))
-			case isTextContent(lexeme.Type):
-				level.PushText(newTextContent(lexeme))
-			case lexeme.Type == lexer.TokenParagraphEnd:
-				_ = levels.Pop()
-				paren := levels.Top()
-				paren.PushContent(gen.Paragraph{
-					Content: gen.StringOnlyContent(level.TextValues),
-				})
-				state = level.ReturnToState
-			case lexeme.Type == lexer.TokenEmphasisBegin:
-				levels.Push(&Level{ReturnToState: ParsingParagraph})
-				state = ParsingEmphasis
-			case lexeme.Type == lexer.TokenStrongBegin:
-				levels.Push(&Level{ReturnToState: ParsingParagraph})
-				state = ParsingStrong
-			case lexeme.Type == lexer.TokenEmphasisStrongBegin:
-				levels.Push(&Level{ReturnToState: ParsingParagraph})
-				state = ParsingEmphasisStrong
-			case lexeme.Type == lexer.TokenEnquoteSingleBegin:
-				levels.Push(&Level{ReturnToState: ParsingParagraph})
-				state = ParsingEnquoteSingle
-			case lexeme.Type == lexer.TokenEnquoteDoubleBegin:
-				levels.Push(&Level{ReturnToState: ParsingParagraph})
-				state = ParsingEnquoteDouble
-			case lexeme.Type == lexer.TokenEnquoteAngledBegin:
-				levels.Push(&Level{ReturnToState: ParsingParagraph})
-				state = ParsingEnquoteAngled
-			//case lexeme.Type == lexer.TokenLink:
-			//	levels.Push(&Level{ReturnToState: ParsingParagraph})
-			//	state = ParsingLink
-			case lexeme.Type == lexer.TokenHtmlTagOpen:
-				// @todo: this is a tad bit tricky (StringRenderable is part of the paragraph, Renderable ends the paragraph, and comes after it)
-				levels.Push(&Level{ReturnToState: ParsingParagraph})
-				currentHtmlTag.Name = lexeme.Text
-				state = ParsingHtmlTag
-			}
 		case ParsingHtmlTag:
 			level := levels.Top()
 			switch lexeme.Type {
@@ -553,24 +591,6 @@ func Parse(lx LexResult) (blog gen.Blog, err error) {
 					}
 				}
 				currentHtmlTag = HtmlTag{Args: map[string]string{}}
-				state = level.ReturnToState
-			}
-		case ParsingCodeBlock:
-			level := levels.Top()
-			switch lexeme.Type {
-			default:
-				err = errors.Join(err, newError(lexeme, state, errors.New("invalid token")))
-			case lexer.TokenCodeBlockLang: // @todo
-			case lexer.TokenCodeBlockLineFirst:
-			case lexer.TokenCodeBlockLineLast:
-			case lexer.TokenText:
-				level.PushString(lexeme.Text)
-			case lexer.TokenCodeBlockEnd:
-				_ = levels.Pop()
-				paren := levels.Top()
-				paren.PushContent(gen.CodeBlock{
-					Lines: level.Strings,
-				})
 				state = level.ReturnToState
 			}
 		case ParsingImage:
@@ -840,7 +860,7 @@ func isTextContent(tokenType lexer.TokenType) bool {
 	switch tokenType {
 	default:
 		return false
-	case lexer.TokenMono, lexer.TokenText, lexer.TokenAmpSpecial:
+	case lexer.TokenMono, lexer.TokenText, lexer.TokenAmpSpecial, lexer.TokenLinkify:
 		// @todo: what else is text content?
 		return true
 	}
@@ -854,6 +874,10 @@ func newTextContent(lexeme lexer.Token) gen.StringRenderable {
 		return gen.Mono(lexeme.Text)
 	case lexer.TokenText:
 		return gen.Text(lexeme.Text)
+	case lexer.TokenLinkify:
+		return gen.Link{
+			Href: lexeme.Text,
+		}
 	case lexer.TokenAmpSpecial:
 		switch lexeme.Text {
 		default:

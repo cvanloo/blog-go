@@ -902,7 +902,7 @@ func (lx *Lexer) LexCodeBlock() {
 		lx.LexAttributeList()
 	}
 	lx.ExpectAndSkip("\n")
-	lx.NextUntilMatch("```")
+	lx.NextUntilMatch("```") // @todo: lex line-by-line
 	lx.Emit(TokenText)
 	lx.Expect("```")
 	lx.Emit(TokenCodeBlockEnd)
