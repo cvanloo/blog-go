@@ -1,12 +1,12 @@
 package parser
 
 import (
-	//"errors"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
 	"strconv"
-	//"log"
+	"log"
 
 	//"github.com/kr/pretty"
 
@@ -105,34 +105,217 @@ type ParseState int
 
 const (
 	ParsingStart ParseState = iota
+	ParsingDocument
 	ParsingMeta
 	ParsingMetaVal
-	ParsingDocument
+	ParsingAttributeList
 	ParsingSection1
+	ParsingSection1AfterAttributeList
 	ParsingSection1Content
-	ParsingSection2
-	ParsingSection2Content
-	ParsingHtmlTag
-	ParsingHtmlTagContent
-	ParsingParagraph
-	ParsingCodeBlock
-	ParsingImage
-	ParsingImageTitle
-	ParsingImageAlt
-	ParsingBlockquote
-	ParsingBlockquoteAttrAuthor
-	ParsingBlockquoteAttrSource
-	ParsingEnquoteSingle
-	ParsingEnquoteDouble
-	ParsingEnquoteAngled
-	ParsingEmphasis
-	ParsingStrong
-	ParsingEmphasisStrong
-	ParsingLink
+)
+
+var (
+	ErrInvalidToken = errors.New("invalid token")
+	ErrInvalidMetaKey = errors.New("invalid meta key")
+	ErrSectionMissingHeading = errors.New("section must have a heading")
 )
 
 func Parse(lx LexResult) (blog gen.Blog, err error) {
-	/*
+	state := ParsingStart
+	levels := Levels{}
+	levels.Push(&Level{ReturnToState: ParsingStart})
+	var (
+		currentSection1 gen.Section
+		currentAttributes gen.Attributes
+	)
+	for lexeme := range lx.Tokens() {
+		level := levels.Top()
+		switch state {
+		default:
+			panic(fmt.Errorf("parser state not implemented: %s", state))
+		case ParsingStart:
+			switch lexeme.Type {
+			default:
+				err = errors.Join(err, newError(lexeme, state, ErrInvalidToken))
+			case lexer.TokenMetaBegin:
+				levels.Push(&Level{ReturnToState: ParsingDocument})
+				state = ParsingMeta
+			case lexer.TokenHtmlTagOpen:
+				levels.Push(&Level{ReturnToState: ParsingDocument})
+				state = ParsingHtmlTag
+			case lexer.TokenSection1Begin:
+				levels.Push(&Level{ReturnToState: ParsingDocument})
+				state = ParsingSection1
+			case lexer.TokenDefinitionTerm:
+				levels.Push(&Level{ReturnToState: ParsingDocument})
+				state = ParsingTermDefinition
+			case lexer.TokenLinkDef:
+				levels.Push(&Level{ReturnToState: ParsingDocument})
+				state = ParsingLinkDefinition
+			case lexer.TokenSidenoteDef:
+				levels.Push(&Level{ReturnToState: ParsingDocument})
+				state = ParsingSidenoteDefinition
+			case lexer.TokenEOF:
+				levels.Pop()
+				Assert(levels.Len() == 0, "not all levels popped")
+			}
+		case ParsingDocument:
+			switch lexeme.Type {
+			default:
+				err = errors.Join(err, newError(lexeme, state, ErrInvalidToken))
+			case lexer.TokenHtmlTagOpen:
+				levels.Push(&Level{ReturnToState: ParsingDocument})
+				state = ParsingHtmlTag
+			case lexer.TokenSection1Begin:
+				levels.Push(&Level{ReturnToState: ParsingDocument})
+				state = ParsingSection1
+			case lexer.TokenDefinitionTerm:
+				levels.Push(&Level{ReturnToState: ParsingDocument})
+				state = ParsingTermDefinition
+			case lexer.TokenLinkDef:
+				levels.Push(&Level{ReturnToState: ParsingDocument})
+				state = ParsingLinkDefinition
+			case lexer.TokenSidenoteDef:
+				levels.Push(&Level{ReturnToState: ParsingDocument})
+				state = ParsingSidenoteDefinition
+			case lexer.TokenEOF:
+				levels.Pop()
+				Assert(levels.Len() == 0, "not all levels popped")
+			}
+		case ParsingMeta:
+			switch lexeme.Type {
+			default:
+				err = errors.Join(err, newError(lexeme, state, ErrInvalidToken))
+			case lexer.TokenMetaKey:
+				if !checkMetaKey(lexeme.Text) {
+					err = errors.Join(err, newError, ErrInvalidMetaKey))
+				}
+				level.PushString(lexeme.Text)
+				state = ParsingMetaVal
+			case lexer.TokenMetaEnd:
+				levels.Pop()
+				state = level.ReturnToState
+			}
+		case ParsingMetaVal:
+			switch lexeme.Type {
+			default:
+				if isTextContent(lexeme.Type) {
+					level.PushText(newTextContent(lexeme))
+				} else {
+					err = errors.Join(err, newError(lexeme, state, ErrInvalidToken))
+				}
+			case lexer.TokenMetaKey:
+				// finish current key
+				key := level.PopString()
+				setMetaKeyValuePair(&blog, metaKey, gen.StringOnlyContent(level.TextValues))
+				level.EmptyText()
+				// start next key
+				if !checkMetaKey(lexeme.Text) {
+					err = errors.Join(err, newError, ErrInvalidMetaKey))
+				}
+				level.PushString(lexeme.Text)
+			case lexer.TokenMetaEnd:
+				// finish last key
+				key := level.PopString()
+				setMetaKeyValuePair(&blog, metaKey, gen.StringOnlyContent(level.TextValues))
+				level.EmptyText()
+				// finish level
+				levels.Pop()
+				state = level.ReturnToState
+			}
+		case ParsingAttributeList:
+			switch lexeme.Type {
+			default:
+				err = errors.Join(err, newError(lexeme, state, ErrInvalidToken))
+			case lexer.TokenAttributeListID:
+				currentAttributes.ID = lexeme.Text
+				state = ParsingAttributeListAfterID
+			case lexer.TokenAttributeListKey:
+				level.PushString(lexeme.Text)
+				state = ParsingAttributeListVal
+			case lexer.TokenAttributeListEnd:
+				levels.Pop()
+				state = level.ReturnToState
+			}
+		case ParsingAttributeListAfterID:
+			switch lexeme.Type {
+			default:
+				err = errors.Join(err, newError(lexeme, state, ErrInvalidToken))
+			case lexer.TokenAttributeListKey:
+				level.PushString(lexeme.Text)
+				state = ParsingAttributeListVal
+			case lexer.TokenAttributeListEnd:
+				levels.Pop()
+				state = level.ReturnToState
+			}
+		case ParsingAttributeListVal:
+			switch lexeme.Type {
+			default:
+				if isTextContent(lexeme.Type) {
+					level.PushText(newTextContent(lexeme))
+				} else {
+					err = errors.Join(err, newError(lexeme, state, ErrInvalidToken))
+				}
+			case lexer.TokenAttributeListKey:
+				// finish previous key
+				key := level.PopString()
+				val := gen.StringOnlyContent(level.TextValues)
+				currentAttributes.SetAttr(key, val.Text())
+				// start next key
+				level.PushString(lexeme.Text)
+			case lexer.TokenAttributeListEnd:
+				// finish last key
+				key := level.PopString()
+				val := gen.StringOnlyContent(level.TextValues)
+				currentAttributes.SetAttr(key, val.Text())
+				// finish level
+				levels.Pop()
+				state = level.ReturnToState
+			}
+		case ParsingSection1:
+			switch {
+			default:
+				err = errors.Join(err, newError(lexeme, state, ErrInvalidToken))
+			case isTextContent(lexeme.Type):
+				level.PushText(newTextContent(lexeme))
+			case lexeme.Type == lexer.TokenAttributeListBegin:
+				levels.Push(&Level{ReturnToState: ParsingSection1AfterAttributeList})
+				state = ParsingAttributeList
+			case lexeme.Type == lexer.TokenSection1Content:
+				if len(level.TextValues) == 0 {
+					err = errors.Join(err, newError(lexeme, state, ErrSectionMissingHeading))
+				}
+				currentSection1 = gen.Section{
+					Level: 1,
+					Heading: gen.StringOnlyContent(level.TextValues),
+				}
+				level.EmptyText()
+				state = ParsingSection1Content
+			}
+		case ParsingSection1AfterAttributeList:
+			switch lexeme.Type {
+			default:
+				err = errors.Join(err, newError(lexeme, state, ErrInvalidToken))
+			case lexer.TokenSection1Content:
+				if len(level.TextValues) == 0 {
+					err = errors.Join(err, newError(lexeme, state, ErrSectionMissingHeading))
+				}
+				currentSection1 = gen.Section{
+					Attributes: currentAttributes,
+					Level: 1,
+					Heading: gen.StringOnlyContent(level.TextValues),
+				}
+				level.EmptyText()
+				currentAttributes = gen.Attributes{}
+				state = ParsingSection1Content
+			}
+		case ParsingSection1Content:
+		}
+	}
+	return
+}
+
+func Parse(lx LexResult) (blog gen.Blog, err error) {
 	state := ParsingStart
 	levels := Levels{}
 	var (
@@ -145,95 +328,6 @@ func Parse(lx LexResult) (blog gen.Blog, err error) {
 	for lexeme := range lx.Tokens() {
 		//log.Printf("[%s/%s] %# v", state, lexeme, pretty.Formatter(levels))
 		switch state {
-		default:
-			panic(fmt.Errorf("parser state not implemented: %s", state))
-		case ParsingStart:
-			switch lexeme.Type {
-			default:
-				err = errors.Join(err, newError(lexeme, state, errors.New("invalid token, expected one of MetaBegin, HtmlTagOpen, Section1")))
-			case lexer.TokenMetaBegin:
-				levels.Push(&Level{ReturnToState: ParsingDocument})
-				state = ParsingMeta
-			case lexer.TokenHtmlTagOpen:
-				levels.Push(&Level{ReturnToState: ParsingDocument})
-				currentHtmlTag.Name = lexeme.Text
-				state = ParsingHtmlTag
-			case lexer.TokenSection1Begin:
-				levels.Push(&Level{ReturnToState: ParsingDocument})
-				state = ParsingSection1
-			}
-		case ParsingMeta:
-			level := levels.Top()
-			switch lexeme.Type {
-			default:
-				err = errors.Join(err, newError(lexeme, state, errors.New("invalid token, expected one of MetaKey, MetaEnd")))
-			case lexer.TokenMetaKey:
-				if !checkMetaKey(lexeme.Text) {
-					err = errors.Join(err, newError(lexeme, state, fmt.Errorf("unrecognized meta key: %s", lexeme.Text)))
-				}
-				level.PushString(lexeme.Text)
-				state = ParsingMetaVal
-			case lexer.TokenMetaEnd:
-				_ = levels.Pop()
-				state = level.ReturnToState
-			}
-		case ParsingMetaVal:
-			level := levels.Top()
-			switch lexeme.Type {
-			default:
-				if isTextContent(lexeme.Type) {
-					level.PushText(newTextContent(lexeme))
-				} else {
-					err = errors.Join(err, newError(lexeme, state, errors.New("invalid token, expected one of MetaKey, MetaEnd, string content")))
-				}
-			case lexer.TokenMetaKey:
-				metaKey := level.PopString()
-				setMetaKeyValuePair(&blog, metaKey, gen.StringOnlyContent(level.TextValues))
-				level.EmptyText()
-				if !checkMetaKey(lexeme.Text) {
-					err = errors.Join(err, newError(lexeme, state, fmt.Errorf("unrecognized meta key: %s", lexeme.Text)))
-				}
-				level.PushString(lexeme.Text)
-			case lexer.TokenMetaEnd:
-				metaKey := level.PopString()
-				setMetaKeyValuePair(&blog, metaKey, gen.StringOnlyContent(level.TextValues))
-				level.EmptyText()
-				_ = levels.Pop()
-				state = level.ReturnToState
-			}
-		case ParsingDocument:
-			switch lexeme.Type {
-			default:
-				err = errors.Join(err, newError(lexeme, state, errors.New("invalid token, expected one of Section1, HtmlTagOpen")))
-			case lexer.TokenSection1Begin:
-				levels.Push(&Level{ReturnToState: ParsingDocument})
-				state = ParsingSection1
-			case lexer.TokenHtmlTagOpen:
-				levels.Push(&Level{ReturnToState: ParsingDocument})
-				currentHtmlTag.Name = lexeme.Text
-				state = ParsingHtmlTag
-			case lexer.TokenEOF:
-				// @todo
-			}
-		case ParsingSection1:
-			level := levels.Top()
-			switch {
-			default:
-				err = errors.Join(err, newError(lexeme, state, errors.New("invalid token, expected one of Section1Content or text content")))
-			case isTextContent(lexeme.Type):
-				level.PushText(newTextContent(lexeme))
-			case lexeme.Type == lexer.TokenSection1Content:
-				if len(level.TextValues) == 0 {
-					err = errors.Join(err, newError(lexeme, state, errors.New("section must have a heading")))
-				}
-				blog.Sections = append(blog.Sections, gen.Section{
-					Level: 1,
-					Heading: gen.StringOnlyContent(level.TextValues),
-				})
-				level.EmptyText()
-				//levels.Push(&Level{ReturnToState: ParsingSection1Content})
-				state = ParsingSection1Content
-			}
 		case ParsingSection1Content:
 			level := levels.Top()
 			switch lexeme.Type {
@@ -704,7 +798,6 @@ func Parse(lx LexResult) (blog gen.Blog, err error) {
 			}
 		}
 	}
-	*/
 	return
 }
 
@@ -713,6 +806,7 @@ func isTextContent(tokenType lexer.TokenType) bool {
 	default:
 		return false
 	case lexer.TokenMono, lexer.TokenText, lexer.TokenAmpSpecial:
+		// @todo: what else is text content?
 		return true
 	}
 	panic("unreachable")
@@ -759,7 +853,7 @@ func checkMetaKey(key string) bool {
 		"author": {},
 		"email": {},
 		"tags": {},
-		//"template": {},
+		"template": {},
 		"title": {},
 		"alt-title": {},
 		"url-path": {},
@@ -769,11 +863,7 @@ func checkMetaKey(key string) bool {
 		"published": {},
 		"revised": {},
 		"est-reading": {},
-		//"series": {}, // @todo: only parse `series` name and then determine the correct order (with prev and next) depending on all other parsed articles that have the same series name and their published dates.
-		"series-prev": {},
-		"series-prev-link": {},
-		"series-next": {},
-		"series-next-link": {},
+		"series": {}, // @todo: only parse `series` name and then determine the correct order (with prev and next) depending on all other parsed articles that have the same series name and their published dates.
 		"enable-revision-warning": {},
 	}
 	_, ok := recognizedKeys[key]
@@ -825,39 +915,8 @@ func setMetaKeyValuePair(blog *gen.Blog, key string, value gen.StringRenderable)
 		}
 	case "est-reading":
 		blog.EstReading, err = strconv.Atoi(value./*Clean*/Text())
-	// @todo: case "series":
-	case "series-prev":
-		if blog.Series == nil {
-			blog.Series = &gen.Series{}
-		}
-		if blog.Series.Prev == nil {
-			blog.Series.Prev = &gen.SeriesItem{}
-		}
-		blog.Series.Prev.Title = value
-	case "series-prev-link":
-		if blog.Series == nil {
-			blog.Series = &gen.Series{}
-		}
-		if blog.Series.Prev == nil {
-			blog.Series.Prev = &gen.SeriesItem{}
-		}
-		blog.Series.Prev.Link = value./*Clean*/Text()
-	case "series-next":
-		if blog.Series == nil {
-			blog.Series = &gen.Series{}
-		}
-		if blog.Series.Next == nil {
-			blog.Series.Next = &gen.SeriesItem{}
-		}
-		blog.Series.Next.Title = value
-	case "series-next-link":
-		if blog.Series == nil {
-			blog.Series = &gen.Series{}
-		}
-		if blog.Series.Next == nil {
-			blog.Series.Next = &gen.SeriesItem{}
-		}
-		blog.Series.Next.Link = value./*Clean*/Text()
+	case "series":
+		// @todo
 	case "enable-revision-warning":
 		switch value.Text() {
 		default:
