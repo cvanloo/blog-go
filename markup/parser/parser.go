@@ -134,6 +134,7 @@ func Parse(lx LexResult) (blog gen.Blog, err error) {
 		currentCodeBlock gen.CodeBlock
 		currentImage gen.Image
 		currentBlockquote gen.Blockquote
+		currentSidenote gen.Sidenote
 	)
 	for lexeme := range lx.Tokens() {
 		level := levels.Top()
@@ -478,6 +479,201 @@ func Parse(lx LexResult) (blog gen.Blog, err error) {
 				})
 				state = level.ReturnToState
 			}
+		case ParsingEnquoteDouble:
+			switch lexeme.Type {
+			default:
+				if isTextContent(lexeme.Type) {
+					level.PushText(newTextContent(lexeme))
+				} else {
+					err = errors.Join(err, newError(lexeme, state, ErrInvalidToken))
+				}
+			case lexer.TokenEnquoteDoubleEnd:
+				levels.Pop()
+				parent := level.Top()
+				parent.PushText(gen.EnquoteDouble{
+					gen.StringOnlyContent(level.TextValues),
+				})
+				state = level.ReturnToState
+			}
+		case ParsingEnquoteAngled:
+			switch lexeme.Type {
+			default:
+				if isTextContent(lexeme.Type) {
+					level.PushText(newTextContent(lexeme))
+				} else {
+					err = errors.Join(err, newError(lexeme, state, ErrInvalidToken))
+				}
+			case lexer.TokenEnquoteAngledEnd:
+				levels.Pop()
+				parent := level.Top()
+				parent.PushText(gen.EnquoteAngled{
+					gen.StringOnlyContent(level.TextValues),
+				})
+				state = level.ReturnToState
+			}
+		case ParsingEmphasis:
+			switch lexeme.Type {
+			default:
+				if isTextContent(lexeme.Type) {
+					level.PushText(newTextContent(lexeme))
+				} else {
+					err = errors.Join(err, newError(lexeme, state, ErrInvalidToken))
+				}
+			case lexer.TokenEmphasisEnd:
+				levels.Pop()
+				parent := level.Top()
+				parent.PushText(gen.Emphasis{
+					gen.StringOnlyContent(level.TextValues),
+				})
+				state = level.ReturnToState
+			}
+		case ParsingStrong:
+			switch lexeme.Type {
+			default:
+				if isTextContent(lexeme.Type) {
+					level.PushText(newTextContent(lexeme))
+				} else {
+					err = errors.Join(err, newError(lexeme, state, ErrInvalidToken))
+				}
+			case lexer.TokenStrongEnd:
+				levels.Pop()
+				parent := level.Top()
+				parent.PushText(gen.Strong{
+					gen.StringOnlyContent(level.TextValues),
+				})
+				state = level.ReturnToState
+			}
+		case ParsingEmphasisStrong:
+			switch lexeme.Type {
+			default:
+				if isTextContent(lexeme.Type) {
+					level.PushText(newTextContent(lexeme))
+				} else {
+					err = errors.Join(err, newError(lexeme, state, ErrInvalidToken))
+				}
+			case lexer.TokenEmphasisStrongEnd:
+				levels.Pop()
+				parent := level.Top()
+				parent.PushText(gen.EmphasisStrong{
+					gen.StringOnlyContent(level.TextValues),
+				})
+				state = level.ReturnToState
+			}
+		case ParsingStrikethrough:
+			switch lexeme.Type {
+			default:
+				if isTextContent(lexeme.Type) {
+					level.PushText(newTextContent(lexeme))
+				} else {
+					err = errors.Join(err, newError(lexeme, state, ErrInvalidToken))
+				}
+			case lexer.TokenStrikethroughEnd:
+				levels.Pop()
+				parent := level.Top()
+				parent.PushText(gen.Strikethrough{
+					gen.StringOnlyContent(level.TextValues),
+				})
+				state = level.ReturnToState
+			}
+		case ParsingMarker:
+			switch lexeme.Type {
+			default:
+				if isTextContent(lexeme.Type) {
+					level.PushText(newTextContent(lexeme))
+				} else {
+					err = errors.Join(err, newError(lexeme, state, ErrInvalidToken))
+				}
+			case lexer.TokenMarkerEnd:
+				levels.Pop()
+				parent := level.Top()
+				parent.PushText(gen.Marker{
+					gen.StringOnlyContent(level.TextValues),
+				})
+				state = level.ReturnToState
+			}
+		case ParsingLinkable:
+			switch lexeme.Type {
+			default:
+				if isTextContent(lexeme.Type) {
+					level.PushText(newTextContent(lexeme))
+				} else {
+					err = errors.Join(err, newError(lexeme, state, ErrInvalidToken))
+				}
+			case lexer.TokenLinkHref:
+				level.PushString(lexeme.Text)
+				state = ParsingLinkableAfterHref
+			case lexer.TokenLinkRef:
+				level.PushString(lexeme.Text)
+				state = ParsingLinkableAfterRef
+			case lexer.TokenSidenoteRef:
+				currentSidenote.Word = gen.StringOnlyContent(level.TextValues)
+				currentSidenote.ID = lexeme.Text
+				state = ParsingSidenoteAfterRef
+			case lexer.TokenSidenoteContent:
+				currentSidenote.Word = gen.StringOnlyContent(level.TextValues)
+				level.EmptyText()
+				state = ParsingSidenoteContent
+			case lexer.TokenLinkableEnd:
+				levels.Pop()
+				parent := levels.Top()
+				parent.PushText(gen.Link{
+					Name: gen.StringOnlyContent(level.TextValues),
+				})
+				state = level.ReturnToState
+			}
+		case ParsingLinkableAfterHref:
+			switch lexeme.Type {
+			default:
+				err = errors.Join(err, newError(lexeme, state, ErrInvalidToken))
+			case lexer.TokenLinkableEnd:
+				levels.Pop()
+				parent := levels.Top()
+				parent.PushText(gen.Link{
+					Href: level.PopString(),
+					Name: gen.StringOnlyContent(level.TextValues),
+				})
+				state = level.ReturnToState
+			}
+		case ParsingLinkableAfterRef:
+			switch lexeme.Type {
+			default:
+				err = errors.Join(err, newError(lexeme, state, ErrInvalidToken))
+			case lexer.TokenLinkableEnd:
+				levels.Pop()
+				parent := levels.Top()
+				parent.PushText(gen.Link{
+					Ref: level.PopString(),
+					Name: gen.StringOnlyContent(level.TextValues),
+				})
+				state = level.ReturnToState
+			}
+		case ParsingSidenoteAfterRef:
+			switch lexeme.Type {
+			default:
+				err = errors.Join(err, newError(lexeme, state, ErrInvalidToken))
+			case lexer.TokenLinkableEnd:
+				levels.Pop()
+				parent := levels.Top()
+				parent.PushText(currentSidenote)
+				currentSidenote = gen.Sidenote{}
+				state = level.ReturnToState
+			}
+		case ParsingSidenoteContent:
+			switch lexeme.Type {
+			default:
+				if isTextContent(lexeme.Type) {
+					level.PushText(newTextContent(lexeme))
+				} else {
+					err = errors.Join(err, newError(lexeme, state, ErrInvalidToken))
+				}
+			case lexer.TokenLinkableEnd:
+				levels.Pop()
+				parent := levels.Top()
+				currentSidenote.Content = gen.StringOnlyContent(level.TextValues)
+				parent.PushText(currentSidenote)
+				currentSidenote = gen.Sidenote{}
+				state = level.ReturnToState
+			}
 		case ParsingCodeBlock:
 			switch lexeme.Type {
 			default:
@@ -669,200 +865,6 @@ func Parse(lx LexResult) (blog gen.Blog, err error) {
 					}
 				}
 				currentHtmlTag = HtmlTag{Args: map[string]string{}}
-				state = level.ReturnToState
-			}
-		case ParsingBlockquote:
-			level := levels.Top()
-			// @todo: also allow links inside blockquote
-			switch lexeme.Type {
-			default:
-				if isTextContent(lexeme.Type) {
-					level.PushText(newTextContent(lexeme))
-				} else {
-					err = errors.Join(err, newError(lexeme, state, errors.New("invalid token")))
-				}
-			case lexer.TokenBlockquoteAttrAuthor:
-				levels.Push(&Level{ReturnToState: ParsingBlockquote})
-				state = ParsingBlockquoteAttrAuthor
-			case lexer.TokenBlockquoteAttrSource:
-				levels.Push(&Level{ReturnToState: ParsingBlockquote})
-				state = ParsingBlockquoteAttrSource
-			case lexer.TokenEmphasis:
-				levels.Push(&Level{ReturnToState: ParsingBlockquote})
-				state = ParsingEmphasis
-			case lexer.TokenStrong:
-				levels.Push(&Level{ReturnToState: ParsingBlockquote})
-				state = ParsingStrong
-			case lexer.TokenEmphasisStrong:
-				levels.Push(&Level{ReturnToState: ParsingBlockquote})
-				state = ParsingEmphasisStrong
-			case lexer.TokenBlockquoteEnd:
-				currentBlockquote.QuoteText = gen.StringOnlyContent(level.TextValues)
-				_ = levels.Pop()
-				paren := levels.Top()
-				paren.PushContent(currentBlockquote)
-				currentBlockquote = gen.Blockquote{}
-				state = level.ReturnToState
-			}
-		case ParsingBlockquoteAttrAuthor:
-			level := levels.Top()
-			switch {
-			default:
-				err = errors.Join(err, newError(lexeme, state, errors.New("invalid token")))
-			case isTextContent(lexeme.Type):
-				level.PushText(newTextContent(lexeme))
-			case lexeme.Type == lexer.TokenBlockquoteAttrEnd:
-				_ = levels.Pop()
-				currentBlockquote.Author = gen.StringOnlyContent(level.TextValues)
-				Assert(level.ReturnToState == ParsingBlockquote, "confused parser state")
-				state = level.ReturnToState
-			}
-		case ParsingBlockquoteAttrSource:
-			level := levels.Top()
-			switch {
-			default:
-				err = errors.Join(err, newError(lexeme, state, errors.New("invalid token")))
-			case isTextContent(lexeme.Type):
-				level.PushText(newTextContent(lexeme))
-			case lexeme.Type == lexer.TokenBlockquoteAttrEnd:
-				_ = levels.Pop()
-				currentBlockquote.Source = gen.StringOnlyContent(level.TextValues)
-				Assert(level.ReturnToState == ParsingBlockquote, "confused parser state")
-				state = level.ReturnToState
-			}
-		case ParsingEnquoteSingle:
-			level := levels.Top()
-			switch {
-			default:
-				err = errors.Join(err, newError(lexeme, state, errors.New("enquote can only contain text content")))
-			case isTextContent(lexeme.Type):
-				level.PushText(newTextContent(lexeme))
-			case lexeme.Type == lexer.TokenEmphasis:
-				levels.Push(&Level{ReturnToState: ParsingEnquoteSingle})
-				state = ParsingEmphasis
-			case lexeme.Type == lexer.TokenStrong:
-				levels.Push(&Level{ReturnToState: ParsingEnquoteSingle})
-				state = ParsingStrong
-			case lexeme.Type == lexer.TokenEmphasisStrong:
-				levels.Push(&Level{ReturnToState: ParsingEnquoteSingle})
-				state = ParsingEmphasisStrong
-			case lexeme.Type == lexer.TokenEnquoteEnd:
-				level := levels.Pop()
-				paren := levels.Top()
-				paren.PushText(gen.EnquoteSingle{
-					gen.StringOnlyContent(level.TextValues),
-				})
-				state = level.ReturnToState
-			}
-		case ParsingEnquoteDouble:
-			level := levels.Top()
-			switch {
-			default:
-				err = errors.Join(err, newError(lexeme, state, errors.New("enquote can only contain text content")))
-			case isTextContent(lexeme.Type):
-				level.PushText(newTextContent(lexeme))
-			case lexeme.Type == lexer.TokenEmphasis:
-				levels.Push(&Level{ReturnToState: ParsingEnquoteDouble})
-				state = ParsingEmphasis
-			case lexeme.Type == lexer.TokenStrong:
-				levels.Push(&Level{ReturnToState: ParsingEnquoteDouble})
-				state = ParsingStrong
-			case lexeme.Type == lexer.TokenEmphasisStrong:
-				levels.Push(&Level{ReturnToState: ParsingEnquoteDouble})
-				state = ParsingEmphasisStrong
-			case lexeme.Type == lexer.TokenEnquoteEnd:
-				level := levels.Pop()
-				paren := levels.Top()
-				paren.PushText(gen.EnquoteDouble{
-					gen.StringOnlyContent(level.TextValues),
-				})
-				state = level.ReturnToState
-			}
-		case ParsingEnquoteAngled:
-			level := levels.Top()
-			switch {
-			default:
-				err = errors.Join(err, newError(lexeme, state, errors.New("enquote can only contain text content")))
-			case isTextContent(lexeme.Type):
-				level.PushText(newTextContent(lexeme))
-			case lexeme.Type == lexer.TokenEmphasis:
-				levels.Push(&Level{ReturnToState: ParsingEnquoteAngled})
-				state = ParsingEmphasis
-			case lexeme.Type == lexer.TokenStrong:
-				levels.Push(&Level{ReturnToState: ParsingEnquoteAngled})
-				state = ParsingStrong
-			case lexeme.Type == lexer.TokenEmphasisStrong:
-				levels.Push(&Level{ReturnToState: ParsingEnquoteAngled})
-				state = ParsingEmphasisStrong
-			case lexeme.Type == lexer.TokenEnquoteEnd:
-				level := levels.Pop()
-				paren := levels.Top()
-				paren.PushText(gen.EnquoteAngled{
-					gen.StringOnlyContent(level.TextValues),
-				})
-				state = level.ReturnToState
-			}
-		case ParsingEmphasis:
-			level := levels.Top()
-			switch {
-			default:
-				err = errors.Join(err, newError(lexeme, state, errors.New("invalid token")))
-			case isTextContent(lexeme.Type):
-				level.PushText(newTextContent(lexeme))
-			case lexeme.Type == lexer.TokenStrong:
-				levels.Push(&Level{ReturnToState: ParsingEmphasis})
-				state = ParsingStrong
-			case lexeme.Type == lexer.TokenEmphasisStrong:
-				levels.Push(&Level{ReturnToState: ParsingEmphasis})
-				state = ParsingEmphasisStrong
-			case lexeme.Type == lexer.TokenEmphasis:
-				_ = levels.Pop()
-				paren := levels.Top()
-				paren.PushText(gen.Emphasis{
-					gen.StringOnlyContent(level.TextValues),
-				})
-				state = level.ReturnToState
-			}
-		case ParsingStrong:
-			level := levels.Top()
-			switch {
-			default:
-				err = errors.Join(err, newError(lexeme, state, errors.New("invalid token")))
-			case isTextContent(lexeme.Type):
-				level.PushText(newTextContent(lexeme))
-			case lexeme.Type == lexer.TokenEmphasis:
-				levels.Push(&Level{ReturnToState: ParsingStrong})
-				state = ParsingStrong
-			case lexeme.Type == lexer.TokenEmphasisStrong:
-				levels.Push(&Level{ReturnToState: ParsingStrong})
-				state = ParsingEmphasisStrong
-			case lexeme.Type == lexer.TokenStrong:
-				_ = levels.Pop()
-				paren := levels.Top()
-				paren.PushText(gen.Strong{
-					gen.StringOnlyContent(level.TextValues),
-				})
-				state = level.ReturnToState
-			}
-		case ParsingEmphasisStrong:
-			level := levels.Top()
-			switch {
-			default:
-				err = errors.Join(err, newError(lexeme, state, errors.New("invalid token")))
-			case isTextContent(lexeme.Type):
-				level.PushText(newTextContent(lexeme))
-			case lexeme.Type == lexer.TokenEmphasis:
-				levels.Push(&Level{ReturnToState: ParsingEmphasisStrong})
-				state = ParsingStrong
-			case lexeme.Type == lexer.TokenStrong:
-				levels.Push(&Level{ReturnToState: ParsingEmphasisStrong})
-				state = ParsingEmphasisStrong
-			case lexeme.Type == lexer.TokenEmphasisStrong:
-				_ = levels.Pop()
-				paren := levels.Top()
-				paren.PushText(gen.EmphasisStrong{
-					gen.StringOnlyContent(level.TextValues),
-				})
 				state = level.ReturnToState
 			}
 		case ParsingLink:
