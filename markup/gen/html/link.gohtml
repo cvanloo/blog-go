@@ -1,1 +1,2 @@
-<a href="{{.Href}}" target="{{.Target}}">{{.NameOrHref}}</a>
+{{$blog := GetBlog}}
+<a href="{{.ResolveHref $blog}}" target="{{.Target}}">{{.NameOrHref $blog}}</a>

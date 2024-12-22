@@ -11,7 +11,7 @@ import (
 	"github.com/cvanloo/blog-go/markup/lexer"
 )
 
-func main() {
+func main2() {
 	inName := "-"
 	inFile := os.Stdin
 	inNameDisplay := "<stdin>"
@@ -32,7 +32,7 @@ func main() {
 	}
 }
 
-func main2() {
+func main() {
 	fmt.Println("Hello, 子猫ちゃん")
 	m := markup.New(
 		markup.Source("<stdin>", os.Stdin),

@@ -13,7 +13,6 @@ import (
 	"net/url"
 
 	. "github.com/cvanloo/blog-go/assert"
-	. "github.com/cvanloo/blog-go/stack"
 )
 
 //go:embed html
@@ -329,11 +328,23 @@ func (l Link) Text() string {
 	return bs.String()
 }
 
-func (l Link) NameOrHref() string {
+func (l Link) NameOrHref(blog *Blog) string {
 	if l.Name != nil {
 		return l.Name.Text()
 	}
-	return l.Href
+	return l.ResolveHref(blog)
+}
+
+func (l Link) ResolveHref(blog *Blog) string {
+	if l.Href != "" {
+		return l.Href
+	}
+	if l.Ref != "" {
+		if href, hasHref := blog.LinkDefinitions[l.Ref]; hasHref {
+			return href
+		}
+	}
+	return ""
 }
 
 func (e EscapedString) Render() (template.HTML, error) {
@@ -372,67 +383,16 @@ func (sn Sidenote) ID() string {
 	return ""
 }
 
-func (b *Blog) ResolveReferences() {
-	for id, href := range b.LinkDefinitions {
-		for link := range b.Links() {
-			if link.Ref == id {
-				link.Href = href
-			}
+func (sn Sidenote) ResolveContent(blog *Blog) StringRenderable {
+	if sn.Content != nil {
+		return sn.Content
+	}
+	if sn.Ref != "" {
+		if content, hasContent := blog.SidenoteDefinitions[sn.Ref]; hasContent {
+			return content
 		}
 	}
-	//for id, content := range b.SidenoteDefinitions {
-	//}
-}
-
-func (b *Blog) Links() func(func(*Link) bool) { // @todo: actually make this work
-	return func(yield func(*Link) bool) {
-		contents := Stack[Renderable]{}
-		for _, section := range b.Sections {
-			for _, content := range section.Content {
-				contents = contents.Push(content)
-			}
-		}
-		for len(contents) > 0 {
-			contents, content := contents.Pop()
-			switch el := content.(type) {
-			case Section:
-				for _, c := range el.Content {
-					contents = contents.Push(c)
-				}
-			case Paragraph:
-				contents = contents.Push(el.Content)
-			case StringOnlyContent:
-				for _, c := range el {
-					contents = contents.Push(c)
-				}
-			case Strong:
-				for _, c := range el.StringOnlyContent {
-					contents = contents.Push(c)
-				}
-			case Emphasis:
-			case EmphasisStrong:
-			case EnquoteDouble:
-			case EnquoteAngled:
-			case Strikethrough:
-			case Marker:
-			case *Link:
-				if !yield(el) {
-					return
-				}
-			case Sidenote:
-				contents = contents.Push(el.Word)
-				contents = contents.Push(el.Content)
-			case Image:
-				contents = contents.Push(el.Title)
-				contents = contents.Push(el.Alt)
-			case Blockquote:
-				contents = contents.Push(el.QuoteText)
-				contents = contents.Push(el.Author)
-				contents = contents.Push(el.Source)
-				// reading items?
-			}
-		}
-	}
+	return nil
 }
 
 func (b *Blog) Canonical() string {

@@ -1,3 +1,4 @@
+{{$blog := GetBlog}}
 <span class="sidenote">
     <input type="checkbox"
            id="sidenote__checkbox--{{.ID}}"
@@ -5,13 +6,13 @@
            aria-label="show sidenote">
     <label for="sidenote__checkbox--{{.ID}}"
            aria-describedby="sidenote-{{.ID}}"
-           title="{{Render .Content}}"
+           title="{{.ResolveContent $blog | Render}}"
            class="sidenote__button">{{Render .Word}}
     </label>
     <small id="sidenote-{{.ID}}"
            class="sidenote__content">
         <span class="sidenote__content-parenthesis">(sidenote:</span>
-        {{Render .Content}}
+        {{.ResolveContent $blog | Render}}
         <span class="sidenote__content-parenthesis">)</span>
     </small>
 </span>
