@@ -2,7 +2,7 @@
 
 RUN=Test*
 RUN=TestLex*
-RUN=TestParse*
+#RUN=TestParse*
 
 all: .FORCE
 	go test -run $(RUN) ./...
