@@ -383,6 +383,7 @@ func Parse(lx LexResult) (blog gen.Blog, err error) {
 				state = ParsingLinkDefinition
 			case lexer.TokenSidenoteDef:
 				levels.Push(&Level{ReturnToState: ParsingSection1Content})
+				currentDefinition = lexeme.Text
 				state = ParsingSidenoteDefinition
 			case lexer.TokenParagraphBegin:
 				levels.Push(&Level{ReturnToState: ParsingSection1Content})
@@ -459,6 +460,7 @@ func Parse(lx LexResult) (blog gen.Blog, err error) {
 				state = ParsingLinkDefinition
 			case lexer.TokenSidenoteDef:
 				levels.Push(&Level{ReturnToState: ParsingSection2Content})
+				currentDefinition = lexeme.Text
 				state = ParsingSidenoteDefinition
 			case lexer.TokenParagraphBegin:
 				levels.Push(&Level{ReturnToState: ParsingSection2Content})

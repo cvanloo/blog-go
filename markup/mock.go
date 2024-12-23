@@ -44,8 +44,10 @@ Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu 
 
 ## Lorem Epsum
 
-Lorem epsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.
+Lorem [epsum][^1] dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.
 Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
+
+[^1]: See what I did there?
 
 # さようなら
 
@@ -98,8 +100,16 @@ var LexerTestTokens = MockTokens{
 	{Type: lexer.TokenText, Text: "Lorem Epsum"},
 	{Type: lexer.TokenSection2Content, Text: ""},
 	{Type: lexer.TokenParagraphBegin, Text: ""},
-	{Type: lexer.TokenText, Text: "Lorem epsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.\nUt enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat."},
+	{Type: lexer.TokenText, Text: "Lorem "},
+	{Type: lexer.TokenLinkableBegin, Text: "["},
+	{Type: lexer.TokenText, Text: "epsum"},
+	{Type: lexer.TokenSidenoteRef, Text: "1"},
+	{Type: lexer.TokenLinkableEnd, Text: ""},
+	{Type: lexer.TokenText, Text: " dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.\nUt enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat."},
 	{Type: lexer.TokenParagraphEnd, Text: ""},
+	{Type: lexer.TokenSidenoteDef, Text: "1"},
+	{Type: lexer.TokenText, Text: "See what I did there?"},
+	{Type: lexer.TokenSidenoteDefEnd, Text: ""},
 	{Type: lexer.TokenSection2End, Text: ""},
 	{Type: lexer.TokenSection1End, Text: ""},
 	{Type: lexer.TokenSection1Begin, Text: "#"},
@@ -166,7 +176,14 @@ var BlogTestStruct = gen.Blog{
 					Heading: gen.StringOnlyContent{gen.Text("Lorem Epsum")},
 					Content: []gen.Renderable{
 						gen.Paragraph{
-							Content: gen.StringOnlyContent{gen.Text("Lorem epsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.\nUt enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.")},
+							Content: gen.StringOnlyContent{
+								gen.Text("Lorem "),
+								gen.Sidenote{
+									Ref: "1",
+									Word: gen.StringOnlyContent{gen.Text("epsum")},
+								},
+								gen.Text(" dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.\nUt enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat."),
+							},
 						},
 					},
 				},
@@ -189,7 +206,9 @@ var BlogTestStruct = gen.Blog{
 			},
 		},
 	},
-	SidenoteDefinitions: map[string]gen.StringRenderable{},
+	SidenoteDefinitions: map[string]gen.StringRenderable{
+		"1": gen.StringOnlyContent{gen.Text("See what I did there?")},
+	},
 	LinkDefinitions: map[string]string{
 		"0": "https://example.com/",
 	},
