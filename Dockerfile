@@ -1,7 +1,7 @@
 FROM golang:1.23.3-alpine3.20 AS build
 WORKDIR /usr/src/app
-#COPY go.mod go.sum ./
-#RUN go mod download && go mod verify
+COPY go.mod go.sum ./
+RUN go mod download && go mod verify
 COPY cmd ./cmd
 COPY assert ./assert
 COPY markup ./markup
