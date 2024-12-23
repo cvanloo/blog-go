@@ -97,6 +97,7 @@ type (
 		Author Author
 		Lang string
 		Title, AltTitle StringRenderable
+		Description string
 		Published Revision
 		EstReading int
 		Tags []Tag
@@ -387,7 +388,7 @@ func (sn Sidenote) Render() (template.HTML, error) {
 func (sn Sidenote) Text() string {
 	bs := &bytes.Buffer{}
 	PanicIf(pages.Execute(bs, "sidenote.gohtml", sn)) // @todo: how do we do error handling here? I guess Text() must also return an error after all?
-	return bs.String()
+	return strings.TrimSpace(bs.String())
 }
 
 func (sn Sidenote) ID() string {

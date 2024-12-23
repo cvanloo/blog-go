@@ -109,6 +109,8 @@ const (
 	ParsingMeta
 	ParsingMetaVal
 	ParsingHtmlElement
+	ParsingHtmlElementAttributes
+	ParsingHtmlElementContent
 	ParsingTermDefinition
 	ParsingTermExplanation
 	ParsingSidenoteDefinition
@@ -182,6 +184,7 @@ func Parse(lx LexResult) (blog gen.Blog, err error) {
 				state = ParsingMeta
 			case lexer.TokenHtmlTagOpen:
 				levels.Push(&Level{ReturnToState: ParsingDocument})
+				currentHTMLElement.Name = lexeme.Text
 				state = ParsingHtmlElement
 			case lexer.TokenSection1Begin:
 				levels.Push(&Level{ReturnToState: ParsingDocument})
@@ -208,6 +211,7 @@ func Parse(lx LexResult) (blog gen.Blog, err error) {
 				err = errors.Join(err, newError(lexeme, state, ErrInvalidToken))
 			case lexer.TokenHtmlTagOpen:
 				levels.Push(&Level{ReturnToState: ParsingDocument})
+				currentHTMLElement.Name = lexeme.Text
 				state = ParsingHtmlElement
 			case lexer.TokenSection1Begin:
 				levels.Push(&Level{ReturnToState: ParsingDocument})
@@ -871,6 +875,51 @@ func Parse(lx LexResult) (blog gen.Blog, err error) {
 				currentTerm = ""
 				state = level.ReturnToState
 			}
+		case ParsingHtmlElement:
+			switch lexeme.Type {
+			default:
+			case lexer.TokenHtmlTagAttrKey:
+				level.PushString(lexeme.Text)
+				state = ParsingHtmlElementAttributes
+			case lexer.TokenHtmlTagContent:
+				state = ParsingHtmlElementContent
+			}
+		case ParsingHtmlElementAttributes:
+			switch lexeme.Type {
+			default:
+			case lexer.TokenHtmlTagAttrKey:
+				// finish current key
+				key := level.PopString()
+				var val string
+				if len(level.Strings) > 0 {
+					Assert(len(level.Strings) == 1, "")
+					val = level.PopString()
+				}
+				currentHTMLElement.Args[key] = val
+				// start next key
+				level.PushString(lexeme.Text)
+			case lexer.TokenHtmlTagAttrVal:
+				level.PushString(lexeme.Text)
+			case lexer.TokenHtmlTagContent:
+				// finish last key
+				key := level.PopString()
+				var val string
+				if len(level.Strings) > 0 {
+					Assert(len(level.Strings) == 1, "")
+					val = level.PopString()
+				}
+				currentHTMLElement.Args[key] = val
+				// go to parsing element content
+				state = ParsingHtmlElementContent
+			}
+		case ParsingHtmlElementContent:
+			switch lexeme.Type {
+			default:
+				// @todo: anything of a paragraph goes... (???)
+			case lexer.TokenHtmlTagClose:
+				levels.Pop()
+				state = level.ReturnToState
+			}
 		}
 	}
 	return
@@ -977,7 +1026,7 @@ func newTextContent(lexeme lexer.Token) gen.StringRenderable {
 			return gen.AmpEmDash
 		case "--", "&ndash;":
 			return gen.AmpEnDash
-		case "-", "&hyphen;", "&dash;":
+		case "&hyphen;", "&dash;":
 			return gen.AmpHyphen
 		case "&ldquo;":
 			return gen.AmpLeftDoubleQuote
@@ -1010,10 +1059,11 @@ func checkMetaKey(key string) bool {
 		"email":                   {},
 		"tags":                    {},
 		"template":                {},
+		"description":             {},
 		"title":                   {},
 		"alt-title":               {},
 		"url-path":                {},
-		"rel-me":                  {}, // @todo: this should actually be an array
+		"rel-me":                  {},
 		"fedi-creator":            {},
 		"lang":                    {},
 		"published":               {},
@@ -1038,6 +1088,8 @@ func setMetaKeyValuePair(blog *gen.Blog, key string, value gen.StringRenderable)
 		for _, tag := range strings.Split(value. /*@todo: Clean*/ Text(), " ") {
 			blog.Tags = append(blog.Tags, gen.Tag(tag))
 		}
+	case "description":
+		blog.Description = value./*Clean*/Text()
 	case "title":
 		blog.Title = value // @todo: automatically apply proper English Title Casing
 	case "alt-title":

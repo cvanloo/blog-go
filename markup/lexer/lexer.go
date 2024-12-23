@@ -197,7 +197,7 @@ type Predicate func() bool
 
 var (
 	AmpSpecials      = []string{"&hyphen;", "&dash;", "&ndash;", "&mdash;", "&ldquo;", "&rdquo;", "&prime;", "&Prime;", "&tprime;", "&qprime;", "&bprime;", "&laquo;", "&raquo;", "&nbsp;"}
-	AmpShortSpecials = []string{"---", "--", "-", "...", "…", "~", "\u00A0"} // list longer char sequences first (--- must come before -- and -)
+	AmpShortSpecials = []string{"---", "--", "...", "…", "~", "\u00A0"} // list longer char sequences first (--- must come before -- and -)
 	AmpAllSpecials   = append(AmpSpecials, AmpShortSpecials...)
 )
 
@@ -251,6 +251,23 @@ func (lx *Lexer) IsTermDefinition() bool {
 	lx.SkipNext1()
 	lx.SkipWhitespaceNoNewLine()
 	if lx.Peek1() != ':' {
+		return false
+	}
+	return true
+}
+
+func (lx *Lexer) IsSingleWordSidenote() bool {
+	lpos := lx.Pos
+	lcon := lx.Consumed
+	defer func() {
+		lx.Pos = lpos
+		lx.Consumed = lcon
+	}()
+	if !SpecNonWhitespace.IsValid(lx.Peek1()) {
+		return false
+	}
+	lx.NextValids(SpecSingleWordSidenote)
+	if lx.Peek(2) != "[^" && lx.Peek(2) != "(^" {
 		return false
 	}
 	return true
@@ -501,6 +518,7 @@ var (
 	SpecNonWhitespace = CharNotInSpec{CharInAny(" \u00A0\n\r\v\t")} // @todo: and all the others...
 	SpecAttrVal       = CharNotInSpec{CharInAny(" \u00A0\n\r\v\t}")}
 	SpecImagePath     = CharNotInSpec{CharInAny(" \u00A0\n\r\v\t)")}
+	SpecSingleWordSidenote = CharNotInSpec{CharInAny(" \u00A0\n\r\v\t[")}
 )
 
 func (c CharInRange) IsValid(r rune) bool {
@@ -1008,6 +1026,47 @@ func (lx *Lexer) LexStringValue() { // @todo: rename this function, since it is 
 	}
 }
 
+// LexSingleWordSidenote lexes sidenotes that wrap around only a single word.
+//
+// If the sidenote is only around a single word, it can be written like this:
+//
+//	Link-Text[^0]
+//
+// - TokenLinkableBegin
+// - TokenText "Link-Text"
+// - TokenSidenoteRef "0"
+// - TokenLinkableEnd
+//
+// or
+//
+//	Link-Text(^Sidenote content.)
+//
+// - TokenLinkableBegin
+// - TokenText "Link-Text"
+// - TokenSidenoteContent
+// - TokenText "Sidenote content."
+// - TokenLinkableEnd
+func (lx *Lexer) LexSingleWordSidenote() {
+	Assert(SpecNonWhitespace.IsValid(lx.Peek1()), "lexer state confused")
+	lx.Emit(TokenLinkableBegin)
+	lx.NextValids(SpecSingleWordSidenote)
+	lx.Emit(TokenText)
+	if lx.Peek(2) == "[^" {
+		lx.SkipNext(2)
+		lx.NextUntilMatch("]")
+		lx.Emit(TokenSidenoteRef)
+		lx.ExpectAndSkip("]")
+	} else if lx.Peek(2) == "(^" {
+		lx.SkipNext(2)
+		lx.Emit(TokenSidenoteContent)
+		lx.LexTextUntil(")") // @todo: LexSidenoteText or sth, Sidenotes shouldn't allow all text types?
+		lx.ExpectAndSkip(")")
+	} else {
+		lx.Error(errors.New("expected [^ or (^"))
+	}
+	lx.Emit(TokenLinkableEnd)
+}
+
 // LexLinkOrSidenote lexes the following elements:
 //
 //	[Link Text](https://example.com)
@@ -1056,29 +1115,25 @@ func (lx *Lexer) LexLinkOrSidenote() {
 	lx.Expect("]")
 	if lx.Peek(2) == "[^" {
 		// reference style sidenote
-		lx.Next(2)
-		lx.Skip()
+		lx.SkipNext(2)
 		lx.NextUntilMatch("]")
 		lx.Emit(TokenSidenoteRef)
 		lx.ExpectAndSkip("]")
 	} else if lx.Peek1() == '[' {
 		// reference style link
-		lx.Next1()
-		lx.Skip()
+		lx.SkipNext1()
 		lx.NextUntilMatch("]")
 		lx.Emit(TokenLinkRef)
 		lx.ExpectAndSkip("]")
 	} else if lx.Peek(2) == "(^" { // @todo: good idea to make my own MD extension?
 		// (normal) sidenote
-		lx.Next(2)
-		lx.Skip()
+		lx.SkipNext(2)
 		lx.Emit(TokenSidenoteContent)
 		lx.LexTextUntil(")") // @todo: LexSidenoteText or sth, Sidenotes shouldn't allow all text types?
 		lx.ExpectAndSkip(")")
 	} else if lx.Peek1() == '(' {
 		// (normal) link
-		lx.Next1()
-		lx.Skip()
+		lx.SkipNext1()
 		lx.NextUntilMatch(")")
 		lx.Emit(TokenLinkHref)
 		lx.ExpectAndSkip(")")
@@ -1108,6 +1163,9 @@ func (lx *Lexer) LexText() {
 		if ok, _ := lx.IsAmpSpecial(); ok {
 			lx.EmitIfNonEmpty(TokenText)
 			lx.LexAmpSpecial()
+		} else if lx.IsSingleWordSidenote() {
+			lx.EmitIfNonEmpty(TokenText)
+			lx.LexSingleWordSidenote()
 		} else if lx.Peek(3) == "***" || lx.Peek(3) == "___" {
 			lx.EmitIfNonEmpty(TokenText)
 			lx.LexEmphasisStrong()
