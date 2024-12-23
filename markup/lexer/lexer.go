@@ -526,7 +526,7 @@ func (c CharNotInSpec) IsValid(r rune) bool {
 			return false
 		}
 	}
-	return true
+	return r != 0 // 0 is never valid
 }
 
 // LexAmpSpecial lexes a special character, that is one of the &<...>; sequences from AmpSecials
@@ -744,7 +744,7 @@ func (lx *Lexer) LexSection1Content() {
 	lx.SkipWhitespace()
 	for !lx.IsEOF() {
 		if lx.IsTermDefinition() {
-			lx.LexDefinition()
+			lx.LexDefinitionList()
 		} else if lx.IsHorizontalRule() {
 			lx.LexHorizontalRule()
 		} else {
@@ -753,7 +753,7 @@ func (lx *Lexer) LexSection1Content() {
 				break
 			}
 			if lx.IsTermDefinition() { // @todo: i don't like this
-				lx.LexDefinition()
+				lx.LexDefinitionList()
 			} else if lx.IsHorizontalRule() {
 				lx.LexHorizontalRule()
 			} else if lx.Peek(3) == "```" {
@@ -826,7 +826,7 @@ func (lx *Lexer) LexSection2Content() {
 	lx.SkipWhitespace()
 	for !lx.IsEOF() {
 		if lx.IsTermDefinition() {
-			lx.LexDefinition()
+			lx.LexDefinitionList()
 		} else if lx.IsHorizontalRule() {
 			lx.LexHorizontalRule()
 		} else {
@@ -835,7 +835,7 @@ func (lx *Lexer) LexSection2Content() {
 				break
 			}
 			if lx.IsTermDefinition() { // @todo: i don't like this
-				lx.LexDefinition()
+				lx.LexDefinitionList()
 			} else if lx.IsHorizontalRule() {
 				lx.LexHorizontalRule()
 			} else if lx.Peek(3) == "```" {
@@ -1514,22 +1514,25 @@ func (lx *Lexer) LexHorizontalRule() {
 // - TokenDefinitionExplanationBegin
 // - TokenText "Explanation of term"
 // - TokenDefinitionExplanationEnd
-func (lx *Lexer) LexDefinition() { // @todo: rename to LexDefinitionList and lex multiple definitions in a row
+// - <...> optional more term definitions
+func (lx *Lexer) LexDefinitionList() {
 	Assert(lx.IsStartOfLine(), "lexer state confused")
-	term := lx.NextValids(SpecNonWhitespace)
-	if len(term) == 0 {
-		lx.Error(errors.New("term missing from definition"))
+	for lx.IsTermDefinition() {
+		term := lx.NextValids(SpecNonWhitespace)
+		if len(term) == 0 {
+			lx.Error(errors.New("term missing from definition"))
+		}
+		lx.Emit(TokenDefinitionTerm)
+		lx.SkipWhitespaceNoNewLine()
+		lx.Expect("\n")
+		lx.SkipWhitespace()
+		lx.Expect(":")
+		lx.SkipWhitespace()
+		lx.Emit(TokenDefinitionExplanationBegin)
+		lx.LexTextUntil("\n")
+		lx.ExpectAndSkip("\n")
+		lx.Emit(TokenDefinitionExplanationEnd)
 	}
-	lx.Emit(TokenDefinitionTerm)
-	lx.SkipWhitespaceNoNewLine()
-	lx.Expect("\n")
-	lx.SkipWhitespace()
-	lx.Expect(":")
-	lx.SkipWhitespace()
-	lx.Emit(TokenDefinitionExplanationBegin)
-	lx.LexTextUntil("\n")
-	lx.ExpectAndSkip("\n")
-	lx.Emit(TokenDefinitionExplanationEnd)
 }
 
 // LexMono lexes a monospaced text block like

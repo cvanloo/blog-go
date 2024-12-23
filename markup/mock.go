@@ -146,9 +146,9 @@ var BlogTestStruct = gen.Blog{
 				gen.Paragraph{
 					Content: gen.StringOnlyContent{
 						gen.Text("Ut enim ad minim veniam, quis nostrud"),
-						gen.AmpEMDash,
+						gen.AmpEmDash,
 						gen.Text("exercitation ullamco"),
-						gen.AmpEMDash,
+						gen.AmpEmDash,
 						gen.Text("laboris nisi ut aliquip ex ea commodo consequat.\nDuis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur."),
 					},
 				},
@@ -212,4 +212,5 @@ var BlogTestStruct = gen.Blog{
 	LinkDefinitions: map[string]string{
 		"0": "https://example.com/",
 	},
+	TermDefinitions: map[string]gen.StringRenderable{},
 }

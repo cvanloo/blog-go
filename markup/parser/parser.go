@@ -110,6 +110,7 @@ const (
 	ParsingMetaVal
 	ParsingHtmlElement
 	ParsingTermDefinition
+	ParsingTermExplanation
 	ParsingSidenoteDefinition
 	ParsingLinkDefinition
 	ParsingAttributeList
@@ -152,6 +153,7 @@ var (
 func Parse(lx LexResult) (blog gen.Blog, err error) {
 	blog.LinkDefinitions = map[string]string{}
 	blog.SidenoteDefinitions = map[string]gen.StringRenderable{}
+	blog.TermDefinitions = map[string]gen.StringRenderable{}
 	state := ParsingStart
 	levels := Levels{}
 	levels.Push(&Level{ReturnToState: ParsingStart})
@@ -164,7 +166,7 @@ func Parse(lx LexResult) (blog gen.Blog, err error) {
 		currentBlockquote                gen.Blockquote
 		currentSidenote                  gen.Sidenote
 		currentDefinition                string
-		//currentTerm string
+		currentTerm string
 	)
 	for lexeme := range lx.Tokens() {
 		level := levels.Top()
@@ -186,7 +188,7 @@ func Parse(lx LexResult) (blog gen.Blog, err error) {
 				state = ParsingSection1
 			case lexer.TokenDefinitionTerm:
 				levels.Push(&Level{ReturnToState: ParsingDocument})
-				//currentTerm = lexeme.Text
+				currentTerm = lexeme.Text
 				state = ParsingTermDefinition
 			case lexer.TokenLinkDef:
 				levels.Push(&Level{ReturnToState: ParsingDocument})
@@ -212,6 +214,7 @@ func Parse(lx LexResult) (blog gen.Blog, err error) {
 				state = ParsingSection1
 			case lexer.TokenDefinitionTerm:
 				levels.Push(&Level{ReturnToState: ParsingDocument})
+				currentTerm = lexeme.Text
 				state = ParsingTermDefinition
 			case lexer.TokenLinkDef:
 				levels.Push(&Level{ReturnToState: ParsingDocument})
@@ -358,6 +361,7 @@ func Parse(lx LexResult) (blog gen.Blog, err error) {
 				err = errors.Join(err, newError(lexeme, state, ErrInvalidToken))
 			case lexer.TokenDefinitionTerm:
 				levels.Push(&Level{ReturnToState: ParsingSection1Content})
+				currentTerm = lexeme.Text
 				state = ParsingTermDefinition
 			case lexer.TokenHorizontalRule:
 				level.PushContent(gen.HorizontalRule{})
@@ -438,6 +442,7 @@ func Parse(lx LexResult) (blog gen.Blog, err error) {
 				err = errors.Join(err, newError(lexeme, state, ErrInvalidToken))
 			case lexer.TokenDefinitionTerm:
 				levels.Push(&Level{ReturnToState: ParsingSection2Content})
+				currentTerm = lexeme.Text
 				state = ParsingTermDefinition
 			case lexer.TokenHorizontalRule:
 				level.PushContent(gen.HorizontalRule{})
@@ -846,7 +851,26 @@ func Parse(lx LexResult) (blog gen.Blog, err error) {
 				state = level.ReturnToState
 			}
 		case ParsingTermDefinition:
-			// @todo: first fix in lexer
+			switch lexeme.Type {
+			default:
+				err = errors.Join(err, newError(lexeme, state, ErrInvalidToken))
+			case lexer.TokenDefinitionExplanationBegin:
+				state = ParsingTermExplanation
+			}
+		case ParsingTermExplanation:
+			switch lexeme.Type {
+			default:
+				if isTextContent(lexeme.Type) {
+					level.PushText(newTextContent(lexeme))
+				} else {
+					err = errors.Join(err, newError(lexeme, state, ErrInvalidToken))
+				}
+			case lexer.TokenDefinitionExplanationEnd:
+				levels.Pop()
+				blog.TermDefinitions[currentTerm] = gen.StringOnlyContent(level.TextValues)
+				currentTerm = ""
+				state = level.ReturnToState
+			}
 		}
 	}
 	return
@@ -946,11 +970,15 @@ func newTextContent(lexeme lexer.Token) gen.StringRenderable {
 	case lexer.TokenAmpSpecial:
 		switch lexeme.Text {
 		default:
-			panic("programmer error: lexer and parser out of sync about what constitutes a &<...>; special character")
+			panic(fmt.Sprintf("programmer error: lexer and parser out of sync about what constitutes a &<...>; special character: %s", lexeme.Text))
 		case "~", "\u00A0":
 			return gen.AmpNoBreakSpace
 		case "---", "&mdash;":
-			return gen.AmpEMDash
+			return gen.AmpEmDash
+		case "--", "&ndash;":
+			return gen.AmpEnDash
+		case "-", "&hyphen;", "&dash;":
+			return gen.AmpHyphen
 		case "&ldquo;":
 			return gen.AmpLeftDoubleQuote
 		case "&rdquo;":
@@ -967,6 +995,10 @@ func newTextContent(lexeme lexer.Token) gen.StringRenderable {
 			return gen.AmpQuadruplePrime
 		case "&bprime;":
 			return gen.AmpReversedPrime
+		case "&laquo;":
+			return gen.AmpLeftAngledQuote
+		case "&raquo;":
+			return gen.AmpRightAngledQuote
 		}
 	}
 	panic("unreachable")

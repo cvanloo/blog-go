@@ -108,6 +108,7 @@ type (
 		Relevant *RelevantBox
 		SidenoteDefinitions map[string]StringRenderable // ID -> Content
 		LinkDefinitions map[string]string // ID -> Href
+		TermDefinitions map[string]StringRenderable // Term -> Explanation
 	}
 	Site struct {
 		Address *url.URL // e.g. https://blog.vanloo.ch
@@ -364,9 +365,13 @@ func (e EscapedString) Text() string {
 
 const (
 	AmpNoBreakSpace EscapedString = "&nbsp;"
-	AmpEMDash EscapedString = "&mdash;"
+	AmpEmDash EscapedString = "&mdash;"
+	AmpEnDash EscapedString = "&ndash;"
+	AmpHyphen EscapedString = "&hyphen;"
 	AmpLeftDoubleQuote EscapedString = "&ldquo;"
 	AmpRightDoubleQuote EscapedString = "&rdquo;"
+	AmpLeftAngledQuote EscapedString = "&laquo;"
+	AmpRightAngledQuote EscapedString = "&raquo;"
 	AmpEllipsis EscapedString = "…"
 	AmpPrime EscapedString = "&prime;"
 	AmpDoublePrime EscapedString = "&Prime;"
