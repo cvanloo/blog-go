@@ -92,7 +92,7 @@ type (
 		ID string
 		Fields map[string]string
 	}
-	Blog struct { // @todo: make Meta struct{}
+	Blog struct { // @todo: make Meta struct{}, // @todo: mandatory keys?
 		UrlPath string
 		Author Author
 		Lang string

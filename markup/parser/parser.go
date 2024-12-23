@@ -16,6 +16,111 @@ import (
 )
 
 type (
+	// NonHtmlText cannot contain HTML elements like <strong>, but allows for
+	// amp specials such as &nbsp;
+	NonHtmlText interface{}
+
+	// ParagraphContent is any (text) element that can appear only inside a paragraph.
+	// Examples include <strong>, sidenotes, enquotes, any NonHtmlText.
+	ParagraphContent interface{}
+
+	// SectionContent is any element that can appear only inside a section.
+	// Examples include section 2, images, blockquotes.
+	SectionContent interface{}
+)
+
+type (
+	Node interface {
+		Accept(Visitor)
+	}
+	Visitor interface {
+		VisitSection(*Section)
+		LeaveSection(*Section)
+		VisitParagraph(*Paragraph)
+		LeaveParagraph(*Paragraph)
+		VisitLink(*Link)
+		VisitSidenote(*Sidenote)
+	}
+	Section struct {
+		Level int
+		Content []Node
+	}
+	Paragraph struct {
+		Content []Node
+	}
+	Link struct {
+		ID string
+		Name ParagraphContent
+		Href NonHtmlText
+	}
+	Sidenote struct {
+		ID string
+		Word, Content ParagraphContent
+	}
+	BaseVisitor struct{}
+	FixReferencesVisitor struct {
+		BaseVisitor
+		Errors error
+		LinkDefinitions map[string]NonHtmlText
+		SidenoteDefinitions map[string]ParagraphContent
+	}
+	Meta map[string]NonHtmlText
+)
+
+func (s *Section) Accept(v Visitor) {
+	v.VisitSection(s)
+	for _, c := range s.Content {
+		c.Accept(v)
+	}
+	v.LeaveSection(s)
+}
+
+func (p *Paragraph) Accept(v Visitor) {
+	v.VisitParagraph(p)
+	for _, c := range p.Content {
+		c.Accept(v)
+	}
+	v.LeaveParagraph(p)
+}
+
+func (v BaseVisitor) VisitSection(*Section) {
+}
+
+func (v BaseVisitor) LeaveSection(*Section) {
+}
+
+func (v BaseVisitor) VisitParagraph(*Section) {
+}
+
+func (v BaseVisitor) LeaveParagraph(*Section) {
+}
+
+func (v BaseVisitor) VisitLink(*Section) {
+}
+
+func (v BaseVisitor) VisitSidenote(*Section) {
+}
+
+func (v FixReferencesVisitor) VisitLink(l *Link) {
+	if l.Href == "" {
+		href, hasHref := v.LinkDefinitions[l.ID]
+		if hasHref {
+			l.Href = href
+		}
+		v.Errors = errors.Join(v.Errors, fmt.Errorf("missing url definition for link with id: %s", l.ID))
+	}
+}
+
+func (v FixReferencesVisitor) VisitSidenote(sn *Sidenote) {
+	content, hasContent := v.SidenoteDefinitions[sn.ID]
+	if hasContent {
+		sn.Content = content
+	}
+	v.Errors = errors.Join(v.Errors, fmt.Errorf("missing content definition for sidenote with id: %s", sn.ID))
+}
+
+
+type (
 	LexResult interface {
 		Tokens() func(func(lexer.Token) bool)
 	}
