@@ -15,10 +15,15 @@ type (
 		parser.NopVisitor
 		TemplateData *Blog
 		Errors       error
+		currentSection1 *Section
+		currentSection2 *Section
+		currentSection *Section
+		currentParagraph *Paragraph
+		currentSOC StringOnlyContent
 	}
 )
 
-func (v MakeGenVisitor) VisitBlog(b *parser.Blog) {
+func (v *MakeGenVisitor) VisitBlog(b *parser.Blog) {
 	if urlPath, ok := b.Meta["url-path"]; ok {
 		if len(urlPath) > 1 {
 			v.Errors = errors.Join(v.Errors, errors.New("multiple definitions of meta key: url-path"))
@@ -143,6 +148,75 @@ func (v MakeGenVisitor) VisitBlog(b *parser.Blog) {
 		for _, t := range tagStrs {
 			v.TemplateData.Tags = append(v.TemplateData.Tags, Tag(t))
 		}
+	}
+}
+
+func (v *MakeGenVisitor) VisitSection(s *parser.Section) {
+	switch s.Level {
+	default:
+		panic(fmt.Errorf("invalid section level: %d", s.Level))
+	case 1:
+		v.currentSection1 = &Section{
+			// @todo: Attributes
+			Level: s.Level,
+			Heading: stringRenderableFromTextRich(s.Heading),
+		}
+		v.currentSection = v.currentSection1
+	case 2:
+		v.currentSection2 = &Section{
+			// @todo: Attributes
+			Level: s.Level,
+			Heading: stringRenderableFromTextRich(s.Heading),
+		}
+		v.currentSection = v.currentSection2
+	}
+}
+
+func (v *MakeGenVisitor) VisitParagraph(p *parser.Paragraph) {
+	v.currentParagraph = &Paragraph{}
+}
+
+func (v *MakeGenVisitor) VisitText(t *parser.Text) {
+	v.currentSOC = append(v.currentSOC, Text(*t))
+}
+
+func (v *MakeGenVisitor) VisitLink(l *parser.Link) {
+	v.currentSOC = append(v.currentSOC, Link{
+		Name: stringRenderableFromTextRich(l.Name),
+		Href: l.Href,
+	})
+}
+
+func (v *MakeGenVisitor) VisitSidenote(s *parser.Sidenote) {
+	v.currentSOC = append(v.currentSOC, Sidenote{
+		Word: stringRenderableFromTextRich(s.Word),
+		Content: stringRenderableFromTextRich(s.Content),
+	})
+}
+
+func (v *MakeGenVisitor) VisitAmpSpecial(a *parser.AmpSpecial) {
+	v.currentSOC = append(v.currentSOC, getAmpSpecial(string(*a)))
+}
+
+func (v *MakeGenVisitor) LeaveParagraph(p *parser.Paragraph) {
+	v.currentParagraph.Content = v.currentSOC
+	v.currentSOC = nil
+	v.currentSection.Content = append(v.currentSection.Content, *v.currentParagraph)
+	v.currentParagraph = nil
+}
+
+func (v *MakeGenVisitor) LeaveSection(s *parser.Section) {
+	switch s.Level {
+	default:
+		panic(fmt.Errorf("invalid section level: %d", s.Level))
+	case 1:
+		v.TemplateData.Sections = append(v.TemplateData.Sections, *v.currentSection1)
+		v.currentSection1 = nil
+		v.currentSection = nil
+	case 2:
+		v.currentSection1.Content = append(v.currentSection1.Content, *v.currentSection2)
+		v.currentSection2 = nil
+		v.currentSection = v.currentSection1
 	}
 }
 

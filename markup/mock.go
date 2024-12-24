@@ -26,6 +26,7 @@ const BlogTestSource = `
 url-path: hello
 title: Hello, World!
 author: Colin van~Loo
+lang: en
 ---
 
 # こんにちは、世界！
@@ -68,6 +69,8 @@ var LexerTestTokens = MockTokens{
 	{Type: lexer.TokenText, Text: "Colin van"},
 	{Type: lexer.TokenAmpSpecial, Text: "~"},
 	{Type: lexer.TokenText, Text: "Loo"},
+	{Type: lexer.TokenMetaKey, Text: "lang"},
+	{Type: lexer.TokenText, Text: "en"},
 	{Type: lexer.TokenMetaEnd, Text: "---"},
 	{Type: lexer.TokenSection1Begin, Text: "#"},
 	{Type: lexer.TokenText, Text: "こんにちは、世界！"},
@@ -147,6 +150,11 @@ var BlogParserTestStruct = parser.Blog{
 				AsRef(parser.Text("Colin van")),
 				AsRef(parser.AmpSpecial("~")),
 				AsRef(parser.Text("Loo")),
+			},
+		},
+		"lang": []parser.TextSimple{
+			[]parser.Node{
+				AsRef(parser.Text("en")),
 			},
 		},
 	},
@@ -261,6 +269,11 @@ var BlogParserFixedTestStruct = parser.Blog{
 				AsRef(parser.Text("Loo")),
 			},
 		},
+		"lang": []parser.TextSimple{
+			[]parser.Node{
+				AsRef(parser.Text("en")),
+			},
+		},
 	},
 	Sections: []*parser.Section{
 		{
@@ -362,6 +375,7 @@ var BlogGenTestStruct = gen.Blog{
 	Author: gen.Author{
 		Name: gen.StringOnlyContent{gen.Text("Colin van"), gen.AmpNoBreakSpace, gen.Text("Loo")},
 	},
+	Lang: "en",
 	Sections: []gen.Section{
 		{
 			Level: 1,
@@ -407,6 +421,7 @@ var BlogGenTestStruct = gen.Blog{
 								gen.Text("Lorem "),
 								gen.Sidenote{
 									Word: gen.StringOnlyContent{gen.Text("epsum")},
+									Content: gen.StringOnlyContent{gen.Text("See what I did there?")},
 								},
 								gen.Text(" dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.\nUt enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat."),
 							},
@@ -424,6 +439,7 @@ var BlogGenTestStruct = gen.Blog{
 						gen.Text("Ut enim ad minim "),
 						gen.Link{
 							Name: gen.StringOnlyContent{gen.Text("veniam")},
+							Href: "https://example.com/",
 						},
 						gen.Text(", quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat."),
 					},
