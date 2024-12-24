@@ -81,7 +81,7 @@ type (
 		Href string
 	}
 	Sidenote struct {
-		ID string
+		Ref string
 		Word, Content TextRich
 	}
 	// @todo:
@@ -328,11 +328,11 @@ func (v FixReferencesVisitor) VisitLink(l *Link) {
 }
 
 func (v FixReferencesVisitor) VisitSidenote(sn *Sidenote) {
-	content, hasContent := v.SidenoteDefinitions[sn.ID]
+	content, hasContent := v.SidenoteDefinitions[sn.Ref]
 	if hasContent {
 		sn.Content = content
 	}
-	v.Errors = errors.Join(v.Errors, fmt.Errorf("missing content definition for sidenote with id: %s", sn.ID))
+	v.Errors = errors.Join(v.Errors, fmt.Errorf("missing content definition for sidenote with id: %s", sn.Ref))
 }
 
 type (
@@ -946,7 +946,7 @@ func Parse(lx LexResult) (blog Blog, err error) {
 				state = ParsingLinkableAfterRef
 			case lexer.TokenSidenoteRef:
 				currentSidenote.Word = level.TextRich
-				currentSidenote.ID = lexeme.Text
+				currentSidenote.Ref = lexeme.Text
 				//level.Clear() @todo: ?
 				state = ParsingSidenoteAfterRef
 			case lexer.TokenSidenoteContent:
