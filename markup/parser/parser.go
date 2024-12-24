@@ -42,6 +42,8 @@ type (
 		Accept(Visitor)
 	}
 	Visitor interface {
+		VisitBlog(*Blog)
+		LeaveBlog(*Blog)
 		VisitSection(*Section)
 		LeaveSection(*Section)
 		VisitParagraph(*Paragraph)
@@ -176,6 +178,14 @@ func newTextNode(lexeme lexer.Token) Node {
 	panic("unreachable")
 }
 
+func (b *Blog) Accept(v Visitor) {
+	v.VisitBlog(b)
+	for _, s := range b.Sections {
+		s.Accept(v)
+	}
+	v.LeaveBlog(b)
+}
+
 func (s *Section) Accept(v Visitor) {
 	v.VisitSection(s)
 	for _, c := range s.Content {
@@ -260,6 +270,12 @@ func (h *HorizontalRule) Accept(v Visitor) {
 	v.VisitHorizontalRule(h)
 }
 
+func (v NopVisitor) VisitBlog(b *Blog) {
+}
+
+func (v NopVisitor) LeaveBlog(b *Blog) {
+}
+
 func (v NopVisitor) VisitSection(*Section) {
 }
 
@@ -276,6 +292,12 @@ func (v NopVisitor) VisitLink(*Link) {
 }
 
 func (v NopVisitor) VisitSidenote(*Sidenote) {
+}
+
+func (v NopVisitor) VisitImage(*Image) {
+}
+
+func (v NopVisitor) VisitBlockQuote(*BlockQuote) {
 }
 
 func (v NopVisitor) VisitEnquoteDouble(*EnquoteDouble) {
@@ -317,22 +339,30 @@ func (v NopVisitor) VisitCodeBlock(*CodeBlock) {
 func (v NopVisitor) VisitHorizontalRule(*HorizontalRule) {
 }
 
-func (v FixReferencesVisitor) VisitLink(l *Link) {
+func (v *FixReferencesVisitor) VisitBlog(b *Blog) {
+	v.LinkDefinitions = b.LinkDefinitions
+	v.SidenoteDefinitions = b.SidenoteDefinitions
+	v.TermDefinitions = b.TermDefinitions
+}
+
+func (v *FixReferencesVisitor) VisitLink(l *Link) {
 	if len(l.Href) == 0 {
 		href, hasHref := v.LinkDefinitions[l.Ref]
 		if hasHref {
 			l.Href = href
+		} else {
+			v.Errors = errors.Join(v.Errors, fmt.Errorf("missing url definition for link with id: %s", l.Ref))
 		}
-		v.Errors = errors.Join(v.Errors, fmt.Errorf("missing url definition for link with id: %s", l.Ref))
 	}
 }
 
-func (v FixReferencesVisitor) VisitSidenote(sn *Sidenote) {
+func (v *FixReferencesVisitor) VisitSidenote(sn *Sidenote) {
 	content, hasContent := v.SidenoteDefinitions[sn.Ref]
 	if hasContent {
 		sn.Content = content
+	} else {
+		v.Errors = errors.Join(v.Errors, fmt.Errorf("missing content definition for sidenote with id: %s", sn.Ref))
 	}
-	v.Errors = errors.Join(v.Errors, fmt.Errorf("missing content definition for sidenote with id: %s", sn.Ref))
 }
 
 type (

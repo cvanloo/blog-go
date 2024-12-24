@@ -17,7 +17,7 @@ func init() {
 
 func main() {
 	http.Handle("/", http.FileServer(http.Dir("./public")))
-	http.HandleFunc("/blog", gen.Handler(&markup.BlogTestStruct, PanicIf))
+	http.HandleFunc("/blog", gen.Handler(&markup.BlogGenTestStruct, PanicIf))
 	/*http.HandleFunc("/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		log.Printf("%s %s NOT FOUND", r.Method, r.URL.Path)
 		w.WriteHeader(http.StatusNotFound)

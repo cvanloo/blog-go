@@ -242,7 +242,121 @@ var BlogParserTestStruct = parser.Blog{
 	TermDefinitions: map[string]parser.TextRich{},
 }
 
-var BlogTestStruct = gen.Blog{
+var BlogParserFixedTestStruct = parser.Blog{
+	Meta: parser.Meta{
+		"url-path": []parser.TextSimple{
+			[]parser.Node{
+				AsRef(parser.Text("hello")),
+			},
+		},
+		"title": []parser.TextSimple{
+			[]parser.Node{
+				AsRef(parser.Text("Hello, World!")),
+			},
+		},
+		"author": []parser.TextSimple{
+			[]parser.Node{
+				AsRef(parser.Text("Colin van")),
+				AsRef(parser.AmpSpecial("~")),
+				AsRef(parser.Text("Loo")),
+			},
+		},
+	},
+	Sections: []*parser.Section{
+		{
+			Level: 1,
+			Heading: parser.TextRich{
+				AsRef(parser.Text("こんにちは、世界！")),
+			},
+			Content: []parser.Node{
+				&parser.Paragraph{
+					Content: []parser.Node{
+						AsRef(parser.Text("Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.\nUt enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.\nDuis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.")),
+					},
+				},
+				&parser.Paragraph{
+					Content: []parser.Node{
+						AsRef(parser.Text("Ut enim ad minim veniam, quis nostrud")),
+						AsRef(parser.AmpSpecial("---")),
+						AsRef(parser.Text("exercitation ullamco")),
+						AsRef(parser.AmpSpecial("---")),
+						AsRef(parser.Text("laboris nisi ut aliquip ex ea commodo consequat.\nDuis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.")),
+					},
+				},
+				&parser.Section{
+					Level: 2,
+					Heading: parser.TextRich{
+						AsRef(parser.Text("Lorem Ipsum")),
+					},
+					Content: []parser.Node{
+						&parser.Paragraph{
+							Content: []parser.Node{
+								AsRef(parser.Text("Ut enim ad minim ")),
+								&parser.Link{
+									Name: parser.TextRich{AsRef(parser.Text("veniam"))},
+									Href: "https://example.com/",
+								},
+								AsRef(parser.Text(", quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.")),
+							},
+						},
+						&parser.Paragraph{
+							Content: []parser.Node{
+								AsRef(parser.Text("Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.")),
+							},
+						},
+					},
+				},
+				&parser.Section{
+					Level: 2,
+					Heading: parser.TextRich{
+						AsRef(parser.Text("Lorem Epsum")),
+					},
+					Content: []parser.Node{
+						&parser.Paragraph{
+							Content: []parser.Node{
+								AsRef(parser.Text("Lorem ")),
+								&parser.Sidenote{
+									Ref: "1",
+									Word: parser.TextRich{AsRef(parser.Text("epsum"))},
+									Content: parser.TextRich{AsRef(parser.Text("See what I did there?"))},
+								},
+								AsRef(parser.Text(" dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.\nUt enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.")),
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			Level: 1,
+			Heading: parser.TextRich{
+				AsRef(parser.Text("さようなら")),
+			},
+			Content: []parser.Node{
+				&parser.Paragraph{
+					Content: []parser.Node{
+						AsRef(parser.Text("Ut enim ad minim ")),
+						&parser.Link{
+							Ref: "0",
+							Name: parser.TextRich{AsRef(parser.Text("veniam"))},
+							Href: "https://example.com/",
+						},
+						AsRef(parser.Text(", quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.")),
+					},
+				},
+			},
+		},
+	},
+	LinkDefinitions: map[string]string{
+		"0": "https://example.com/",
+	},
+	SidenoteDefinitions: map[string]parser.TextRich{
+		"1": parser.TextRich{AsRef(parser.Text("See what I did there?"))},
+	},
+	TermDefinitions: map[string]parser.TextRich{},
+}
+
+var BlogGenTestStruct = gen.Blog{
 	UrlPath: "hello",
 	Title: gen.StringOnlyContent{gen.Text("Hello, World!")},
 	Author: gen.Author{

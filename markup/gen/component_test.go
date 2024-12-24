@@ -9,7 +9,7 @@ import (
 )
 
 func ExampleGenerateBlog() {
-	fmt.Println(Must(gen.String(&markup.BlogTestStruct)))
+	fmt.Println(Must(gen.String(&markup.BlogGenTestStruct)))
 	// Output:
 	// <???>
 }
