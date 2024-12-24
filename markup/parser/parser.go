@@ -86,7 +86,6 @@ type (
 		Ref string
 		Word, Content TextRich
 	}
-	// @todo:
 	Image struct {
 		Name string
 		Alt, Title TextSimple
@@ -100,7 +99,6 @@ type (
 		Lines []string
 	}
 	HorizontalRule struct{}
-	// @todo end
 	EnquoteDouble TextRich
 	EnquoteAngled TextRich
 	Emphasis TextRich
@@ -146,7 +144,7 @@ func (t *TextRich) Append(n Node) bool {
 	switch n.(type) {
 	default:
 		return false
-	case *Text, *AmpSpecial, *Emphasis, *Strong, *EmphasisStrong, *Link, *Sidenote, *Strikethrough, *Marker, *Mono, *Linkify:
+	case *Text, *AmpSpecial, *Emphasis, *Strong, *EmphasisStrong, *Link, *Sidenote, *Strikethrough, *Marker, *Mono, *Linkify, *EnquoteDouble, *EnquoteAngled:
 		*t = append(*t, n)
 		return true
 	}

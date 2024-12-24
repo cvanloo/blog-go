@@ -2,13 +2,13 @@ package markup
 
 import (
 	"io"
-	//"errors"
+	"errors"
 	"os"
-	//"fmt"
+	"fmt"
 
-	//"github.com/cvanloo/blog-go/markup/lexer"
-	//"github.com/cvanloo/blog-go/markup/parser"
-	//"github.com/cvanloo/blog-go/markup/gen"
+	"github.com/cvanloo/blog-go/markup/lexer"
+	"github.com/cvanloo/blog-go/markup/parser"
+	"github.com/cvanloo/blog-go/markup/gen"
 	. "github.com/cvanloo/blog-go/assert"
 )
 
@@ -57,7 +57,6 @@ func OutDir(path string) MarkupOption {
 }
 
 func (m Markup) Run() (err error) {
-	/*
 	for _, src := range m.Sources {
 		lex := lexer.New()
 		bs, rerr := io.ReadAll(src.In)
@@ -75,16 +74,29 @@ func (m Markup) Run() (err error) {
 			err = errors.Join(err, perr)
 			continue
 		}
-		/Assert(len(blog.UrlPath) > 0, "urlpath must be set")
-		out, cerr := os.Create(fmt.Sprintf("%s/%s.html", m.OutDir, blog.UrlPath))
+		refFixer := &parser.FixReferencesVisitor{}
+		blog.Accept(refFixer)
+		if refFixer.Errors != nil {
+			err = errors.Join(refFixer.Errors)
+			continue
+		}
+		templateData := gen.Blog{}
+		makeGen := &gen.MakeGenVisitor{
+			TemplateData: &templateData,
+		}
+		blog.Accept(makeGen)
+		if makeGen.Errors != nil {
+			err = errors.Join(err, makeGen.Errors)
+			continue
+		}
+		out, cerr := os.Create(fmt.Sprintf("%s/%s.html", m.OutDir, templateData.UrlPath))
 		if cerr != nil {
 			err = errors.Join(err, cerr)
 			continue
 		}
-		werr := gen.WriteBlog(out, &blog)
+		werr := gen.WriteBlog(out, &templateData)
 		err = errors.Join(err, werr)
 		err = errors.Join(err, out.Close())
 	}
-	*/
 	return err
 }
