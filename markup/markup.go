@@ -2,13 +2,13 @@ package markup
 
 import (
 	"io"
-	"errors"
+	//"errors"
 	"os"
-	"fmt"
+	//"fmt"
 
-	"github.com/cvanloo/blog-go/markup/lexer"
-	"github.com/cvanloo/blog-go/markup/parser"
-	"github.com/cvanloo/blog-go/markup/gen"
+	//"github.com/cvanloo/blog-go/markup/lexer"
+	//"github.com/cvanloo/blog-go/markup/parser"
+	//"github.com/cvanloo/blog-go/markup/gen"
 	. "github.com/cvanloo/blog-go/assert"
 )
 
@@ -57,6 +57,7 @@ func OutDir(path string) MarkupOption {
 }
 
 func (m Markup) Run() (err error) {
+	/*
 	for _, src := range m.Sources {
 		lex := lexer.New()
 		bs, rerr := io.ReadAll(src.In)
@@ -74,7 +75,7 @@ func (m Markup) Run() (err error) {
 			err = errors.Join(err, perr)
 			continue
 		}
-		Assert(len(blog.UrlPath) > 0, "urlpath must be set")
+		/Assert(len(blog.UrlPath) > 0, "urlpath must be set")
 		out, cerr := os.Create(fmt.Sprintf("%s/%s.html", m.OutDir, blog.UrlPath))
 		if cerr != nil {
 			err = errors.Join(err, cerr)
@@ -84,5 +85,6 @@ func (m Markup) Run() (err error) {
 		err = errors.Join(err, werr)
 		err = errors.Join(err, out.Close())
 	}
+	*/
 	return err
 }

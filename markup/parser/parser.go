@@ -3,33 +3,41 @@ package parser
 import (
 	"errors"
 	"fmt"
-	"strconv"
-	"strings"
-	"time"
 
 	//"github.com/kr/pretty"
 
 	. "github.com/cvanloo/blog-go/assert"
-	"github.com/cvanloo/blog-go/markup/gen"
 	"github.com/cvanloo/blog-go/markup/lexer"
-	. "github.com/cvanloo/blog-go/stack"
 )
 
+/*
 type (
 	// NonHtmlText cannot contain HTML elements like <strong>, but allows for
 	// amp specials such as &nbsp;
-	NonHtmlText interface{}
+	NonHtmlText interface {
+		Text() string
+	}
 
 	// ParagraphContent is any (text) element that can appear only inside a paragraph.
 	// Examples include <strong>, sidenotes, enquotes, any NonHtmlText.
-	ParagraphContent interface{}
+	ParagraphContent interface {
+		NonHtmlText
+		RichText() template.HTML
+	}
 
 	// SectionContent is any element that can appear only inside a section.
 	// Examples include section 2, images, blockquotes.
-	SectionContent interface{}
+	SectionContent interface {
+		//ParagraphContent
+		Render() template.HTML
+	}
 )
+*/
 
 type (
+	TextSimple []Node
+	TextRich []Node
+
 	Node interface {
 		Accept(Visitor)
 	}
@@ -40,32 +48,133 @@ type (
 		LeaveParagraph(*Paragraph)
 		VisitLink(*Link)
 		VisitSidenote(*Sidenote)
+		VisitEnquoteDouble(*EnquoteDouble)
+		VisitEnquoteAngled(*EnquoteAngled)
+		VisitEmphasis(*Emphasis)
+		VisitStrong(*Strong)
+		VisitEmphasisStrong(*EmphasisStrong)
+		VisitStrikethrough(*Strikethrough)
+		VisitMarker(*Marker)
+		VisitMono(*Mono)
+		VisitText(*Text)
+		VisitAmpSpecial(*AmpSpecial)
+		VisitLinkify(*Linkify)
+		VisitImage(*Image)
+		VisitBlockQuote(*BlockQuote)
+		VisitCodeBlock(*CodeBlock)
+		VisitHorizontalRule(*HorizontalRule)
 	}
+
+	Attributes map[string]string
 	Section struct {
+		Attributes
 		Level int
+		Heading TextRich
 		Content []Node
 	}
 	Paragraph struct {
 		Content []Node
 	}
 	Link struct {
-		ID string
-		Name ParagraphContent
-		Href NonHtmlText
+		Ref string
+		Name TextRich
+		Href string
 	}
 	Sidenote struct {
 		ID string
-		Word, Content ParagraphContent
+		Word, Content TextRich
 	}
-	BaseVisitor struct{}
+	// @todo:
+	Image struct {
+		Name string
+		Alt, Title TextSimple
+	}
+	BlockQuote struct {
+		QuoteText TextRich
+		Author, Source TextSimple
+	}
+	CodeBlock struct {
+		Attributes
+		Lines []string
+	}
+	HorizontalRule struct{}
+	// @todo end
+	EnquoteDouble TextRich
+	EnquoteAngled TextRich
+	Emphasis TextRich
+	Strong TextRich
+	EmphasisStrong TextRich
+	Strikethrough TextRich
+	Marker TextRich
+	Mono string
+	Text string
+	AmpSpecial string
+	Linkify string
+
+	NopVisitor struct{}
 	FixReferencesVisitor struct {
-		BaseVisitor
+		NopVisitor
 		Errors error
-		LinkDefinitions map[string]NonHtmlText
-		SidenoteDefinitions map[string]ParagraphContent
+		LinkDefinitions map[string]string
+		SidenoteDefinitions map[string]TextRich
+		TermDefinitions map[string]TextRich
 	}
-	Meta map[string]NonHtmlText
+
+	Blog struct {
+		Meta Meta
+		Sections []*Section
+		LinkDefinitions map[string]string
+		SidenoteDefinitions map[string]TextRich
+		TermDefinitions map[string]TextRich
+	}
+	Meta map[string][]TextSimple // slice value to allow for duplicate keys
 )
+
+func (t *TextSimple) Append(n Node) bool {
+	switch n.(type) {
+	default:
+		return false
+	case *Text, *AmpSpecial:
+		*t = append(*t, n)
+		return true
+	}
+}
+
+func (t *TextRich) Append(n Node) bool {
+	switch n.(type) {
+	default:
+		return false
+	case *Text, *AmpSpecial, *Emphasis, *Strong, *EmphasisStrong, *Link, *Sidenote:
+		*t = append(*t, n)
+		return true
+	}
+}
+
+func isTextNode(token lexer.Token) bool {
+	switch token.Type {
+	default:
+		return false
+	case lexer.TokenMono, lexer.TokenText, lexer.TokenAmpSpecial, lexer.TokenLinkify:
+		// @todo: what else is a text node?
+		return true
+	}
+	panic("unreachable")
+}
+
+func newTextNode(lexeme lexer.Token) Node {
+	Assert(isTextNode(lexeme), fmt.Sprintf("cannot make text node out of %s", lexeme.Type))
+	switch lexeme.Type {
+	case lexer.TokenMono:
+		return AsRef(Mono(lexeme.Text))
+	case lexer.TokenText:
+		return AsRef(Text(lexeme.Text))
+	case lexer.TokenLinkify:
+		return AsRef(Linkify(lexeme.Text))
+	case lexer.TokenAmpSpecial:
+		return AsRef(AmpSpecial(lexeme.Text))
+	}
+	panic("unreachable")
+}
 
 func (s *Section) Accept(v Visitor) {
 	v.VisitSection(s)
@@ -83,31 +192,138 @@ func (p *Paragraph) Accept(v Visitor) {
 	v.LeaveParagraph(p)
 }
 
-func (v BaseVisitor) VisitSection(*Section) {
+func (l *Link) Accept(v Visitor) {
+	v.VisitLink(l)
 }
 
-func (v BaseVisitor) LeaveSection(*Section) {
+func (s *Sidenote) Accept(v Visitor) {
+	v.VisitSidenote(s)
 }
 
-func (v BaseVisitor) VisitParagraph(*Section) {
+func (e *EnquoteDouble) Accept(v Visitor) {
+	v.VisitEnquoteDouble(e)
 }
 
-func (v BaseVisitor) LeaveParagraph(*Section) {
+func (e *EnquoteAngled) Accept(v Visitor) {
+	v.VisitEnquoteAngled(e)
 }
 
-func (v BaseVisitor) VisitLink(*Section) {
+func (e *Emphasis) Accept(v Visitor) {
+	v.VisitEmphasis(e)
 }
 
-func (v BaseVisitor) VisitSidenote(*Section) {
+func (s *Strong) Accept(v Visitor) {
+	v.VisitStrong(s)
+}
+
+func (e *EmphasisStrong) Accept(v Visitor) {
+	v.VisitEmphasisStrong(e)
+}
+
+func (s *Strikethrough) Accept(v Visitor) {
+	v.VisitStrikethrough(s)
+}
+
+func (m *Marker) Accept(v Visitor) {
+	v.VisitMarker(m)
+}
+
+func (m *Mono) Accept(v Visitor) {
+	v.VisitMono(m)
+}
+
+func (t *Text) Accept(v Visitor) {
+	v.VisitText(t)
+}
+
+func (a *AmpSpecial) Accept(v Visitor) {
+	v.VisitAmpSpecial(a)
+}
+
+func (l *Linkify) Accept(v Visitor) {
+	v.VisitLinkify(l)
+}
+
+func (i *Image) Accept(v Visitor) {
+	v.VisitImage(i)
+}
+
+func (b *BlockQuote) Accept(v Visitor) {
+	v.VisitBlockQuote(b)
+}
+
+func (c *CodeBlock) Accept(v Visitor) {
+	v.VisitCodeBlock(c)
+}
+
+func (h *HorizontalRule) Accept(v Visitor) {
+	v.VisitHorizontalRule(h)
+}
+
+func (v NopVisitor) VisitSection(*Section) {
+}
+
+func (v NopVisitor) LeaveSection(*Section) {
+}
+
+func (v NopVisitor) VisitParagraph(*Paragraph) {
+}
+
+func (v NopVisitor) LeaveParagraph(*Paragraph) {
+}
+
+func (v NopVisitor) VisitLink(*Link) {
+}
+
+func (v NopVisitor) VisitSidenote(*Sidenote) {
+}
+
+func (v NopVisitor) VisitEnquoteDouble(*EnquoteDouble) {
+}
+
+func (v NopVisitor) VisitEnquoteAngled(*EnquoteAngled) {
+}
+
+func (v NopVisitor) VisitEmphasis(*Emphasis) {
+}
+
+func (v NopVisitor) VisitStrong(*Strong) {
+}
+
+func (v NopVisitor) VisitEmphasisStrong(*EmphasisStrong) {
+}
+
+func (v NopVisitor) VisitStrikethrough(*Strikethrough) {
+}
+
+func (v NopVisitor) VisitMarker(*Marker) {
+}
+
+func (v NopVisitor) VisitMono(*Mono) {
+}
+
+func (v NopVisitor) VisitText(*Text) {
+}
+
+func (v NopVisitor) VisitAmpSpecial(*AmpSpecial) {
+}
+
+func (v NopVisitor) VisitLinkify(*Linkify) {
+}
+
+func (v NopVisitor) VisitCodeBlock(*CodeBlock) {
+}
+
+func (v NopVisitor) VisitHorizontalRule(*HorizontalRule) {
 }
 
 func (v FixReferencesVisitor) VisitLink(l *Link) {
-	if l.Href == "" {
-		href, hasHref := v.LinkDefinitions[l.ID]
+	if len(l.Href) == 0 {
+		href, hasHref := v.LinkDefinitions[l.Ref]
 		if hasHref {
 			l.Href = href
 		}
-		v.Errors = errors.Join(v.Errors, fmt.Errorf("missing url definition for link with id: %s", l.ID))
+		v.Errors = errors.Join(v.Errors, fmt.Errorf("missing url definition for link with id: %s", l.Ref))
 	}
 }
 
@@ -118,7 +334,6 @@ func (v FixReferencesVisitor) VisitSidenote(sn *Sidenote) {
 	}
 	v.Errors = errors.Join(v.Errors, fmt.Errorf("missing content definition for sidenote with id: %s", sn.ID))
 }
-
 
 type (
 	LexResult interface {
@@ -150,35 +365,15 @@ func (err ParserError) Error() string {
 type (
 	Level struct {
 		ReturnToState ParseState
-		Strings       Stack[string]
-		Content       Stack[gen.Renderable]
-		TextValues    Stack[gen.StringRenderable]
+		Strings       []string
+		TextSimple    TextSimple
+		TextRich      TextRich
+		Content       []Node
 	}
 	Levels struct {
 		levels []*Level
 	}
 )
-
-func (lv *Level) PushString(v string) {
-	lv.Strings = lv.Strings.Push(v)
-}
-
-func (lv *Level) PopString() (s string) {
-	lv.Strings, s = lv.Strings.Pop()
-	return s
-}
-
-func (lv *Level) PushContent(v gen.Renderable) {
-	lv.Content = lv.Content.Push(v)
-}
-
-func (lv *Level) PushText(v gen.StringRenderable) {
-	lv.TextValues = lv.TextValues.Push(v)
-}
-
-func (lv *Level) EmptyText() {
-	lv.TextValues = lv.TextValues.Empty()
-}
 
 func (ls *Levels) Push(l *Level) {
 	ls.levels = append(ls.levels, l)
@@ -187,11 +382,6 @@ func (ls *Levels) Push(l *Level) {
 func (ls *Levels) Top() *Level {
 	l := len(ls.levels)
 	return ls.levels[l-1]
-}
-
-func (ls *Levels) Dig() *Level {
-	l := len(ls.levels)
-	return ls.levels[l-2]
 }
 
 func (ls *Levels) Pop() *Level {
@@ -203,6 +393,23 @@ func (ls *Levels) Pop() *Level {
 
 func (ls *Levels) Len() int {
 	return len(ls.levels)
+}
+
+func (l *Level) PushString(s string) {
+	l.Strings = append(l.Strings, s)
+}
+
+func (l *Level) PopString() (s string) {
+	s = l.Strings[len(l.Strings)-1]
+	l.Strings = l.Strings[:len(l.Strings)-1]
+	return s
+}
+
+func (l *Level) Clear() {
+	l.Strings = []string{}
+	l.TextSimple = TextSimple{}
+	l.TextRich = TextRich{}
+	l.Content = []Node{}
 }
 
 //go:generate stringer -type ParseState
@@ -253,27 +460,28 @@ const (
 
 var (
 	ErrInvalidToken          = errors.New("invalid token")
-	ErrInvalidMetaKey        = errors.New("invalid meta key")
 	ErrSectionMissingHeading = errors.New("section must have a heading")
 )
 
-func Parse(lx LexResult) (blog gen.Blog, err error) {
+func Parse(lx LexResult) (blog Blog, err error) {
+	// kinda sad how the zero value of a map isn't useable ;-(
 	blog.LinkDefinitions = map[string]string{}
-	blog.SidenoteDefinitions = map[string]gen.StringRenderable{}
-	blog.TermDefinitions = map[string]gen.StringRenderable{}
+	blog.SidenoteDefinitions = map[string]TextRich{}
+	blog.TermDefinitions = map[string]TextRich{}
+	blog.Meta = Meta{}
 	state := ParsingStart
 	levels := Levels{}
 	levels.Push(&Level{ReturnToState: ParsingStart})
 	var (
-		currentSection1, currentSection2 gen.Section
-		currentAttributes                gen.Attributes
+		currentSection1, currentSection2 *Section
+		currentAttributes                Attributes
 		currentHTMLElement               = HtmlTag{Args: map[string]string{}}
-		currentCodeBlock                 gen.CodeBlock
-		currentImage                     gen.Image
-		currentBlockquote                gen.Blockquote
-		currentSidenote                  gen.Sidenote
+		currentCodeBlock                 = &CodeBlock{}
+		currentImage                     = &Image{}
+		currentBlockquote                = &BlockQuote{}
+		currentSidenote                  = &Sidenote{}
 		currentDefinition                string
-		currentTerm string
+		currentTerm                      string
 	)
 	for lexeme := range lx.Tokens() {
 		level := levels.Top()
@@ -342,9 +550,6 @@ func Parse(lx LexResult) (blog gen.Blog, err error) {
 			default:
 				err = errors.Join(err, newError(lexeme, state, ErrInvalidToken))
 			case lexer.TokenMetaKey:
-				if !checkMetaKey(lexeme.Text) {
-					err = errors.Join(err, newError(lexeme, state, ErrInvalidMetaKey))
-				}
 				level.PushString(lexeme.Text)
 				state = ParsingMetaVal
 			case lexer.TokenMetaEnd:
@@ -354,26 +559,21 @@ func Parse(lx LexResult) (blog gen.Blog, err error) {
 		case ParsingMetaVal:
 			switch lexeme.Type {
 			default:
-				if isTextContent(lexeme.Type) {
-					level.PushText(newTextContent(lexeme))
-				} else {
+				if !(isTextNode(lexeme) && level.TextSimple.Append(newTextNode(lexeme))) {
 					err = errors.Join(err, newError(lexeme, state, ErrInvalidToken))
 				}
 			case lexer.TokenMetaKey:
 				// finish current key
 				key := level.PopString()
-				setMetaKeyValuePair(&blog, key, gen.StringOnlyContent(level.TextValues))
-				level.EmptyText()
+				blog.Meta[key] = append(blog.Meta[key], level.TextSimple)
+				level.Clear()
 				// start next key
-				if !checkMetaKey(lexeme.Text) {
-					err = errors.Join(err, newError(lexeme, state, ErrInvalidMetaKey))
-				}
 				level.PushString(lexeme.Text)
 			case lexer.TokenMetaEnd:
 				// finish last key
 				key := level.PopString()
-				setMetaKeyValuePair(&blog, key, gen.StringOnlyContent(level.TextValues))
-				level.EmptyText()
+				blog.Meta[key] = append(blog.Meta[key], level.TextSimple)
+				level.Clear()
 				// finish level
 				levels.Pop()
 				state = level.ReturnToState
@@ -383,7 +583,7 @@ func Parse(lx LexResult) (blog gen.Blog, err error) {
 			default:
 				err = errors.Join(err, newError(lexeme, state, ErrInvalidToken))
 			case lexer.TokenAttributeListID:
-				currentAttributes.ID = lexeme.Text
+				currentAttributes["id"] = lexeme.Text
 				state = ParsingAttributeListAfterID
 			case lexer.TokenAttributeListKey:
 				level.PushString(lexeme.Text)
@@ -406,23 +606,31 @@ func Parse(lx LexResult) (blog gen.Blog, err error) {
 		case ParsingAttributeListVal:
 			switch lexeme.Type {
 			default:
-				if isTextContent(lexeme.Type) {
-					level.PushText(newTextContent(lexeme))
-				} else {
-					err = errors.Join(err, newError(lexeme, state, ErrInvalidToken))
-				}
+				err = errors.Join(err, newError(lexeme, state, ErrInvalidToken))
+			case lexer.TokenText:
+				level.PushString(lexeme.Text)
 			case lexer.TokenAttributeListKey:
 				// finish previous key
+				Assert(len(level.Strings) == 1 || len(level.Strings) == 2, "")
+				var val string
+				if len(level.Strings) > 1 {
+					val = level.PopString()
+				}
 				key := level.PopString()
-				val := gen.StringOnlyContent(level.TextValues)
-				currentAttributes.SetAttr(key, val.Text())
+				currentAttributes[key] = val
+				level.Clear()
 				// start next key
 				level.PushString(lexeme.Text)
 			case lexer.TokenAttributeListEnd:
 				// finish last key
+				Assert(len(level.Strings) == 1 || len(level.Strings) == 2, "")
+				var val string
+				if len(level.Strings) > 1 {
+					val = level.PopString()
+				}
 				key := level.PopString()
-				val := gen.StringOnlyContent(level.TextValues)
-				currentAttributes.SetAttr(key, val.Text())
+				currentAttributes[key] = val
+				level.Clear()
 				// finish level
 				levels.Pop()
 				state = level.ReturnToState
@@ -431,20 +639,21 @@ func Parse(lx LexResult) (blog gen.Blog, err error) {
 			switch {
 			default:
 				err = errors.Join(err, newError(lexeme, state, ErrInvalidToken))
-			case isTextContent(lexeme.Type):
-				level.PushText(newTextContent(lexeme))
+			case isTextNode(lexeme):
+				ok := level.TextRich.Append(newTextNode(lexeme))
+				Assert(ok, "all text nodes must fit into rich text")
 			case lexeme.Type == lexer.TokenAttributeListBegin:
 				levels.Push(&Level{ReturnToState: ParsingSection1AfterAttributeList})
 				state = ParsingAttributeList
 			case lexeme.Type == lexer.TokenSection1Content:
-				if len(level.TextValues) == 0 {
+				if len(level.TextRich) == 0 {
 					err = errors.Join(err, newError(lexeme, state, ErrSectionMissingHeading))
 				}
-				currentSection1 = gen.Section{
+				currentSection1 = &Section{
 					Level:   1,
-					Heading: gen.StringOnlyContent(level.TextValues),
+					Heading: level.TextRich,
 				}
-				level.EmptyText()
+				level.Clear()
 				state = ParsingSection1Content
 			}
 		case ParsingSection1AfterAttributeList:
@@ -452,16 +661,16 @@ func Parse(lx LexResult) (blog gen.Blog, err error) {
 			default:
 				err = errors.Join(err, newError(lexeme, state, ErrInvalidToken))
 			case lexer.TokenSection1Content:
-				if len(level.TextValues) == 0 {
+				if len(level.TextRich) == 0 {
 					err = errors.Join(err, newError(lexeme, state, ErrSectionMissingHeading))
 				}
-				currentSection1 = gen.Section{
+				currentSection1 = &Section{
 					Attributes: currentAttributes,
 					Level:      1,
-					Heading:    gen.StringOnlyContent(level.TextValues),
+					Heading:    level.TextRich,
 				}
-				level.EmptyText()
-				currentAttributes = gen.Attributes{}
+				level.Clear()
+				currentAttributes = Attributes{}
 				state = ParsingSection1Content
 			}
 		case ParsingSection1Content:
@@ -473,7 +682,7 @@ func Parse(lx LexResult) (blog gen.Blog, err error) {
 				currentTerm = lexeme.Text
 				state = ParsingTermDefinition
 			case lexer.TokenHorizontalRule:
-				level.PushContent(gen.HorizontalRule{})
+				level.Content = append(level.Content, &HorizontalRule{})
 			case lexer.TokenCodeBlockBegin:
 				levels.Push(&Level{ReturnToState: ParsingSection1Content})
 				state = ParsingCodeBlock
@@ -504,7 +713,7 @@ func Parse(lx LexResult) (blog gen.Blog, err error) {
 			case lexer.TokenSection1End:
 				currentSection1.Content = level.Content
 				blog.Sections = append(blog.Sections, currentSection1)
-				currentSection1 = gen.Section{}
+				currentSection1 = &Section{}
 				levels.Pop()
 				state = level.ReturnToState
 			}
@@ -512,20 +721,21 @@ func Parse(lx LexResult) (blog gen.Blog, err error) {
 			switch {
 			default:
 				err = errors.Join(err, newError(lexeme, state, ErrInvalidToken))
-			case isTextContent(lexeme.Type):
-				level.PushText(newTextContent(lexeme))
+			case isTextNode(lexeme):
+				ok := level.TextRich.Append(newTextNode(lexeme))
+				Assert(ok, "all text nodes must fit into rich text")
 			case lexeme.Type == lexer.TokenAttributeListBegin:
 				levels.Push(&Level{ReturnToState: ParsingSection2AfterAttributeList})
 				state = ParsingAttributeList
 			case lexeme.Type == lexer.TokenSection2Content:
-				if len(level.TextValues) == 0 {
+				if len(level.TextRich) == 0 {
 					err = errors.Join(err, newError(lexeme, state, ErrSectionMissingHeading))
 				}
-				currentSection2 = gen.Section{
+				currentSection2 = &Section{
 					Level:   2,
-					Heading: gen.StringOnlyContent(level.TextValues),
+					Heading: level.TextRich,
 				}
-				level.EmptyText()
+				level.Clear()
 				state = ParsingSection2Content
 			}
 		case ParsingSection2AfterAttributeList:
@@ -533,16 +743,16 @@ func Parse(lx LexResult) (blog gen.Blog, err error) {
 			default:
 				err = errors.Join(err, newError(lexeme, state, ErrInvalidToken))
 			case lexer.TokenSection2Content:
-				if len(level.TextValues) == 0 {
+				if len(level.TextRich) == 0 {
 					err = errors.Join(err, newError(lexeme, state, ErrSectionMissingHeading))
 				}
-				currentSection2 = gen.Section{
+				currentSection2 = &Section{
 					Attributes: currentAttributes,
 					Level:      2,
-					Heading:    gen.StringOnlyContent(level.TextValues),
+					Heading:    level.TextRich,
 				}
-				level.EmptyText()
-				currentAttributes = gen.Attributes{}
+				level.Clear()
+				currentAttributes = Attributes{}
 				state = ParsingSection1Content
 			}
 		case ParsingSection2Content:
@@ -554,7 +764,7 @@ func Parse(lx LexResult) (blog gen.Blog, err error) {
 				currentTerm = lexeme.Text
 				state = ParsingTermDefinition
 			case lexer.TokenHorizontalRule:
-				level.PushContent(gen.HorizontalRule{})
+				level.Content = append(level.Content, &HorizontalRule{})
 			case lexer.TokenCodeBlockBegin:
 				levels.Push(&Level{ReturnToState: ParsingSection2Content})
 				state = ParsingCodeBlock
@@ -583,17 +793,15 @@ func Parse(lx LexResult) (blog gen.Blog, err error) {
 				currentSection2.Content = level.Content
 				levels.Pop()
 				parent := levels.Top()
-				parent.PushContent(currentSection2)
-				currentSection2 = gen.Section{}
+				parent.Content = append(parent.Content, currentSection2)
+				currentSection2 = &Section{}
 				state = level.ReturnToState
 			}
 		case ParsingParagraph:
 			// @todo: case lexer.TokenEnquoteSingleBegin:
 			switch lexeme.Type {
 			default:
-				if isTextContent(lexeme.Type) {
-					level.PushText(newTextContent(lexeme))
-				} else {
+				if !(isTextNode(lexeme) && level.TextRich.Append(newTextNode(lexeme))) {
 					err = errors.Join(err, newError(lexeme, state, ErrInvalidToken))
 				}
 			case lexer.TokenEmphasisBegin:
@@ -627,129 +835,106 @@ func Parse(lx LexResult) (blog gen.Blog, err error) {
 			case lexer.TokenParagraphEnd:
 				levels.Pop()
 				parent := levels.Top()
-				parent.PushContent(gen.Paragraph{
-					Content: gen.StringOnlyContent(level.TextValues),
+				parent.Content = append(parent.Content, &Paragraph{
+					Content: level.TextRich,
 				})
 				state = level.ReturnToState
 			}
 		case ParsingEnquoteDouble:
 			switch lexeme.Type {
 			default:
-				if isTextContent(lexeme.Type) {
-					level.PushText(newTextContent(lexeme))
-				} else {
+				if !(isTextNode(lexeme) && level.TextRich.Append(newTextNode(lexeme))) {
 					err = errors.Join(err, newError(lexeme, state, ErrInvalidToken))
 				}
 			case lexer.TokenEnquoteDoubleEnd:
 				levels.Pop()
 				parent := levels.Top()
-				parent.PushText(gen.EnquoteDouble{
-					gen.StringOnlyContent(level.TextValues),
-				})
+				ok := parent.TextRich.Append(AsRef(EnquoteDouble(level.TextRich)))
+				Assert(ok, "enquote double must be accepted as rich text")
 				state = level.ReturnToState
 			}
 		case ParsingEnquoteAngled:
 			switch lexeme.Type {
 			default:
-				if isTextContent(lexeme.Type) {
-					level.PushText(newTextContent(lexeme))
-				} else {
+				if !(isTextNode(lexeme) && level.TextRich.Append(newTextNode(lexeme))) {
 					err = errors.Join(err, newError(lexeme, state, ErrInvalidToken))
 				}
 			case lexer.TokenEnquoteAngledEnd:
 				levels.Pop()
 				parent := levels.Top()
-				parent.PushText(gen.EnquoteAngled{
-					gen.StringOnlyContent(level.TextValues),
-				})
+				ok := parent.TextRich.Append(AsRef(EnquoteAngled(level.TextRich)))
+				Assert(ok, "enquote angled must be accepted as rich text")
 				state = level.ReturnToState
 			}
 		case ParsingEmphasis:
 			switch lexeme.Type {
 			default:
-				if isTextContent(lexeme.Type) {
-					level.PushText(newTextContent(lexeme))
-				} else {
+				if !(isTextNode(lexeme) && level.TextRich.Append(newTextNode(lexeme))) {
 					err = errors.Join(err, newError(lexeme, state, ErrInvalidToken))
 				}
 			case lexer.TokenEmphasisEnd:
 				levels.Pop()
 				parent := levels.Top()
-				parent.PushText(gen.Emphasis{
-					gen.StringOnlyContent(level.TextValues),
-				})
+				ok := parent.TextRich.Append(AsRef(Emphasis(level.TextRich)))
+				Assert(ok, "emphasis must be accepted as rich text")
 				state = level.ReturnToState
 			}
 		case ParsingStrong:
 			switch lexeme.Type {
 			default:
-				if isTextContent(lexeme.Type) {
-					level.PushText(newTextContent(lexeme))
-				} else {
+				if !(isTextNode(lexeme) && level.TextRich.Append(newTextNode(lexeme))) {
 					err = errors.Join(err, newError(lexeme, state, ErrInvalidToken))
 				}
 			case lexer.TokenStrongEnd:
 				levels.Pop()
 				parent := levels.Top()
-				parent.PushText(gen.Strong{
-					gen.StringOnlyContent(level.TextValues),
-				})
+				ok := parent.TextRich.Append(AsRef(Strong(level.TextRich)))
+				Assert(ok, "strong must be accepted as rich text")
 				state = level.ReturnToState
 			}
 		case ParsingEmphasisStrong:
 			switch lexeme.Type {
 			default:
-				if isTextContent(lexeme.Type) {
-					level.PushText(newTextContent(lexeme))
-				} else {
+				if !(isTextNode(lexeme) && level.TextRich.Append(newTextNode(lexeme))) {
 					err = errors.Join(err, newError(lexeme, state, ErrInvalidToken))
 				}
 			case lexer.TokenEmphasisStrongEnd:
 				levels.Pop()
 				parent := levels.Top()
-				parent.PushText(gen.EmphasisStrong{
-					gen.StringOnlyContent(level.TextValues),
-				})
+				ok := parent.TextRich.Append(AsRef(EmphasisStrong(level.TextRich)))
+				Assert(ok, "emphasis strong must be accepted as rich text")
 				state = level.ReturnToState
 			}
 		case ParsingStrikethrough:
 			switch lexeme.Type {
 			default:
-				if isTextContent(lexeme.Type) {
-					level.PushText(newTextContent(lexeme))
-				} else {
+				if !(isTextNode(lexeme) && level.TextRich.Append(newTextNode(lexeme))) {
 					err = errors.Join(err, newError(lexeme, state, ErrInvalidToken))
 				}
 			case lexer.TokenStrikethroughEnd:
 				levels.Pop()
 				parent := levels.Top()
-				parent.PushText(gen.Strikethrough{
-					gen.StringOnlyContent(level.TextValues),
-				})
+				ok := parent.TextRich.Append(AsRef(Strikethrough(level.TextRich)))
+				Assert(ok, "strikethrough must be accepted as rich text")
 				state = level.ReturnToState
 			}
 		case ParsingMarker:
 			switch lexeme.Type {
 			default:
-				if isTextContent(lexeme.Type) {
-					level.PushText(newTextContent(lexeme))
-				} else {
+				if !(isTextNode(lexeme) && level.TextRich.Append(newTextNode(lexeme))) {
 					err = errors.Join(err, newError(lexeme, state, ErrInvalidToken))
 				}
 			case lexer.TokenMarkerEnd:
 				levels.Pop()
 				parent := levels.Top()
-				parent.PushText(gen.Marker{
-					gen.StringOnlyContent(level.TextValues),
-				})
+				ok := parent.TextRich.Append(AsRef(Marker(level.TextRich)))
+				Assert(ok, "marker must be accepted as rich text")
 				state = level.ReturnToState
 			}
 		case ParsingLinkable:
 			switch lexeme.Type {
 			default:
-				if isTextContent(lexeme.Type) {
-					level.PushText(newTextContent(lexeme))
-				} else {
+				if !(isTextNode(lexeme) && level.TextRich.Append(newTextNode(lexeme))) {
 					err = errors.Join(err, newError(lexeme, state, ErrInvalidToken))
 				}
 			case lexer.TokenLinkHref:
@@ -759,19 +944,21 @@ func Parse(lx LexResult) (blog gen.Blog, err error) {
 				level.PushString(lexeme.Text)
 				state = ParsingLinkableAfterRef
 			case lexer.TokenSidenoteRef:
-				currentSidenote.Word = gen.StringOnlyContent(level.TextValues)
-				currentSidenote.Ref = lexeme.Text
+				currentSidenote.Word = level.TextRich
+				currentSidenote.ID = lexeme.Text
+				//level.Clear() @todo: ?
 				state = ParsingSidenoteAfterRef
 			case lexer.TokenSidenoteContent:
-				currentSidenote.Word = gen.StringOnlyContent(level.TextValues)
-				level.EmptyText()
+				currentSidenote.Word = level.TextRich
+				level.Clear()
 				state = ParsingSidenoteContent
 			case lexer.TokenLinkableEnd:
 				levels.Pop()
 				parent := levels.Top()
-				parent.PushText(gen.Link{
-					Name: gen.StringOnlyContent(level.TextValues),
-				})
+				ok := parent.TextRich.Append(AsRef(Link{
+					Name: level.TextRich,
+				}))
+				Assert(ok, "link must be accepted as rich text")
 				state = level.ReturnToState
 			}
 		case ParsingLinkableAfterHref:
@@ -781,10 +968,11 @@ func Parse(lx LexResult) (blog gen.Blog, err error) {
 			case lexer.TokenLinkableEnd:
 				levels.Pop()
 				parent := levels.Top()
-				parent.PushText(gen.Link{
+				ok := parent.TextRich.Append(AsRef(Link{
 					Href: level.PopString(),
-					Name: gen.StringOnlyContent(level.TextValues),
-				})
+					Name: level.TextRich,
+				}))
+				Assert(ok, "link must be accepted as rich text")
 				state = level.ReturnToState
 			}
 		case ParsingLinkableAfterRef:
@@ -794,10 +982,11 @@ func Parse(lx LexResult) (blog gen.Blog, err error) {
 			case lexer.TokenLinkableEnd:
 				levels.Pop()
 				parent := levels.Top()
-				parent.PushText(gen.Link{
-					Ref:  level.PopString(),
-					Name: gen.StringOnlyContent(level.TextValues),
-				})
+				ok := parent.TextRich.Append(AsRef(Link{
+					Ref: level.PopString(),
+					Name: level.TextRich,
+				}))
+				Assert(ok, "link must be accepted as rich text")
 				state = level.ReturnToState
 			}
 		case ParsingSidenoteAfterRef:
@@ -807,24 +996,24 @@ func Parse(lx LexResult) (blog gen.Blog, err error) {
 			case lexer.TokenLinkableEnd:
 				levels.Pop()
 				parent := levels.Top()
-				parent.PushText(currentSidenote)
-				currentSidenote = gen.Sidenote{}
+				ok := parent.TextRich.Append(currentSidenote)
+				Assert(ok, "sidenote must be accepted as rich text")
+				currentSidenote = &Sidenote{}
 				state = level.ReturnToState
 			}
 		case ParsingSidenoteContent:
 			switch lexeme.Type {
 			default:
-				if isTextContent(lexeme.Type) {
-					level.PushText(newTextContent(lexeme))
-				} else {
+				if !(isTextNode(lexeme) && level.TextRich.Append(newTextNode(lexeme))) {
 					err = errors.Join(err, newError(lexeme, state, ErrInvalidToken))
 				}
 			case lexer.TokenLinkableEnd:
 				levels.Pop()
 				parent := levels.Top()
-				currentSidenote.Content = gen.StringOnlyContent(level.TextValues)
-				parent.PushText(currentSidenote)
-				currentSidenote = gen.Sidenote{}
+				currentSidenote.Content = level.TextRich
+				ok := parent.TextRich.Append(currentSidenote)
+				Assert(ok, "sidenote must be accepted as rich text")
+				currentSidenote = &Sidenote{}
 				state = level.ReturnToState
 			}
 		case ParsingCodeBlock:
@@ -832,7 +1021,7 @@ func Parse(lx LexResult) (blog gen.Blog, err error) {
 			default:
 				err = errors.Join(err, newError(lexeme, state, ErrInvalidToken))
 			case lexer.TokenCodeBlockLang:
-				currentCodeBlock.Attributes.SetAttr("Lang", lexeme.Text)
+				currentCodeBlock.Attributes["Lang"] = lexeme.Text
 			case lexer.TokenAttributeListBegin:
 				levels.Push(&Level{ReturnToState: ParsingCodeBlockAfterAttr})
 				state = ParsingAttributeList
@@ -843,8 +1032,8 @@ func Parse(lx LexResult) (blog gen.Blog, err error) {
 				// empty code block
 				levels.Pop()
 				parent := levels.Top()
-				parent.PushContent(currentCodeBlock)
-				currentCodeBlock = gen.CodeBlock{}
+				parent.Content = append(parent.Content, currentCodeBlock)
+				currentCodeBlock = &CodeBlock{}
 				state = level.ReturnToState
 			}
 		case ParsingCodeBlockAfterAttr:
@@ -857,8 +1046,8 @@ func Parse(lx LexResult) (blog gen.Blog, err error) {
 				levels.Pop()
 				parent := levels.Top()
 				currentCodeBlock.Lines = level.Strings
-				parent.PushContent(currentCodeBlock)
-				currentCodeBlock = gen.CodeBlock{}
+				parent.Content = append(parent.Content, currentCodeBlock)
+				currentCodeBlock = &CodeBlock{}
 				state = level.ReturnToState
 			}
 		case ParsingImage:
@@ -866,65 +1055,59 @@ func Parse(lx LexResult) (blog gen.Blog, err error) {
 			default:
 				err = errors.Join(err, newError(lexeme, state, ErrInvalidToken))
 			case lexer.TokenImageAltText:
-				currentImage.Alt = gen.Text(lexeme.Text)
+				currentImage.Alt = TextSimple{newTextNode(lexeme)}
 			case lexer.TokenImagePath:
 				currentImage.Name = lexeme.Text
 			case lexer.TokenImageTitle:
-				currentImage.Title = gen.Text(lexeme.Text)
+				currentImage.Title = TextSimple{newTextNode(lexeme)}
 			case lexer.TokenImageEnd:
 				levels.Pop()
 				parent := levels.Top()
-				parent.PushContent(currentImage)
-				currentImage = gen.Image{}
+				parent.Content = append(parent.Content, currentImage)
+				currentImage = &Image{}
 				state = level.ReturnToState
 			}
 		case ParsingBlockquote:
 			switch lexeme.Type {
 			default:
-				if isTextContent(lexeme.Type) {
-					level.PushText(newTextContent(lexeme))
-				} else {
+				if !(isTextNode(lexeme) && level.TextRich.Append(newTextNode(lexeme))) {
 					err = errors.Join(err, newError(lexeme, state, ErrInvalidToken))
 				}
 			case lexer.TokenBlockquoteAttrAuthor:
-				currentBlockquote.QuoteText = gen.StringOnlyContent(level.TextValues)
-				level.EmptyText()
+				currentBlockquote.QuoteText = level.TextRich
+				level.Clear()
 				state = ParsingBlockquoteAuthor
 			case lexer.TokenBlockquoteEnd:
 				levels.Pop()
 				parent := levels.Top()
-				currentBlockquote.QuoteText = gen.StringOnlyContent(level.TextValues)
-				parent.PushContent(currentBlockquote)
+				currentBlockquote.QuoteText = level.TextRich
+				parent.Content = append(parent.Content, currentBlockquote)
 				state = level.ReturnToState
 			}
 		case ParsingBlockquoteAuthor:
 			switch lexeme.Type {
 			default:
-				if isTextContent(lexeme.Type) {
-					level.PushText(newTextContent(lexeme))
-				} else {
+				if !(isTextNode(lexeme) && level.TextSimple.Append(newTextNode(lexeme))) {
 					err = errors.Join(err, newError(lexeme, state, ErrInvalidToken))
 				}
 			case lexer.TokenBlockquoteAttrSource:
-				currentBlockquote.Author = gen.StringOnlyContent(level.TextValues)
-				level.EmptyText()
+				currentBlockquote.Author = level.TextSimple
+				level.Clear()
 				state = ParsingBlockquoteSource
 			case lexer.TokenBlockquoteAttrEnd:
-				currentBlockquote.Author = gen.StringOnlyContent(level.TextValues)
-				level.EmptyText()
+				currentBlockquote.Author = level.TextSimple
+				level.Clear()
 				state = ParsingBlockquoteAfterAttrEnd
 			}
 		case ParsingBlockquoteSource:
 			switch lexeme.Type {
 			default:
-				if isTextContent(lexeme.Type) {
-					level.PushText(newTextContent(lexeme))
-				} else {
+				if !(isTextNode(lexeme) && level.TextSimple.Append(newTextNode(lexeme))) {
 					err = errors.Join(err, newError(lexeme, state, ErrInvalidToken))
 				}
 			case lexer.TokenBlockquoteAttrEnd:
-				currentBlockquote.Source = gen.StringOnlyContent(level.TextValues)
-				level.EmptyText()
+				currentBlockquote.Source = level.TextSimple
+				level.Clear()
 				state = ParsingBlockquoteAfterAttrEnd
 			}
 		case ParsingBlockquoteAfterAttrEnd:
@@ -934,7 +1117,7 @@ func Parse(lx LexResult) (blog gen.Blog, err error) {
 			case lexer.TokenBlockquoteEnd:
 				levels.Pop()
 				parent := levels.Top()
-				parent.PushContent(currentBlockquote)
+				parent.Content = append(parent.Content, currentBlockquote)
 				state = level.ReturnToState
 			}
 		case ParsingLinkDefinition:
@@ -949,13 +1132,11 @@ func Parse(lx LexResult) (blog gen.Blog, err error) {
 		case ParsingSidenoteDefinition:
 			switch lexeme.Type {
 			default:
-				if isTextContent(lexeme.Type) {
-					level.PushText(newTextContent(lexeme))
-				} else {
+				if !(isTextNode(lexeme) && level.TextRich.Append(newTextNode(lexeme))) {
 					err = errors.Join(err, newError(lexeme, state, ErrInvalidToken))
 				}
 			case lexer.TokenSidenoteDefEnd:
-				blog.SidenoteDefinitions[currentDefinition] = gen.StringOnlyContent(level.TextValues)
+				blog.SidenoteDefinitions[currentDefinition] = level.TextRich
 				levels.Pop()
 				state = level.ReturnToState
 			}
@@ -969,14 +1150,12 @@ func Parse(lx LexResult) (blog gen.Blog, err error) {
 		case ParsingTermExplanation:
 			switch lexeme.Type {
 			default:
-				if isTextContent(lexeme.Type) {
-					level.PushText(newTextContent(lexeme))
-				} else {
+				if !(isTextNode(lexeme) && level.TextRich.Append(newTextNode(lexeme))) {
 					err = errors.Join(err, newError(lexeme, state, ErrInvalidToken))
 				}
 			case lexer.TokenDefinitionExplanationEnd:
 				levels.Pop()
-				blog.TermDefinitions[currentTerm] = gen.StringOnlyContent(level.TextValues)
+				blog.TermDefinitions[currentTerm] = level.TextRich
 				currentTerm = ""
 				state = level.ReturnToState
 			}
@@ -1099,65 +1278,7 @@ func Parse(lx LexResult) (blog gen.Blog, err error) {
 		}
 */
 
-func isTextContent(tokenType lexer.TokenType) bool {
-	switch tokenType {
-	default:
-		return false
-	case lexer.TokenMono, lexer.TokenText, lexer.TokenAmpSpecial, lexer.TokenLinkify:
-		// @todo: what else is text content?
-		return true
-	}
-	panic("unreachable")
-}
-
-func newTextContent(lexeme lexer.Token) gen.StringRenderable {
-	Assert(isTextContent(lexeme.Type), fmt.Sprintf("cannot make text content out of %s", lexeme.Type))
-	switch lexeme.Type {
-	case lexer.TokenMono:
-		return gen.Mono(lexeme.Text)
-	case lexer.TokenText:
-		return gen.Text(lexeme.Text)
-	case lexer.TokenLinkify:
-		return gen.Link{
-			Href: lexeme.Text,
-		}
-	case lexer.TokenAmpSpecial:
-		switch lexeme.Text {
-		default:
-			panic(fmt.Sprintf("programmer error: lexer and parser out of sync about what constitutes a &<...>; special character: %s", lexeme.Text))
-		case "~", "\u00A0":
-			return gen.AmpNoBreakSpace
-		case "---", "&mdash;":
-			return gen.AmpEmDash
-		case "--", "&ndash;":
-			return gen.AmpEnDash
-		case "&hyphen;", "&dash;":
-			return gen.AmpHyphen
-		case "&ldquo;":
-			return gen.AmpLeftDoubleQuote
-		case "&rdquo;":
-			return gen.AmpRightDoubleQuote
-		case "...", "…":
-			return gen.AmpEllipsis
-		case "&prime;":
-			return gen.AmpPrime
-		case "&Prime;":
-			return gen.AmpDoublePrime
-		case "&tprime;":
-			return gen.AmpTripplePrime
-		case "&qprime;":
-			return gen.AmpQuadruplePrime
-		case "&bprime;":
-			return gen.AmpReversedPrime
-		case "&laquo;":
-			return gen.AmpLeftAngledQuote
-		case "&raquo;":
-			return gen.AmpRightAngledQuote
-		}
-	}
-	panic("unreachable")
-}
-
+/*
 func checkMetaKey(key string) bool {
 	recognizedKeys := map[string]struct{}{
 		"author":                  {},
@@ -1180,65 +1301,4 @@ func checkMetaKey(key string) bool {
 	_, ok := recognizedKeys[key]
 	return ok
 }
-
-func setMetaKeyValuePair(blog *gen.Blog, key string, value gen.StringRenderable) (err error) {
-	switch key {
-	default:
-		// do nothing, error already reported
-	case "author":
-		blog.Author.Name = value
-	case "email":
-		blog.Author.Email = value
-	case "tags":
-		for _, tag := range strings.Split(value. /*@todo: Clean*/ Text(), " ") {
-			blog.Tags = append(blog.Tags, gen.Tag(tag))
-		}
-	case "description":
-		blog.Description = value./*Clean*/Text()
-	case "title":
-		blog.Title = value // @todo: automatically apply proper English Title Casing
-	case "alt-title":
-		blog.AltTitle = value
-	case "url-path":
-		blog.UrlPath = value. /*Clean*/ Text()
-	case "rel-me":
-		blog.Author.RelMe = value
-	case "fedi-creator":
-		blog.Author.FediCreator = value
-	case "lang":
-		blog.Lang = value. /*Clean*/ Text()
-	case "published":
-		blog.Published.Published, err = time.Parse("2006-01-02", value. /*Clean*/ Text())
-		if err != nil {
-			blog.Published.Published, err = time.Parse(time.RFC3339, value. /*Clean*/ Text())
-			if err != nil {
-				err = fmt.Errorf("invalid date format, use 2006-01-02 or RFC3339")
-			}
-		}
-	case "revised":
-		timeRef := func(t time.Time, err error) (*time.Time, error) {
-			return &t, err
-		}
-		blog.Published.Revised, err = timeRef(time.Parse("2006-01-02", value. /*Clean*/ Text()))
-		if err != nil {
-			blog.Published.Revised, err = timeRef(time.Parse(time.RFC3339, value. /*Clean*/ Text()))
-			if err != nil {
-				err = fmt.Errorf("invalid date format, use 2006-01-02 or RFC3339")
-			}
-		}
-	case "est-reading":
-		blog.EstReading, err = strconv.Atoi(value. /*Clean*/ Text())
-	case "series":
-		// @todo
-	case "enable-revision-warning":
-		switch value.Text() {
-		default:
-			err = fmt.Errorf("invalid option `%s` for enable-revision-warning, expected one of true, false", value.Text())
-		case "true":
-			blog.EnableRevisionWarning = true
-		case "false":
-			blog.EnableRevisionWarning = false
-		}
-	}
-	return
-}
+*/
