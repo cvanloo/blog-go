@@ -15,7 +15,7 @@ func TestParsingBlog(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	if diff := deep.Equal(blog, markup.BlogTestStruct); diff != nil {
+	if diff := deep.Equal(blog, markup.BlogParserTestStruct); diff != nil {
 		t.Error(diff)
 	}
 	//t.Logf("%# v", pretty.Formatter(blog))

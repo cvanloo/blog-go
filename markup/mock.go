@@ -5,7 +5,8 @@ import (
 
 	"github.com/cvanloo/blog-go/markup/lexer"
 	"github.com/cvanloo/blog-go/markup/gen"
-	//. "github.com/cvanloo/blog-go/assert"
+	"github.com/cvanloo/blog-go/markup/parser"
+	. "github.com/cvanloo/blog-go/assert"
 )
 
 type MockTokens []lexer.Token
@@ -127,6 +128,64 @@ var LexerTestTokens = MockTokens{
 	{Type: lexer.TokenText, Text: "https://example.com/"},
 	{Type: lexer.TokenSection1End, Text: ""},
 	{Type: lexer.TokenEOF, Text: ""},
+}
+
+var BlogParserTestStruct = parser.Blog{
+	Meta: parser.Meta{
+		"url-path": []parser.TextSimple{
+			[]parser.Node{
+				AsRef(parser.Text("hello")),
+			},
+		},
+		"title": []parser.TextSimple{
+			[]parser.Node{
+				AsRef(parser.Text("Hello, World!")),
+			},
+		},
+		"author": []parser.TextSimple{
+			[]parser.Node{
+				AsRef(parser.Text("Colin van")),
+				AsRef(parser.AmpSpecial("~")),
+				AsRef(parser.Text("Loo")),
+			},
+		},
+	},
+	Sections: []*parser.Section{
+		{
+			Level: 1,
+			Heading: parser.TextRich{
+				AsRef(parser.Text("こんにちは、世界！")),
+			},
+			Content: []parser.Node{
+				&parser.Paragraph{
+				},
+				&parser.Paragraph{
+				},
+				&parser.Section{
+					Level: 2,
+					Heading: parser.TextRich{
+						AsRef(parser.Text("Lorem Ipsum")),
+					},
+				},
+				&parser.Section{
+					Level: 2,
+					Heading: parser.TextRich{
+						AsRef(parser.Text("Lorem Epsum")),
+					},
+				},
+			},
+		},
+		{
+			Level: 1,
+			Heading: parser.TextRich{
+				AsRef(parser.Text("さようなら")),
+			},
+			Content: []parser.Node{
+				&parser.Paragraph{
+				},
+			},
+		},
+	},
 }
 
 var BlogTestStruct = gen.Blog{

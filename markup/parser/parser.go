@@ -469,6 +469,7 @@ func Parse(lx LexResult) (blog Blog, err error) {
 	blog.SidenoteDefinitions = map[string]TextRich{}
 	blog.TermDefinitions = map[string]TextRich{}
 	blog.Meta = Meta{}
+	// parser setup
 	state := ParsingStart
 	levels := Levels{}
 	levels.Push(&Level{ReturnToState: ParsingStart})
