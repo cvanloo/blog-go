@@ -26,7 +26,9 @@ func (af *ArrayFlag) String() string {
 }
 
 func (af *ArrayFlag) Set(value string) error {
-	values := strings.Split(value, ",")
+	values := strings.FieldsFunc(value, func(r rune) bool {
+		return r == ',' || r == ' '
+	})
 	*af = append(*af, values...)
 	return nil
 }
@@ -47,6 +49,8 @@ func main() {
 
 func app() int {
 	fmt.Println("Hello, 子猫ちゃん")
+	log.Println(source)
+	log.Println(*out)
 	sourceNames, sourceFDs, err := openSources(source)
 	if err != nil {
 		log.Println(err)
@@ -76,6 +80,7 @@ func openSources(paths []string) (names []string, fds []*os.File, err error) {
 	if len(paths) == 0 || (len(paths) == 1 && paths[0] == "-") {
 		return []string{"<stdin>"}, []*os.File{os.Stdin}, nil
 	}
+	// @todo: handle directories
 	for _, path := range paths {
 		fd, openErr := os.Open(path)
 		if openErr != nil {

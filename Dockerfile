@@ -7,6 +7,7 @@ COPY assert ./assert
 COPY markup ./markup
 COPY public ./public
 COPY .env ./.env
+COPY 日記 ./日記
 RUN go run ./cmd/koneko/koneko.go -source ./日記 -out ./public
 
 FROM caddy:2.9-alpine

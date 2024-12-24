@@ -16,4 +16,7 @@ cover.out:
 cover.html: cover.out
 	go tool cover -html=cover.out -o cover.html
 
+koneko: .FORCE
+	go build cmd/koneko/koneko.go
+
 .FORCE:
