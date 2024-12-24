@@ -5,15 +5,19 @@ import (
 	"errors"
 	"os"
 	"fmt"
+	"path/filepath"
+	"io/fs"
+	"log"
 
 	"github.com/cvanloo/blog-go/markup/lexer"
 	"github.com/cvanloo/blog-go/markup/parser"
 	"github.com/cvanloo/blog-go/markup/gen"
-	. "github.com/cvanloo/blog-go/assert"
+	//. "github.com/cvanloo/blog-go/assert"
 )
 
 type (
 	Markup struct{
+		SourcePaths []string
 		Sources []source
 		StaticSources []string
 		OutDir string
@@ -41,12 +45,9 @@ func Source(name string, in io.Reader) MarkupOption {
 	}
 }
 
-func FileSources(names []string, fds []*os.File) MarkupOption {
-	Assert(len(names) == len(fds), "")
+func SourcePaths(paths []string) MarkupOption {
 	return func(m *Markup) {
-		for i := range names {
-			m.Sources = append(m.Sources, source{Name: names[i], In: fds[i]})
-		}
+		m.SourcePaths = paths
 	}
 }
 
@@ -56,47 +57,101 @@ func OutDir(path string) MarkupOption {
 	}
 }
 
-func (m Markup) Run() (err error) {
-	for _, src := range m.Sources {
-		lex := lexer.New()
-		bs, rerr := io.ReadAll(src.In)
-		if rerr != nil {
-			err = errors.Join(err, rerr)
-			continue
-		}
-		lex.LexSource(src.Name, string(bs))
-		if len(lex.Errors) > 0 {
-			err = errors.Join(err, errors.Join(lex.Errors...))
-			continue
-		}
-		blog, perr := parser.Parse(lex)
-		if perr != nil {
-			err = errors.Join(err, perr)
-			continue
-		}
-		refFixer := &parser.FixReferencesVisitor{}
-		blog.Accept(refFixer)
-		if refFixer.Errors != nil {
-			err = errors.Join(refFixer.Errors)
-			continue
-		}
-		templateData := gen.Blog{}
-		makeGen := &gen.MakeGenVisitor{
-			TemplateData: &templateData,
-		}
-		blog.Accept(makeGen)
-		if makeGen.Errors != nil {
-			err = errors.Join(err, makeGen.Errors)
-			continue
-		}
-		out, cerr := os.Create(fmt.Sprintf("%s/%s.html", m.OutDir, templateData.UrlPath))
-		if cerr != nil {
-			err = errors.Join(err, cerr)
-			continue
-		}
-		werr := gen.WriteBlog(out, &templateData)
-		err = errors.Join(err, werr)
-		err = errors.Join(err, out.Close())
+func (m Markup) Run() (runErr error) {
+	p := processor{
+		lex: lexer.New(),
+		outDir: m.OutDir,
 	}
-	return err
+	for _, src := range m.Sources {
+		runErr = errors.Join(runErr, p.process(src))
+	}
+	for _, path := range m.SourcePaths {
+		fi, statErr := os.Stat(path)
+		if statErr != nil {
+			runErr = errors.Join(runErr, statErr)
+			continue
+		}
+		if fi.IsDir() {
+			filepath.WalkDir(path, func(path string, d fs.DirEntry, err error) error {
+				if err != nil {
+					runErr = errors.Join(runErr, err)
+					return nil
+				}
+				if !d.IsDir() {
+					if !(filepath.Ext(path) == ".md" || filepath.Ext(path) == ".ᗢ") {
+						return nil
+					}
+					fd, err := os.Open(path)
+					if err != nil {
+						runErr = errors.Join(runErr, err)
+					} else {
+						runErr = errors.Join(runErr, p.process(source{
+							Name: path,
+							In: fd,
+						}))
+						runErr = errors.Join(runErr, fd.Close())
+					}
+				}
+				return nil
+			})
+		} else {
+			fd, openErr := os.Open(path)
+			if openErr != nil {
+				runErr = errors.Join(runErr, openErr)
+			} else {
+				runErr = errors.Join(runErr, p.process(source{
+					Name: path,
+					In: fd,
+				}))
+				runErr = errors.Join(runErr, fd.Close())
+			}
+		}
+	}
+	return runErr
+}
+
+type processor struct {
+	lex *lexer.Lexer
+	outDir string
+}
+
+func (p processor) process(src source) error {
+	log.Printf("processing: %s", src.Name)
+	p.lex.Clear()
+	bs, err := io.ReadAll(src.In)
+	if err != nil {
+		return fmt.Errorf("processing %s failed while reading: %w", src.Name, err)
+	}
+	p.lex.LexSource(src.Name, string(bs))
+	if len(p.lex.Errors) > 0 {
+		return fmt.Errorf("processing %s failed while lexing: %w", src.Name, errors.Join(p.lex.Errors...))
+	}
+	blog, err := parser.Parse(p.lex)
+	if err != nil {
+		return fmt.Errorf("processing %s failed while parsing: %w", src.Name, err)
+	}
+	refFixer := &parser.FixReferencesVisitor{}
+	blog.Accept(refFixer)
+	if refFixer.Errors != nil {
+		return fmt.Errorf("processing %s failed while resolving references: %w", src.Name, err)
+	}
+	templateData := gen.Blog{}
+	makeGen := &gen.MakeGenVisitor{
+		TemplateData: &templateData,
+	}
+	blog.Accept(makeGen)
+	if makeGen.Errors != nil {
+		return fmt.Errorf("processing %s failed while producing template data: %w", src.Name, err)
+	}
+	out, err := os.Create(fmt.Sprintf("%s/%s.html", p.outDir, templateData.UrlPath))
+	if err != nil {
+		return fmt.Errorf("processing %s failed while generating static html: %w", src.Name, err)
+	}
+	if err := gen.WriteBlog(out, &templateData); err != nil {
+		return fmt.Errorf("processing %s failed while writing out static html: %w", src.Name, err)
+	}
+	if err := out.Close(); err != nil {
+		return fmt.Errorf("processing %s failed while closing output file: %w", src.Name, err)
+	}
+	return nil
 }

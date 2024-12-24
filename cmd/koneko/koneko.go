@@ -10,7 +10,6 @@ import (
 	"fmt"
 	"flag"
 	"os"
-	"errors"
 	"strings"
 	"log"
 
@@ -49,13 +48,6 @@ func main() {
 
 func app() int {
 	fmt.Println("Hello, 子猫ちゃん")
-	log.Println(source)
-	log.Println(*out)
-	sourceNames, sourceFDs, err := openSources(source)
-	if err != nil {
-		log.Println(err)
-		return -1
-	}
 	fi, err := os.Stat(*out)
 	if err != nil {
 		log.Println(err)
@@ -66,7 +58,7 @@ func app() int {
 		return -1
 	}
 	m := markup.New(
-		markup.FileSources(sourceNames, sourceFDs),
+		markup.SourcePaths(source),
 		markup.OutDir(*out),
 	)
 	if err := m.Run(); err != nil {
@@ -74,21 +66,4 @@ func app() int {
 	}
 
 	return 0
-}
-
-func openSources(paths []string) (names []string, fds []*os.File, err error) {
-	if len(paths) == 0 || (len(paths) == 1 && paths[0] == "-") {
-		return []string{"<stdin>"}, []*os.File{os.Stdin}, nil
-	}
-	// @todo: handle directories
-	for _, path := range paths {
-		fd, openErr := os.Open(path)
-		if openErr != nil {
-			err = errors.Join(err, openErr)
-			continue
-		}
-		names = append(names, path)
-		fds = append(fds, fd)
-	}
-	return names, fds, err
 }
