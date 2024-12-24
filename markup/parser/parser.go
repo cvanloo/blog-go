@@ -146,7 +146,7 @@ func (t *TextRich) Append(n Node) bool {
 	switch n.(type) {
 	default:
 		return false
-	case *Text, *AmpSpecial, *Emphasis, *Strong, *EmphasisStrong, *Link, *Sidenote:
+	case *Text, *AmpSpecial, *Emphasis, *Strong, *EmphasisStrong, *Link, *Sidenote, *Strikethrough, *Marker, *Mono, *Linkify:
 		*t = append(*t, n)
 		return true
 	}

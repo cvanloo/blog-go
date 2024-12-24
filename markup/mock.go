@@ -406,7 +406,6 @@ var BlogGenTestStruct = gen.Blog{
 							Content: gen.StringOnlyContent{
 								gen.Text("Lorem "),
 								gen.Sidenote{
-									Ref: "1",
 									Word: gen.StringOnlyContent{gen.Text("epsum")},
 								},
 								gen.Text(" dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.\nUt enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat."),
@@ -424,7 +423,6 @@ var BlogGenTestStruct = gen.Blog{
 					Content: gen.StringOnlyContent{
 						gen.Text("Ut enim ad minim "),
 						gen.Link{
-							Ref: "0",
 							Name: gen.StringOnlyContent{gen.Text("veniam")},
 						},
 						gen.Text(", quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat."),

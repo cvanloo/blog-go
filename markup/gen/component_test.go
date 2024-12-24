@@ -2,6 +2,9 @@ package gen_test
 
 import (
 	"fmt"
+	"testing"
+
+	"github.com/go-test/deep"
 
 	. "github.com/cvanloo/blog-go/assert"
 	"github.com/cvanloo/blog-go/markup"
@@ -10,12 +13,15 @@ import (
 
 func TestGenMakeTemplateData(t *testing.T) {
 	blog := markup.BlogParserFixedTestStruct
-	makeGen := gen.MakeGenVisitor{}
+	genBlog := gen.Blog{}
+	makeGen := gen.MakeGenVisitor{
+		TemplateData: &genBlog,
+	}
 	blog.Accept(makeGen)
 	if makeGen.Errors != nil {
 		t.Error(makeGen.Errors)
 	}
-	if diff := deep.Equal(blog, markup.BlogGenTestStruct); diff != nil {
+	if diff := deep.Equal(genBlog, markup.BlogGenTestStruct); diff != nil {
 		t.Error(diff)
 	}
 }

@@ -172,15 +172,14 @@ type (
 		StringOnlyContent
 	}
 	Link struct {
-		Ref, Href string
 		Name StringRenderable
+		Href string
 	}
 	CodeBlock struct {
 		Attributes
 		Lines []string
 	}
 	Sidenote struct {
-		Ref string
 		// @todo: For the title attribute we can't have <b> and stuff...
 		Word, Content StringRenderable
 	}
