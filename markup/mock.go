@@ -433,11 +433,4 @@ var BlogGenTestStruct = gen.Blog{
 			},
 		},
 	},
-	SidenoteDefinitions: map[string]gen.StringRenderable{
-		"1": gen.StringOnlyContent{gen.Text("See what I did there?")},
-	},
-	LinkDefinitions: map[string]string{
-		"0": "https://example.com/",
-	},
-	TermDefinitions: map[string]gen.StringRenderable{},
 }

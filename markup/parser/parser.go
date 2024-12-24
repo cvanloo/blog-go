@@ -1308,28 +1308,3 @@ func Parse(lx LexResult) (blog Blog, err error) {
 			state = level.ReturnToState
 		}
 */
-
-/*
-func checkMetaKey(key string) bool {
-	recognizedKeys := map[string]struct{}{
-		"author":                  {},
-		"email":                   {},
-		"tags":                    {},
-		"template":                {},
-		"description":             {},
-		"title":                   {},
-		"alt-title":               {},
-		"url-path":                {},
-		"rel-me":                  {},
-		"fedi-creator":            {},
-		"lang":                    {},
-		"published":               {},
-		"revised":                 {},
-		"est-reading":             {},
-		"series":                  {}, // @todo: only parse `series` name and then determine the correct order (with prev and next) depending on all other parsed articles that have the same series name and their published dates.
-		"enable-revision-warning": {},
-	}
-	_, ok := recognizedKeys[key]
-	return ok
-}
-*/

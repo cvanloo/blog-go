@@ -1,36 +1,31 @@
 package parser
 
-import (
-	"log"
-	"fmt"
-	"errors"
-
-	"github.com/cvanloo/blog-go/markup/gen"
-)
-
-var RegisteredHtmlTags = map[string]HtmlHandler{
-	"Todo": MH(todoHtmlTagHandler),
-	"Abstract": MH(abstractHtmlTagHandler),
-	"Code": CH(codeHtmlTagHandler),
-	"Sidenote": TH(sidenoteHtmlTagHandler),
-}
-
-type (
-	MetaHandler func(*gen.Blog, HtmlTag) error
-	ContentHandler func(*gen.Blog, HtmlTag) (gen.Renderable, error)
-	TextHandler func(*gen.Blog, HtmlTag) (gen.StringRenderable, error)
-	HtmlHandler struct {
-		Type HtmlHandlerType
-		MH MetaHandler
-		CH ContentHandler
-		TH TextHandler
+/*
+	var RegisteredHtmlTags = map[string]HtmlHandler{
+		"Todo": MH(todoHtmlTagHandler),
+		"Abstract": MH(abstractHtmlTagHandler),
+		"Code": CH(codeHtmlTagHandler),
+		"Sidenote": TH(sidenoteHtmlTagHandler),
 	}
+*/
+type (
+	/*
+		MetaHandler func(*gen.Blog, HtmlTag) error
+		ContentHandler func(*gen.Blog, HtmlTag) (gen.Renderable, error)
+		TextHandler func(*gen.Blog, HtmlTag) (gen.StringRenderable, error)
+		HtmlHandler struct {
+			Type HtmlHandlerType
+			MH MetaHandler
+			CH ContentHandler
+			TH TextHandler
+		}
+	*/
 	HtmlTag struct {
 		Name string
 		Args map[string]string
-		Strings []string
-		Text []gen.StringRenderable
-		Children []HtmlTag
+		//Strings []string
+		//Text []gen.StringRenderable
+		//Children []HtmlTag
 	}
 )
 
@@ -43,6 +38,7 @@ const (
 	HtmlTypeText
 )
 
+/*
 func MH(h MetaHandler) HtmlHandler {
 	return HtmlHandler{
 		Type: HtmlTypeMeta,
@@ -129,3 +125,4 @@ func sidenoteHtmlTagHandler(blog *gen.Blog, htmlTag HtmlTag) (gen.StringRenderab
 		Content: content,
 	}, nil
 }
+*/

@@ -107,9 +107,6 @@ type (
 		Abstract StringRenderable
 		Sections []Section
 		Relevant *RelevantBox
-		SidenoteDefinitions map[string]StringRenderable // ID -> Content
-		LinkDefinitions map[string]string // ID -> Href
-		TermDefinitions map[string]StringRenderable // Term -> Explanation
 	}
 	Site struct {
 		Address *url.URL // e.g. https://blog.vanloo.ch
@@ -337,23 +334,11 @@ func (l Link) Text() string {
 	return strings.TrimSpace(bs.String())
 }
 
-func (l Link) NameOrHref(blog *Blog) string {
+func (l Link) NameOrHref() string {
 	if l.Name != nil {
 		return l.Name.Text()
 	}
-	return l.ResolveHref(blog)
-}
-
-func (l Link) ResolveHref(blog *Blog) string {
-	if l.Href != "" {
-		return l.Href
-	}
-	if l.Ref != "" {
-		if href, hasHref := blog.LinkDefinitions[l.Ref]; hasHref {
-			return href
-		}
-	}
-	return ""
+	return l.Href
 }
 
 func (e EscapedString) Render() (template.HTML, error) {
@@ -394,18 +379,6 @@ func (sn Sidenote) Text() string {
 func (sn Sidenote) ID() string {
 	// @todo: implement incrementing counter
 	return ""
-}
-
-func (sn Sidenote) ResolveContent(blog *Blog) StringRenderable {
-	if sn.Content != nil {
-		return sn.Content
-	}
-	if sn.Ref != "" {
-		if content, hasContent := blog.SidenoteDefinitions[sn.Ref]; hasContent {
-			return content
-		}
-	}
-	return nil
 }
 
 func (b *Blog) Canonical() string {
