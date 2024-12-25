@@ -13,6 +13,7 @@ import (
 
 var site = Site{
 	Address: Must(url.Parse("https://blog.vanloo.ch/")),
+	Name: "save-lisp-and-die",
 }
 
 type (

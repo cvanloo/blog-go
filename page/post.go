@@ -143,6 +143,7 @@ type (
 )
 
 func WritePost(w io.Writer, p Post) error {
+	p.Site = site // @todo
 	return post.Execute(w, "post.gohtml", p)
 }
 
