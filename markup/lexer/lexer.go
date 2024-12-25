@@ -519,7 +519,7 @@ var (
 	SpecAttrVal            = CharNotInSpec{CharInAny(" \u00A0\n\r\v\t}")}
 	SpecAttrKey            = CharNotInSpec{CharInAny(" \u00A0\n\r\v\t=}")}
 	SpecImagePath          = CharNotInSpec{CharInAny(" \u00A0\n\r\v\t)")}
-	SpecSingleWordSidenote = CharNotInSpec{CharInAny(" \u00A0\n\r\v\t[")}
+	SpecSingleWordSidenote = CharNotInSpec{CharInAny(" \u00A0\n\r\v\t[(")}
 )
 
 func (c CharInRange) IsValid(r rune) bool {

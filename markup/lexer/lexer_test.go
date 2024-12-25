@@ -762,6 +762,64 @@ How are you doing?
 			},
 		},
 		{
+			name: "Paragraph with a sidenote and in-place sidenote definition",
+			source: `
+# Section 1
+
+Hello, [世界](^世界 \(Sekai\) is the Japanese word for 'World')
+How are you doing?
+`,
+			expected: []lexer.Token{
+				{Type: lexer.TokenSection1Begin, Text: "#"},
+				{Type: lexer.TokenText, Text: "Section 1"},
+				{Type: lexer.TokenSection1Content, Text: ""},
+				{Type: lexer.TokenParagraphBegin, Text: ""},
+				{Type: lexer.TokenText, Text: "Hello, "},
+				{Type: lexer.TokenLinkableBegin, Text: "["},
+				{Type: lexer.TokenText, Text: "世界"},
+				{Type: lexer.TokenSidenoteContent, Text: ""},
+				{Type: lexer.TokenText, Text: "世界 "},
+				{Type: lexer.TokenText, Text: "("},
+				{Type: lexer.TokenText, Text: "Sekai"},
+				{Type: lexer.TokenText, Text: ")"},
+				{Type: lexer.TokenText, Text: " is the Japanese word for 'World'"},
+				{Type: lexer.TokenLinkableEnd, Text: ""},
+				{Type: lexer.TokenText, Text: "\nHow are you doing?\n"},
+				{Type: lexer.TokenParagraphEnd, Text: ""},
+				{Type: lexer.TokenSection1End, Text: ""},
+				{Type: lexer.TokenEOF, Text: ""},
+			},
+		},
+		{
+			name: "Paragraph with a single-word sidenote and in-place sidenote definition",
+			source: `
+# Section 1
+
+Hello, 世界(^世界 \(Sekai\) is the Japanese word for 'World')
+How are you doing?
+`,
+			expected: []lexer.Token{
+				{Type: lexer.TokenSection1Begin, Text: "#"},
+				{Type: lexer.TokenText, Text: "Section 1"},
+				{Type: lexer.TokenSection1Content, Text: ""},
+				{Type: lexer.TokenParagraphBegin, Text: ""},
+				{Type: lexer.TokenText, Text: "Hello, "},
+				{Type: lexer.TokenLinkableBegin, Text: ""},
+				{Type: lexer.TokenText, Text: "世界"},
+				{Type: lexer.TokenSidenoteContent, Text: ""},
+				{Type: lexer.TokenText, Text: "世界 "},
+				{Type: lexer.TokenText, Text: "("},
+				{Type: lexer.TokenText, Text: "Sekai"},
+				{Type: lexer.TokenText, Text: ")"},
+				{Type: lexer.TokenText, Text: " is the Japanese word for 'World'"},
+				{Type: lexer.TokenLinkableEnd, Text: ""},
+				{Type: lexer.TokenText, Text: "\nHow are you doing?\n"},
+				{Type: lexer.TokenParagraphEnd, Text: ""},
+				{Type: lexer.TokenSection1End, Text: ""},
+				{Type: lexer.TokenEOF, Text: ""},
+			},
+		},
+		{
 			name: "Paragraph with a link and link definition",
 			source: `
 # Section 1

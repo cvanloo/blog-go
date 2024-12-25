@@ -10,7 +10,7 @@ all: .FORCE
 gen: .FORCE
 	go generate ./...
 
-cover.out:
+cover.out: .FORCE
 	go test -run $(RUN) -coverprofile cover.out ./...
 
 cover.html: cover.out
