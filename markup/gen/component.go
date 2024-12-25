@@ -40,13 +40,19 @@ func Render(element Renderable) (template.HTML, error) {
 	return element.Render()
 }
 
-func MakeUniqueID(element any) string {
+func MakeUniqueID(element any) (string, error) {
 	switch i := element.(type) {
 	default:
 		id := NextID()
-		return fmt.Sprintf("%d", id)
+		return fmt.Sprintf("%d", id), nil
 	case Identifiable:
-		return i.ID()
+		id := i.ID()
+		if _, alreadySeen := seenIDs[id]; alreadySeen {
+			return id, fmt.Errorf("duplicate id: %s", id)
+		} else {
+			seenIDs[id] = struct{}{}
+		}
+		return id, nil
 	}
 }
 
@@ -559,6 +565,7 @@ func (b *Blog) HasAbstract() bool {
 var (
 	mu sync.Mutex
 	currentID int
+	seenIDs = map[string]struct{}{}
 )
 
 func NextID() int {
