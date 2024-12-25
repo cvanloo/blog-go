@@ -36,7 +36,7 @@ type (
 
 type (
 	TextSimple []Node
-	TextRich []Node
+	TextRich   []Node
 
 	Node interface {
 		Accept(Visitor)
@@ -68,9 +68,9 @@ type (
 	}
 
 	Attributes map[string]string
-	Section struct {
+	Section    struct {
 		Attributes
-		Level int
+		Level   int
 		Heading TextRich
 		Content []Node
 	}
@@ -78,20 +78,20 @@ type (
 		Content []Node
 	}
 	Link struct {
-		Ref string
+		Ref  string
 		Name TextRich
 		Href string
 	}
 	Sidenote struct {
-		Ref string
+		Ref           string
 		Word, Content TextRich
 	}
 	Image struct {
-		Name string
+		Name       string
 		Alt, Title TextSimple
 	}
 	BlockQuote struct {
-		QuoteText TextRich
+		QuoteText      TextRich
 		Author, Source TextSimple
 	}
 	CodeBlock struct {
@@ -99,33 +99,33 @@ type (
 		Lines []string
 	}
 	HorizontalRule struct{}
-	EnquoteDouble TextRich
-	EnquoteAngled TextRich
-	Emphasis TextRich
-	Strong TextRich
+	EnquoteDouble  TextRich
+	EnquoteAngled  TextRich
+	Emphasis       TextRich
+	Strong         TextRich
 	EmphasisStrong TextRich
-	Strikethrough TextRich
-	Marker TextRich
-	Mono string
-	Text string
-	AmpSpecial string
-	Linkify string
+	Strikethrough  TextRich
+	Marker         TextRich
+	Mono           string
+	Text           string
+	AmpSpecial     string
+	Linkify        string
 
-	NopVisitor struct{}
+	NopVisitor           struct{}
 	FixReferencesVisitor struct {
 		NopVisitor
-		Errors error
-		LinkDefinitions map[string]string
+		Errors              error
+		LinkDefinitions     map[string]string
 		SidenoteDefinitions map[string]TextRich
-		TermDefinitions map[string]TextRich
+		TermDefinitions     map[string]TextRich
 	}
 
 	Blog struct {
-		Meta Meta
-		Sections []*Section
-		LinkDefinitions map[string]string
+		Meta                Meta
+		Sections            []*Section
+		LinkDefinitions     map[string]string
 		SidenoteDefinitions map[string]TextRich
-		TermDefinitions map[string]TextRich
+		TermDefinitions     map[string]TextRich
 	}
 	Meta map[string][]TextSimple // slice value to allow for duplicate keys
 )
@@ -503,7 +503,7 @@ func Parse(lx LexResult) (blog Blog, err error) {
 	levels.Push(&Level{ReturnToState: ParsingStart})
 	var (
 		currentSection1, currentSection2 *Section
-		currentAttributes                Attributes
+		currentAttributes                = Attributes{}
 		currentHTMLElement               = HtmlTag{Args: map[string]string{}}
 		currentCodeBlock                 = &CodeBlock{}
 		currentImage                     = &Image{}
@@ -782,7 +782,7 @@ func Parse(lx LexResult) (blog Blog, err error) {
 				}
 				level.Clear()
 				currentAttributes = Attributes{}
-				state = ParsingSection1Content
+				state = ParsingSection2Content
 			}
 		case ParsingSection2Content:
 			switch lexeme.Type {
@@ -1012,7 +1012,7 @@ func Parse(lx LexResult) (blog Blog, err error) {
 				levels.Pop()
 				parent := levels.Top()
 				ok := parent.TextRich.Append(AsRef(Link{
-					Ref: level.PopString(),
+					Ref:  level.PopString(),
 					Name: level.TextRich,
 				}))
 				Assert(ok, "link must be accepted as rich text")

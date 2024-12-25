@@ -472,6 +472,40 @@ Some text
 				{Type: lexer.TokenEOF, Text: ""},
 			},
 		},
+		{
+			name: "Section 1 with custom id in attributes",
+			source: `
+# Some Section Title {#custom-id}
+
+`,
+			expected: []lexer.Token{
+				{Type: lexer.TokenSection1Begin, Text: "#"},
+				{Type: lexer.TokenText, Text: "Some Section Title "},
+				{Type: lexer.TokenAttributeListBegin, Text: "{"},
+				{Type: lexer.TokenAttributeListID, Text: "custom-id"},
+				{Type: lexer.TokenAttributeListEnd, Text: "}"},
+				{Type: lexer.TokenSection1Content, Text: ""},
+				{Type: lexer.TokenSection1End, Text: ""},
+				{Type: lexer.TokenEOF, Text: ""},
+			},
+		},
+		{
+			name: "Section 1 with custom id in attributes 2",
+			source: `
+# Some Section Title {#custom.id}
+
+`,
+			expected: []lexer.Token{
+				{Type: lexer.TokenSection1Begin, Text: "#"},
+				{Type: lexer.TokenText, Text: "Some Section Title "},
+				{Type: lexer.TokenAttributeListBegin, Text: "{"},
+				{Type: lexer.TokenAttributeListID, Text: "custom.id"},
+				{Type: lexer.TokenAttributeListEnd, Text: "}"},
+				{Type: lexer.TokenSection1Content, Text: ""},
+				{Type: lexer.TokenSection1End, Text: ""},
+				{Type: lexer.TokenEOF, Text: ""},
+			},
+		},
 	}
 	RunTests(t, testCases)
 }

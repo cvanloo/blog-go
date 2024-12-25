@@ -29,7 +29,7 @@ author: Colin van~Loo
 lang: en
 ---
 
-# こんにちは、世界！
+# こんにちは、世界！ {#s1}
 
 Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.
 Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
@@ -44,7 +44,7 @@ Ut enim ad minim [veniam](https://example.com/), quis nostrud exercitation ullam
 
 Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.
 
-## Lorem Epsum
+## Lorem Epsum {#s2.2}
 
 Lorem [epsum][^1] dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.
 Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
@@ -73,7 +73,10 @@ var LexerTestTokens = MockTokens{
 	{Type: lexer.TokenText, Text: "en"},
 	{Type: lexer.TokenMetaEnd, Text: "---"},
 	{Type: lexer.TokenSection1Begin, Text: "#"},
-	{Type: lexer.TokenText, Text: "こんにちは、世界！"},
+	{Type: lexer.TokenText, Text: "こんにちは、世界！ "},
+	{Type: lexer.TokenAttributeListBegin, Text: "{"},
+	{Type: lexer.TokenAttributeListID, Text: "s1"},
+	{Type: lexer.TokenAttributeListEnd, Text: "}"},
 	{Type: lexer.TokenSection1Content, Text: ""},
 	{Type: lexer.TokenParagraphBegin, Text: ""},
 	{Type: lexer.TokenText, Text: "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.\nUt enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.\nDuis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur."},
@@ -101,7 +104,10 @@ var LexerTestTokens = MockTokens{
 	{Type: lexer.TokenParagraphEnd, Text: ""},
 	{Type: lexer.TokenSection2End, Text: ""},
 	{Type: lexer.TokenSection2Begin, Text: "##"},
-	{Type: lexer.TokenText, Text: "Lorem Epsum"},
+	{Type: lexer.TokenText, Text: "Lorem Epsum "},
+	{Type: lexer.TokenAttributeListBegin, Text: "{"},
+	{Type: lexer.TokenAttributeListID, Text: "s2.2"},
+	{Type: lexer.TokenAttributeListEnd, Text: "}"},
 	{Type: lexer.TokenSection2Content, Text: ""},
 	{Type: lexer.TokenParagraphBegin, Text: ""},
 	{Type: lexer.TokenText, Text: "Lorem "},
@@ -161,8 +167,11 @@ var BlogParserTestStruct = parser.Blog{
 	Sections: []*parser.Section{
 		{
 			Level: 1,
+			Attributes: parser.Attributes{
+				"id": "s1",
+			},
 			Heading: parser.TextRich{
-				AsRef(parser.Text("こんにちは、世界！")),
+				AsRef(parser.Text("こんにちは、世界！ ")),
 			},
 			Content: []parser.Node{
 				&parser.Paragraph{
@@ -204,8 +213,11 @@ var BlogParserTestStruct = parser.Blog{
 				},
 				&parser.Section{
 					Level: 2,
+					Attributes: parser.Attributes{
+						"id": "s2.2",
+					},
 					Heading: parser.TextRich{
-						AsRef(parser.Text("Lorem Epsum")),
+						AsRef(parser.Text("Lorem Epsum ")),
 					},
 					Content: []parser.Node{
 						&parser.Paragraph{
@@ -278,8 +290,11 @@ var BlogParserFixedTestStruct = parser.Blog{
 	Sections: []*parser.Section{
 		{
 			Level: 1,
+			Attributes: parser.Attributes{
+				"id": "s1",
+			},
 			Heading: parser.TextRich{
-				AsRef(parser.Text("こんにちは、世界！")),
+				AsRef(parser.Text("こんにちは、世界！ ")),
 			},
 			Content: []parser.Node{
 				&parser.Paragraph{
@@ -321,8 +336,11 @@ var BlogParserFixedTestStruct = parser.Blog{
 				},
 				&parser.Section{
 					Level: 2,
+					Attributes: parser.Attributes{
+						"id": "s2.2",
+					},
 					Heading: parser.TextRich{
-						AsRef(parser.Text("Lorem Epsum")),
+						AsRef(parser.Text("Lorem Epsum ")),
 					},
 					Content: []parser.Node{
 						&parser.Paragraph{

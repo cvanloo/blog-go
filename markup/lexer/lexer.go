@@ -509,15 +509,16 @@ type (
 )
 
 var (
-	SpecAsciiLower    = CharInRange{'a', 'z'}
-	SpecAsciiUpper    = CharInRange{'A', 'Z'}
-	SpecAscii         = CharInSpec{SpecAsciiLower, SpecAsciiUpper}
-	SpecNumber        = CharInRange{'0', '9'}
-	SpecAsciiID       = CharInSpec{SpecAscii, SpecNumber, CharInAny("-_")}
-	SpecValidMetaKey  = CharInSpec{SpecAscii, CharInAny("-_")}
-	SpecNonWhitespace = CharNotInSpec{CharInAny(" \u00A0\n\r\v\t")} // @todo: and all the others...
-	SpecAttrVal       = CharNotInSpec{CharInAny(" \u00A0\n\r\v\t}")}
-	SpecImagePath     = CharNotInSpec{CharInAny(" \u00A0\n\r\v\t)")}
+	SpecAsciiLower         = CharInRange{'a', 'z'}
+	SpecAsciiUpper         = CharInRange{'A', 'Z'}
+	SpecAscii              = CharInSpec{SpecAsciiLower, SpecAsciiUpper}
+	SpecNumber             = CharInRange{'0', '9'}
+	SpecAsciiID            = CharInSpec{SpecAscii, SpecNumber, CharInAny("-_")}
+	SpecValidMetaKey       = CharInSpec{SpecAscii, CharInAny("-_")}
+	SpecNonWhitespace      = CharNotInSpec{CharInAny(" \u00A0\n\r\v\t")} // @todo: and all the others...
+	SpecAttrVal            = CharNotInSpec{CharInAny(" \u00A0\n\r\v\t}")}
+	SpecAttrKey            = CharNotInSpec{CharInAny(" \u00A0\n\r\v\t=}")}
+	SpecImagePath          = CharNotInSpec{CharInAny(" \u00A0\n\r\v\t)")}
 	SpecSingleWordSidenote = CharNotInSpec{CharInAny(" \u00A0\n\r\v\t[")}
 )
 
@@ -966,7 +967,7 @@ func (lx *Lexer) LexAttributeList() {
 	lx.SkipWhitespace()
 	if lx.Peek1() == '#' {
 		lx.SkipNext1()
-		id := lx.NextValids(SpecAsciiID)
+		id := lx.NextValids(SpecAttrVal)
 		if len(id) == 0 {
 			lx.Error(errors.New("must provide id"))
 		}
@@ -974,7 +975,7 @@ func (lx *Lexer) LexAttributeList() {
 		lx.SkipWhitespace()
 	}
 	for !lx.IsEOF() && lx.Peek1() != '}' {
-		key := lx.NextValids(SpecAsciiID)
+		key := lx.NextValids(SpecAttrKey)
 		if len(key) == 0 {
 			lx.Error(errors.New("must provide a key"))
 		}
