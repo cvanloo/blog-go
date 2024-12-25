@@ -228,6 +228,28 @@ author = Colin van~Loo
 				{Type: lexer.TokenEOF, Text: ""},
 			},
 		},
+		{
+			name: "Multi-line value in meta block",
+			source: `
+---
+description: At vero eos et accusamus et iusto odio dignissimos ducimus qui \
+  blanditiis praesentium voluptatum deleniti atque corrupti quos dolores et \
+  quas molestias excepturi sint occaecati cupiditate non provident.
+author: Foo Bar
+---
+`,
+			expected: []lexer.Token{
+				{Type: lexer.TokenMetaBegin, Text: "---"},
+				{Type: lexer.TokenMetaKey, Text: "description"},
+				{Type: lexer.TokenText, Text: "At vero eos et accusamus et iusto odio dignissimos ducimus qui "},
+				{Type: lexer.TokenText, Text: "blanditiis praesentium voluptatum deleniti atque corrupti quos dolores et "},
+				{Type: lexer.TokenText, Text: "quas molestias excepturi sint occaecati cupiditate non provident."},
+				{Type: lexer.TokenMetaKey, Text: "author"},
+				{Type: lexer.TokenText, Text: "Foo Bar"},
+				{Type: lexer.TokenMetaEnd, Text: "---"},
+				{Type: lexer.TokenEOF, Text: ""},
+			},
+		},
 	}
 	RunTests(t, testCases)
 }

@@ -667,7 +667,8 @@ func (lx *Lexer) LexAsMultiLineStringOrAmpSpecial() {
 	for !lx.IsEOF() {
 		if lx.Peek(2) == "\\\n" {
 			lx.EmitIfNonEmpty(TokenText)
-			lx.SkipNext1() // don't skip newline, it should be part of string (@todo: or what behaviour do we actually want here?)
+			lx.SkipNext(2)
+			lx.SkipWhitespaceNoNewLine()
 			lx.Next1()
 		} else if lx.Peek1() == '\n' {
 			break
