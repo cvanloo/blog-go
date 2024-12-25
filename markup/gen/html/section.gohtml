@@ -1,9 +1,10 @@
-<section id="{{.ID}}">
+{{$id := MakeUniqueID .}}
+<section id="{{$id}}">
     {{if .SectionLevel1 }}
-    <h2><a href="#{{.ID}}">{{Render .Heading}}</a></h2>
+    <h2><a href="#{{$id}}">{{Render .Heading}}</a></h2>
     {{end}}
     {{if .SectionLevel2 }}
-    <h3><a href="#{{.ID}}">{{Render .Heading}}</a></h3>
+    <h3><a href="#{{$id}}">{{Render .Heading}}</a></h3>
     {{end}}
     {{range .Content}}
     {{Render .}}

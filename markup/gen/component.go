@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 	"net/url"
+	"sync"
 
 	. "github.com/cvanloo/blog-go/assert"
 )
@@ -28,9 +29,7 @@ var (
 func init() {
 	pages.Funcs(template.FuncMap{
 		"Render": Render,
-		"GetBlog": func() *Blog {
-			return pages.blog
-		},
+		"MakeUniqueID": MakeUniqueID,
 	})
 
 	template.Must(pages.ParseFS(htmls, "html/*.gohtml"))
@@ -41,10 +40,19 @@ func Render(element Renderable) (template.HTML, error) {
 	return element.Render()
 }
 
+func MakeUniqueID(element any) string {
+	switch i := element.(type) {
+	default:
+		id := NextID()
+		return fmt.Sprintf("%d", id)
+	case Identifiable:
+		return i.ID()
+	}
+}
+
 type (
 	Template struct {
 		*template.Template
-		blog *Blog
 	}
 	Renderable interface {
 		Render() (template.HTML, error)
@@ -53,6 +61,9 @@ type (
 		Renderable
 		Text() string
 	}
+	Identifiable interface {
+		ID() string
+	}
 )
 
 func (t *Template) Execute(w io.Writer, name string, data any) error {
@@ -60,20 +71,17 @@ func (t *Template) Execute(w io.Writer, name string, data any) error {
 }
 
 func WriteBlog(w io.Writer, blog *Blog) error {
-	pages.blog = blog
 	return pages.Execute(w, "entry.gohtml", blog)
 }
 
 func String(blog *Blog) (string, error) {
 	bs := &bytes.Buffer{}
-	pages.blog = blog
 	err := pages.Execute(bs, "entry.gohtml", blog)
 	return bs.String(), err
 }
 
 func Handler(blog *Blog, onError func(error)) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		pages.blog = blog
 		err := pages.Execute(w, "entry.gohtml", blog)
 		if err != nil {
 			onError(err)
@@ -92,7 +100,7 @@ type (
 		ID string
 		Fields map[string]string
 	}
-	Blog struct { // @todo: make Meta struct{}, // @todo: mandatory keys?
+	Blog struct {
 		UrlPath string
 		Author Author
 		Lang string
@@ -375,11 +383,6 @@ func (sn Sidenote) Text() string {
 	return strings.TrimSpace(bs.String())
 }
 
-func (sn Sidenote) ID() string {
-	// @todo: implement incrementing counter
-	return ""
-}
-
 func (b *Blog) Canonical() string {
 	path := b.UrlPath
 	Assert(len(path) > 0, "must specify a url path")
@@ -554,10 +557,13 @@ func (b *Blog) HasAbstract() bool {
 }
 
 var (
-	currentID = 0
+	mu sync.Mutex
+	currentID int
 )
 
 func NextID() int {
+	mu.Lock()
+	defer mu.Unlock()
 	currentID++
 	return currentID
 }

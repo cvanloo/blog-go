@@ -1,15 +1,15 @@
-{{$blog := GetBlog}}
+{{$id := MakeUniqueID .}}
 <span class="sidenote">
     <input type="checkbox"
-           id="sidenote__checkbox--{{.ID}}"
+           id="sidenote__checkbox--{{$id}}"
            class="sidenote__checkbox"
            aria-label="show sidenote">
-    <label for="sidenote__checkbox--{{.ID}}"
-           aria-describedby="sidenote-{{.ID}}"
+    <label for="sidenote__checkbox--{{$id}}"
+           aria-describedby="sidenote-{{$id}}"
            title="{{Render .Content}}"
            class="sidenote__button">{{Render .Word}}
     </label>
-    <small id="sidenote-{{.ID}}"
+    <small id="sidenote-{{$id}}"
            class="sidenote__content">
         <span class="sidenote__content-parenthesis">(sidenote:</span>
         {{Render .Content}}
