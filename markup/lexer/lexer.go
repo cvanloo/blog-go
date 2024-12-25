@@ -142,19 +142,6 @@ func (lx *Lexer) ResetToPos(pos int) {
 	lx.Pos = pos
 }
 
-func (lx *Lexer) DeferResetToPos(pos int) func() {
-	return func() {
-		lx.ResetToPos(pos)
-	}
-}
-
-func (lx *Lexer) DeferResetToCurrentPos() func() {
-	pos := lx.Pos
-	return func() {
-		lx.ResetToPos(pos)
-	}
-}
-
 func (lx *Lexer) IsEOF() bool {
 	return lx.Pos >= len(lx.Source)
 }
@@ -1097,6 +1084,7 @@ func (lx *Lexer) LexSingleWordSidenote() {
 //
 // - TokenLinkableBegin "["
 // - TokenText "Link Text"
+// - TokenLinkHref ""
 // - TokenLinkableEnd
 //
 // A bit exotic, but also allowed
@@ -1140,6 +1128,7 @@ func (lx *Lexer) LexLinkOrSidenote() {
 		lx.ExpectAndSkip(")")
 	} else {
 		// not an error, it's just an link with an empty href
+		lx.Skip()
 		lx.Emit(TokenLinkHref)
 	}
 	lx.Skip() // just for good measure

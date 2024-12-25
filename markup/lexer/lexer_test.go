@@ -928,6 +928,46 @@ Check out this cool blog: <https://blog.vanloo.ch>.
 			},
 		},
 		{
+			name: "Link with empty href",
+			source: `
+# Section 1
+
+This looks like a [link,] doesn't it?
+
+## Section 2
+
+This looks like a [link,] doesn't it?
+
+`,
+			expected: []lexer.Token{
+				{Type: lexer.TokenSection1Begin, Text: "#"},
+				{Type: lexer.TokenText, Text: "Section 1"},
+				{Type: lexer.TokenSection1Content, Text: ""},
+				{Type: lexer.TokenParagraphBegin, Text: ""},
+				{Type: lexer.TokenText, Text: "This looks like a "},
+				{Type: lexer.TokenLinkableBegin, Text: "["},
+				{Type: lexer.TokenText, Text: "link,"},
+				{Type: lexer.TokenLinkHref, Text: ""},
+				{Type: lexer.TokenLinkableEnd, Text: ""},
+				{Type: lexer.TokenText, Text: " doesn't it?"},
+				{Type: lexer.TokenParagraphEnd, Text: ""},
+				{Type: lexer.TokenSection2Begin, Text: "##"},
+				{Type: lexer.TokenText, Text: "Section 2"},
+				{Type: lexer.TokenSection2Content, Text: ""},
+				{Type: lexer.TokenParagraphBegin, Text: ""},
+				{Type: lexer.TokenText, Text: "This looks like a "},
+				{Type: lexer.TokenLinkableBegin, Text: "["},
+				{Type: lexer.TokenText, Text: "link,"},
+				{Type: lexer.TokenLinkHref, Text: ""},
+				{Type: lexer.TokenLinkableEnd, Text: ""},
+				{Type: lexer.TokenText, Text: " doesn't it?"},
+				{Type: lexer.TokenParagraphEnd, Text: ""},
+				{Type: lexer.TokenSection2End, Text: ""},
+				{Type: lexer.TokenSection1End, Text: ""},
+				{Type: lexer.TokenEOF, Text: ""},
+			},
+		},
+		{
 			name: "Paragraph followed by a term definition (section 1)",
 			source: `
 # Section 1
