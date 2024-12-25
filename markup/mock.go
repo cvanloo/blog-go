@@ -376,6 +376,28 @@ var BlogGenTestStruct = gen.Blog{
 		Name: gen.StringOnlyContent{gen.Text("Colin van"), gen.AmpNoBreakSpace, gen.Text("Loo")},
 	},
 	Lang: "en",
+	TOC: gen.TableOfContents{
+		Sections: []gen.TOCSection{
+			{
+				ID: "こんにちは、世界！",
+				Heading: gen.StringOnlyContent{gen.Text("こんにちは、世界！")},
+				NextLevel: []gen.TOCSection{
+					{
+						ID: "lorem-ipsum",
+						Heading: gen.StringOnlyContent{gen.Text("Lorem Ipsum")},
+					},
+					{
+						ID: "lorem-epsum",
+						Heading: gen.StringOnlyContent{gen.Text("Lorem Epsum")},
+					},
+				},
+			},
+			{
+				ID: "さようなら",
+				Heading: gen.StringOnlyContent{gen.Text("さようなら")},
+			},
+		},
+	},
 	Sections: []gen.Section{
 		{
 			Level: 1,

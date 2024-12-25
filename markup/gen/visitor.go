@@ -162,6 +162,10 @@ func (v *MakeGenVisitor) VisitSection(s *parser.Section) {
 			Heading: stringRenderableFromTextRich(s.Heading),
 		}
 		v.currentSection = v.currentSection1
+		v.TemplateData.TOC.Sections = append(v.TemplateData.TOC.Sections, TOCSection{
+			ID: v.currentSection.ID(),
+			Heading: v.currentSection.Heading,
+		})
 	case 2:
 		v.currentSection2 = &Section{
 			// @todo: Attributes
@@ -169,6 +173,13 @@ func (v *MakeGenVisitor) VisitSection(s *parser.Section) {
 			Heading: stringRenderableFromTextRich(s.Heading),
 		}
 		v.currentSection = v.currentSection2
+		{
+			l := len(v.TemplateData.TOC.Sections)
+			v.TemplateData.TOC.Sections[l-1].NextLevel = append(v.TemplateData.TOC.Sections[l-1].NextLevel, TOCSection{
+				ID: v.currentSection.ID(),
+				Heading: v.currentSection.Heading,
+			})
+		}
 	}
 }
 
