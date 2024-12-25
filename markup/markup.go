@@ -133,7 +133,7 @@ func (p processor) process(src source) error {
 	refFixer := &parser.FixReferencesVisitor{}
 	blog.Accept(refFixer)
 	if refFixer.Errors != nil {
-		return fmt.Errorf("processing %s failed while resolving references: %w", src.Name, err)
+		return fmt.Errorf("processing %s failed while resolving references: %w", src.Name, refFixer.Errors)
 	}
 	templateData := gen.Blog{}
 	makeGen := &gen.MakeGenVisitor{
@@ -141,7 +141,7 @@ func (p processor) process(src source) error {
 	}
 	blog.Accept(makeGen)
 	if makeGen.Errors != nil {
-		return fmt.Errorf("processing %s failed while producing template data: %w", src.Name, err)
+		return fmt.Errorf("processing %s failed while producing template data: %w", src.Name, makeGen.Errors)
 	}
 	out, err := os.Create(fmt.Sprintf("%s/%s.html", p.outDir, templateData.UrlPath))
 	if err != nil {
