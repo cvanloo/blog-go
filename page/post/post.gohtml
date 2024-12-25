@@ -4,7 +4,7 @@
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <meta name="language" content="{{.Lang}}">
-        <meta name="site_name" property="og:site_name" content="save-lisp-and-die">
+        <meta name="site_name" property="og:site_name" content="{{.Site.Name}}">
         {{if .AltTitle }}
         <meta name="title" property="og:title" content="{{Render .Title}}&mdash;{{Render .AltTitle}}">
         {{else}}
@@ -48,7 +48,7 @@
         <main>
             <header>
                 <nav id="topbar">
-                    <code>(save-lisp-and-die</code>
+                    <code>({{.Site.Name}}</code>
                     <a class="item" href="/"><code>:home</code></a>
                     <a class="item" href="/about"><code>:about</code></a>
                     <div class="dropdown item">
@@ -72,10 +72,10 @@
                     <aside id="content-info">
                         <div class="info-line">
                             <p><small>{{.Published}}</small></p>
-                            <p><small>~{{.EstReading}}′</small></p>
+                            <p><small>~{{.EstReading}}&tprime;</small></p>
                         </div>
                         <div class="info-line taglist">
-                        {{range .Tags}}<p><a href="/search/:{{.}}">:{{.}}</a></p>
+                        {{range .Tags}}<p><a href="/:{{.}}">:{{.}}</a></p>
                         {{end}}</div>
                     </aside>
                 </div>
@@ -136,9 +136,9 @@
                 <p id="eof">STOP)))))</p>
                 <!-- @todo: link to copyleft licence? -->
                 {{if .Author.Email}}
-                <address>&copy; {{.CopyrightYear}} <a href="mailto:{{.ObfuscatedEmail}}">{{Render .Author.Name}}</a></address>
+                <address>&copy; {{.CopyrightYears}} <a href="mailto:{{.ObfuscatedEmail}}">{{Render .Author.Name}}</a></address>
                 {{else}}
-                <address>&copy; {{.CopyrightYear}} {{Render .Author.Name}}</address>
+                <address>&copy; {{.CopyrightYears}} {{Render .Author.Name}}</address>
                 {{end}}
                 <span class="credits">
                   <a href="/about#credits">Font Licenses</a>

@@ -11,7 +11,7 @@ import (
 
 	"github.com/cvanloo/blog-go/markup/lexer"
 	"github.com/cvanloo/blog-go/markup/parser"
-	"github.com/cvanloo/blog-go/markup/gen"
+	"github.com/cvanloo/blog-go/page"
 	//. "github.com/cvanloo/blog-go/assert"
 )
 
@@ -135,8 +135,8 @@ func (p processor) process(src source) error {
 	if refFixer.Errors != nil {
 		return fmt.Errorf("processing %s failed while resolving references: %w", src.Name, refFixer.Errors)
 	}
-	templateData := gen.Blog{}
-	makeGen := &gen.MakeGenVisitor{
+	templateData := page.Post{}
+	makeGen := &page.MakeGenVisitor{
 		TemplateData: &templateData,
 	}
 	blog.Accept(makeGen)
@@ -147,7 +147,7 @@ func (p processor) process(src source) error {
 	if err != nil {
 		return fmt.Errorf("processing %s failed while generating static html: %w", src.Name, err)
 	}
-	if err := gen.WriteBlog(out, &templateData); err != nil {
+	if err := page.WritePost(out, templateData); err != nil {
 		return fmt.Errorf("processing %s failed while writing out static html: %w", src.Name, err)
 	}
 	if err := out.Close(); err != nil {

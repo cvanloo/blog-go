@@ -4,8 +4,8 @@ import (
 	//"time"
 
 	"github.com/cvanloo/blog-go/markup/lexer"
-	"github.com/cvanloo/blog-go/markup/gen"
 	"github.com/cvanloo/blog-go/markup/parser"
+	"github.com/cvanloo/blog-go/page"
 	. "github.com/cvanloo/blog-go/assert"
 )
 
@@ -387,89 +387,89 @@ var BlogParserFixedTestStruct = parser.Blog{
 	TermDefinitions: map[string]parser.TextRich{},
 }
 
-var BlogGenTestStruct = gen.Blog{
+var BlogGenTestStruct = page.Post{
 	UrlPath: "hello",
-	Title: gen.StringOnlyContent{gen.Text("Hello, World!")},
-	Author: gen.Author{
-		Name: gen.StringOnlyContent{gen.Text("Colin van"), gen.AmpNoBreakSpace, gen.Text("Loo")},
+	Title: page.StringOnlyContent{page.Text("Hello, World!")},
+	Author: page.Author{
+		Name: page.StringOnlyContent{page.Text("Colin van"), page.AmpNoBreakSpace, page.Text("Loo")},
 	},
 	Lang: "en",
-	TOC: gen.TableOfContents{
-		Sections: []gen.TOCSection{
+	TOC: page.TableOfContents{
+		Sections: []page.TOCSection{
 			{
 				ID: "s1",
-				Heading: gen.StringOnlyContent{gen.Text("こんにちは、世界！ ")},
-				NextLevel: []gen.TOCSection{
+				Heading: page.StringOnlyContent{page.Text("こんにちは、世界！ ")},
+				NextLevel: []page.TOCSection{
 					{
 						ID: "lorem-ipsum",
-						Heading: gen.StringOnlyContent{gen.Text("Lorem Ipsum")},
+						Heading: page.StringOnlyContent{page.Text("Lorem Ipsum")},
 					},
 					{
 						ID: "s2.2",
-						Heading: gen.StringOnlyContent{gen.Text("Lorem Epsum ")},
+						Heading: page.StringOnlyContent{page.Text("Lorem Epsum ")},
 					},
 				},
 			},
 			{
 				ID: "さようなら",
-				Heading: gen.StringOnlyContent{gen.Text("さようなら")},
+				Heading: page.StringOnlyContent{page.Text("さようなら")},
 			},
 		},
 	},
-	Sections: []gen.Section{
+	Sections: []page.Section{
 		{
 			Level: 1,
 			Attributes: map[string]string{
 				"id": "s1",
 			},
-			Heading: gen.StringOnlyContent{gen.Text("こんにちは、世界！ ")},
-			Content: []gen.Renderable{
-				gen.Paragraph{
-					Content: gen.StringOnlyContent{gen.Text("Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.\nUt enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.\nDuis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.")},
+			Heading: page.StringOnlyContent{page.Text("こんにちは、世界！ ")},
+			Content: []page.Renderable{
+				page.Paragraph{
+					Content: page.StringOnlyContent{page.Text("Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.\nUt enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.\nDuis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.")},
 				},
-				gen.Paragraph{
-					Content: gen.StringOnlyContent{
-						gen.Text("Ut enim ad minim veniam, quis nostrud"),
-						gen.AmpEmDash,
-						gen.Text("exercitation ullamco"),
-						gen.AmpEmDash,
-						gen.Text("laboris nisi ut aliquip ex ea commodo consequat.\nDuis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur."),
+				page.Paragraph{
+					Content: page.StringOnlyContent{
+						page.Text("Ut enim ad minim veniam, quis nostrud"),
+						page.AmpEmDash,
+						page.Text("exercitation ullamco"),
+						page.AmpEmDash,
+						page.Text("laboris nisi ut aliquip ex ea commodo consequat.\nDuis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur."),
 					},
 				},
-				gen.Section{
+				page.Section{
 					Level: 2,
-					Heading: gen.StringOnlyContent{gen.Text("Lorem Ipsum")},
-					Content: []gen.Renderable{
-						gen.Paragraph{
-							Content: gen.StringOnlyContent{
-								gen.Text("Ut enim ad minim "),
-								gen.Link{
+					Heading: page.StringOnlyContent{page.Text("Lorem Ipsum")},
+					Content: []page.Renderable{
+						page.Paragraph{
+							Content: page.StringOnlyContent{
+								page.Text("Ut enim ad minim "),
+								page.Link{
 									Href: "https://example.com/",
-									Name: gen.StringOnlyContent{gen.Text("veniam")},
+									Name: page.StringOnlyContent{page.Text("veniam")},
 								},
-								gen.Text(", quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat."),
+								page.Text(", quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat."),
 							},
 						},
-						gen.Paragraph{
-							Content: gen.StringOnlyContent{gen.Text("Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.")},
+						page.Paragraph{
+							Content: page.StringOnlyContent{page.Text("Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.")},
 						},
 					},
 				},
-				gen.Section{
+				page.Section{
 					Level: 2,
 					Attributes: map[string]string{
 						"id": "s2.2",
 					},
-					Heading: gen.StringOnlyContent{gen.Text("Lorem Epsum ")},
-					Content: []gen.Renderable{
-						gen.Paragraph{
-							Content: gen.StringOnlyContent{
-								gen.Text("Lorem "),
-								gen.Sidenote{
-									Word: gen.StringOnlyContent{gen.Text("epsum")},
-									Content: gen.StringOnlyContent{gen.Text("See what I did there?")},
+					Heading: page.StringOnlyContent{page.Text("Lorem Epsum ")},
+					Content: []page.Renderable{
+						page.Paragraph{
+							Content: page.StringOnlyContent{
+								page.Text("Lorem "),
+								page.Sidenote{
+									Word: page.StringOnlyContent{page.Text("epsum")},
+									Content: page.StringOnlyContent{page.Text("See what I did there?")},
 								},
-								gen.Text(" dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.\nUt enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat."),
+								page.Text(" dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.\nUt enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat."),
 							},
 						},
 					},
@@ -478,16 +478,16 @@ var BlogGenTestStruct = gen.Blog{
 		},
 		{
 			Level: 1,
-			Heading: gen.StringOnlyContent{gen.Text("さようなら")},
-			Content: []gen.Renderable{
-				gen.Paragraph{
-					Content: gen.StringOnlyContent{
-						gen.Text("Ut enim ad minim "),
-						gen.Link{
-							Name: gen.StringOnlyContent{gen.Text("veniam")},
+			Heading: page.StringOnlyContent{page.Text("さようなら")},
+			Content: []page.Renderable{
+				page.Paragraph{
+					Content: page.StringOnlyContent{
+						page.Text("Ut enim ad minim "),
+						page.Link{
+							Name: page.StringOnlyContent{page.Text("veniam")},
 							Href: "https://example.com/",
 						},
-						gen.Text(", quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat."),
+						page.Text(", quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat."),
 					},
 				},
 			},

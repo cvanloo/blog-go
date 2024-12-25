@@ -1,4 +1,4 @@
-package gen
+package page
 
 import (
 	"errors"
@@ -6,14 +6,482 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"embed"
+	"html/template"
+	"bytes"
+	"io"
+	"log"
+	"net/url"
 
 	"github.com/cvanloo/blog-go/markup/parser"
+	. "github.com/cvanloo/blog-go/assert"
 )
+
+//go:embed post
+var postTemplates embed.FS
+
+var (
+	post = Template{Template: template.New("")}
+)
+
+func init() {
+	post.Funcs(template.FuncMap{
+		"Render": Render,
+		"MakeUniqueID": MakeUniqueID,
+		"ObfuscateText": ObfuscateText,
+		"CopyrightYear": CopyrightYear,
+		"CopyrightYears": CopyrightYears,
+	})
+	template.Must(post.ParseFS(postTemplates, "post/*.gohtml"))
+	log.Printf("post: %s", post.DefinedTemplates())
+}
+
+type (
+	Attributes map[string]string
+	Post struct {
+		Site Site // @todo: only global?
+		UrlPath string
+		Author Author
+		Lang string
+		Title, AltTitle StringRenderable
+		Description string
+		Published Revision
+		EstReading int
+		Tags []Tag
+		Series *Series
+		EnableRevisionWarning bool
+		TOC TableOfContents
+		Abstract StringRenderable
+		Sections []Section
+		Relevant *RelevantBox // @todo: implement: need html custom functions first
+	}
+	Author struct {
+		Name StringRenderable
+		Email StringRenderable
+		RelMe StringRenderable // https://tech.lgbt/@attaboy
+		FediCreator StringRenderable // @attaboy@tech.lgbt
+	}
+	Tag string
+	Series struct {
+		Prev, Next *SeriesItem
+	}
+	SeriesItem struct {
+		Title StringRenderable
+		Link string
+	}
+	TableOfContents struct {
+		Sections []TOCSection
+	}
+	TOCSection struct {
+		ID string
+		Heading StringRenderable
+		NextLevel []TOCSection
+	}
+	Section struct {
+		Attributes
+		Level int
+		Heading StringRenderable
+		Content []Renderable
+	}
+	Paragraph struct {
+		Content StringRenderable
+	}
+	Text string
+	Mono string
+	EscapedString string
+	StringOnlyContent []StringRenderable
+	Strong struct {
+		StringOnlyContent
+	}
+	Emphasis struct {
+		StringOnlyContent
+	}
+	EmphasisStrong struct {
+		StringOnlyContent
+	}
+	EnquoteDouble struct {
+		StringOnlyContent
+	}
+	EnquoteAngled struct {
+		StringOnlyContent
+	}
+	Strikethrough struct {
+		StringOnlyContent
+	}
+	Marker struct {
+		StringOnlyContent
+	}
+	Link struct {
+		Name StringRenderable
+		Href string
+	}
+	CodeBlock struct {
+		Attributes
+		Lines []string
+	}
+	Sidenote struct {
+		// @todo: For the title attribute we can't have <b> and stuff...
+		Word, Content StringRenderable
+	}
+	Image struct {
+		Name string
+		Title, Alt StringRenderable
+	}
+	Blockquote struct {
+		QuoteText, Author, Source StringRenderable
+	}
+	HorizontalRule struct{}
+	RelevantBox struct {
+		Heading StringRenderable
+		Articles []ReadingItem
+	}
+	ReadingItem struct {
+		Link, AuthorLink string
+		Title, Author, Abstract StringRenderable
+		Date time.Time
+	}
+)
+
+func WritePost(w io.Writer, p Post) error {
+	return post.Execute(w, "post.gohtml", p)
+}
+
+func (soc StringOnlyContent) Render() (template.HTML, error) {
+	t, err := soc.Text()
+	return template.HTML(t), err
+}
+
+func (soc StringOnlyContent) Text() (string, error) {
+	var (
+		builder strings.Builder
+		err error
+	)
+	for _, s := range soc {
+		t, terr := s.Text()
+		if terr != nil {
+			err = errors.Join(err, terr)
+		}
+		builder.WriteString(t)
+	}
+	return builder.String(), err
+}
+
+func (soc StringOnlyContent) String() string {
+	log.Printf("warning: String() called on StringOnlyContent, you probably want to use Render from within the html template: %#v", soc)
+	return fmt.Sprintf("%#v", soc)
+}
+
+func (t Text) Render() (template.HTML, error) {
+	return template.HTML(t), nil
+}
+
+func (t Text) Text() (string, error) {
+	return string(t), nil
+}
+
+func (s Strong) Render() (template.HTML, error) {
+	t, err := s.Text()
+	return template.HTML(t), err
+}
+
+func (s Strong) Text() (string, error) {
+	t, err := s.StringOnlyContent.Text()
+	return fmt.Sprintf("<strong>%s</strong>", t), err
+}
+
+func (e Emphasis) Render() (template.HTML, error) {
+	t, err := e.Text()
+	return template.HTML(t), err
+}
+
+func (e Emphasis) Text() (string, error) {
+	t, err := e.StringOnlyContent.Text()
+	return fmt.Sprintf("<em>%s</em>", t), err
+}
+
+func (e EmphasisStrong) Render() (template.HTML, error) {
+	t, err := e.Text()
+	return template.HTML(t), err
+}
+
+func (e EmphasisStrong) Text() (string, error) {
+	t, err := e.StringOnlyContent.Text()
+	return fmt.Sprintf("<em><strong>%s</strong></em>", t), err
+}
+
+func (m Mono) Render() (template.HTML, error) {
+	t, err := m.Text()
+	return template.HTML(t), err
+}
+
+func (m Mono) Text() (string, error) {
+	return fmt.Sprintf("<code>%s</code>", m), nil
+}
+
+func (q EnquoteDouble) Render() (template.HTML, error) {
+	t, err := q.Text()
+	return template.HTML(t), err
+}
+
+func (q EnquoteDouble) Text() (string, error) {
+	t, err := q.StringOnlyContent.Text()
+	return fmt.Sprintf("&ldquo;%s&rdquo;", t), err
+}
+
+func (q EnquoteAngled) Render() (template.HTML, error) {
+	t, err := q.Text()
+	return template.HTML(t), err
+}
+
+func (q EnquoteAngled) Text() (string, error) {
+	t, err := q.StringOnlyContent.Text()
+	return fmt.Sprintf("&laquo;%s&raquo;", t), err
+}
+
+func (s Strikethrough) Text() (string, error) {
+	t, err := s.StringOnlyContent.Text()
+	return fmt.Sprintf("<s>%s</s>", t), err
+}
+
+func (s Strikethrough) Render() (template.HTML, error) {
+	t, err := s.Text()
+	return template.HTML(t), err
+}
+
+func (m Marker) Text() (string, error) {
+	t, err := m.StringOnlyContent.Text()
+	return fmt.Sprintf("<mark>%s</mark>", t), err
+}
+
+func (m Marker) Render() (template.HTML, error) {
+	t, err := m.Text()
+	return template.HTML(t), err
+}
+
+func (l Link) Render() (template.HTML, error) {
+	t, err := l.Text()
+	return template.HTML(t), err
+}
+
+func (l Link) Target() (string, error) {
+	// @todo: check if it's a link referring to a section in the same blog post.
+	//    then add a css class, so that we can show an arrow-up or arrow-down
+	//    (depending on the relative position of the link and the section it points to)
+	href, err := url.Parse(l.Href)
+	if err != nil {
+		return "_blank", err
+	}
+	if href.Host == site.Address.Host {
+		return "_self", nil
+	}
+	return "_blank", nil
+}
+
+func (l Link) Text() (string, error) {
+	bs := &bytes.Buffer{}
+	err := post.Execute(bs, "link.gohtml", l)
+	return strings.TrimSpace(bs.String()), err
+}
+
+func (l Link) NameOrHref() (string, error) {
+	if l.Name != nil {
+		return l.Name.Text()
+	}
+	return l.Href, nil
+}
+
+func (e EscapedString) Render() (template.HTML, error) {
+	t, err := e.Text()
+	return template.HTML(t), err
+}
+
+func (e EscapedString) Text() (string, error) {
+	return string(e), nil
+}
+
+const (
+	AmpNoBreakSpace EscapedString = "&nbsp;"
+	AmpEmDash EscapedString = "&mdash;"
+	AmpEnDash EscapedString = "&ndash;"
+	AmpHyphen EscapedString = "&hyphen;"
+	AmpLeftDoubleQuote EscapedString = "&ldquo;"
+	AmpRightDoubleQuote EscapedString = "&rdquo;"
+	AmpLeftAngledQuote EscapedString = "&laquo;"
+	AmpRightAngledQuote EscapedString = "&raquo;"
+	AmpEllipsis EscapedString = "…"
+	AmpPrime EscapedString = "&prime;"
+	AmpDoublePrime EscapedString = "&Prime;"
+	AmpTripplePrime EscapedString = "&tprime;"
+	AmpQuadruplePrime EscapedString = "&qprime;"
+	AmpReversedPrime EscapedString = "&bprime;"
+)
+
+func (sn Sidenote) Render() (template.HTML, error) {
+	t, err := sn.Text()
+	return template.HTML(t), err
+}
+
+func (sn Sidenote) Text() (string, error) {
+	bs := &bytes.Buffer{}
+	err := post.Execute(bs, "sidenote.gohtml", sn)
+	return strings.TrimSpace(bs.String()), err
+}
+
+func (p Post) Canonical() string {
+	path := p.UrlPath
+	return fmt.Sprintf("%s://%s/%s", site.Address.Scheme, site.Address.Host, path)
+}
+
+func (p Post) FirstSectionID() string {
+	Assert(len(p.Sections) > 0, "blog must consist of at least one section")
+	return p.Sections[0].ID()
+}
+
+func (p Post) FirstSectionName() (string, error) {
+	Assert(len(p.Sections) > 0, "blog must consist of at least one section")
+	return p.Sections[0].Heading.Text()
+}
+
+func (p Post) LastRevision() time.Time {
+	if p.Published.HasRevision() {
+		return *p.Published.Revised
+	}
+	return p.Published.Published
+}
+
+func (t Tag) String() string {
+	return string(t)
+}
+
+func (p Post) IsPartOfSeries() bool {
+	return p.Series != nil
+}
+
+func (s *Series) HasPrev() bool {
+	return s.Prev != nil
+}
+
+func (s *Series) HasNext() bool {
+	return s.Next != nil
+}
+
+func (p Post) ShowLongTimeSinceRevisedWarning() bool {
+	const threeYears = 3 * 365 * 24 * time.Hour // doesn't have to be exact, or even care about time zones and stuff
+	return p.EnableRevisionWarning && time.Since(p.LastRevision()) > threeYears
+}
+
+func (t TableOfContents) Render() (template.HTML, error) {
+	bs := &bytes.Buffer{}
+	err := post.Execute(bs, "toc.gohtml", t)
+	return template.HTML(bs.String()), err
+}
+
+func (s *TOCSection) HasNextLevel() bool {
+	return len(s.NextLevel) > 0
+}
+
+func (s Section) ID() string {
+	if id, ok := s.Attributes["id"]; ok {
+		return id
+	}
+	t, err := s.Heading.Text()
+	_ = err // @todo
+	return strings.ReplaceAll(strings.ToLower(t), " ", "-")
+}
+
+func (s Section) SectionLevel1() bool {
+	return s.Level == 1
+}
+
+// @todo: separate template, separate type
+func (s Section) SectionLevel2() bool {
+	return s.Level == 2
+}
+
+func (s Section) Render() (template.HTML, error) {
+	bs := &bytes.Buffer{}
+	err := post.Execute(bs, "section.gohtml", s)
+	return template.HTML(bs.String()), err
+}
+
+func (p Paragraph) Render() (template.HTML, error) {
+	bs := &bytes.Buffer{}
+	err := post.Execute(bs, "paragraph.gohtml", p)
+	return template.HTML(bs.String()), err
+}
+
+func (cb CodeBlock) Render() (template.HTML, error) {
+	bs := &bytes.Buffer{}
+	err := post.Execute(bs, "code-block.gohtml", cb)
+	return template.HTML(bs.String()), err
+}
+
+func (i Image) Render() (template.HTML, error) {
+	bs := &bytes.Buffer{}
+	err := post.Execute(bs, "image.gohtml", i)
+	return template.HTML(bs.String()), err
+}
+
+func (b Blockquote) Render() (template.HTML, error) {
+	bs := &bytes.Buffer{}
+	err := post.Execute(bs, "blockquote.gohtml", b)
+	return template.HTML(bs.String()), err
+}
+
+func (hr HorizontalRule) Render() (template.HTML, error) {
+	return template.HTML("\n<hr>\n"), nil
+}
+
+func (p Post) ShowRelevantSection() bool {
+	return p.Relevant != nil
+}
+
+func (r ReadingItem) FormatDate() string {
+	return r.Date.Format("2006-01-02")
+}
+
+func (p Post) PublishedFull() string {
+	return p.Published.Published.Format(time.RFC3339)
+}
+
+func (p Post) RevisedFull() string {
+	Assert(p.Published.HasRevision(), "must check HasRevision to know if it is safe to access Revised")
+	return p.Published.Revised.Format(time.RFC3339)
+}
+
+func (p Post) HasAbstract() bool {
+	return p.Abstract != nil
+}
+
+func (p Post) CopyrightYears() template.HTML {
+	if p.Published.HasRevision() && (p.Published.Published.Year() != p.Published.Revised.Year()) {
+		return template.HTML(fmt.Sprintf("%s&ndash;%s", p.Published.Published.Format("2006"), p.Published.Revised.Format("2006")))
+	}
+	return template.HTML(p.Published.Published.Format("2006"))
+}
+
+func (p Post) ObfuscatedEmail() (template.HTML, error) {
+	const (
+		janetStart = `janet -e '(print (string/from-bytes (splice (map (fn [c] (if (<= 97 c 122) (+ 97 (mod (+ c -97 13) 26)) c)) &quot;`
+		janetEnd = `&quot;))))'`
+	)
+	rot13 := func(text string) string {
+		out := []rune(text)
+		for i, r := range out {
+			if r >= 'a' && r <= 'z' {
+				out[i] = ((r - 'a' + 13) % 26) + 'a'
+			}
+		}
+		return string(out)
+	}
+	t, err := p.Author.Email.Text()
+	return template.HTML(janetStart + rot13(t) + janetEnd), err
+}
 
 type (
 	MakeGenVisitor struct {
 		//parser.NopVisitor
-		TemplateData *Blog
+		TemplateData *Post
 		Errors       error
 		currentSection1 *Section
 		currentSection2 *Section

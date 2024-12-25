@@ -5,6 +5,7 @@ RUN go mod download && go mod verify
 COPY cmd ./cmd
 COPY assert ./assert
 COPY markup ./markup
+COPY page ./page
 COPY public ./public
 COPY .env ./.env
 COPY 日記 ./日記

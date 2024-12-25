@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <meta name="language" content="en">
+        <link rel="stylesheet" href="/styles.css" title="Default Style">
+        <link rel="alternate stylesheet" href="/secret.css" title="Secret Style">
+        <link rel="icon" type="image/svg+xml" href="favicon.svg">
+        <link rel="alternate" type="application/rss+xml" href="/feed.rss">
+        <link rel="alternate" type="application/atom+xml" href="/feed.atom">
+        <link rel="canonical" href="{{.Canonical}}">
+        <link rel="me" href="{{.Site.RelMe}}">
+        <link rel="webmention" href="/api/webmention">
+        <title>2^7633587786 &mdash; ({{.Site.Name}})</title>
+    </head>
+    <body>
+        <div class="skip-navigation">
+            <p>Skip to:</p>
+            <a href="#content">Content</a>
+            <a href="#eof">EOF</a>
+        </div>
+        <main>
+            <header>
+                <nav id="topbar">
+                    <code>({{.Site.Name}}</code>
+                    <a class="item" href="/"><code>:home</code></a>
+                    <a class="item" href="/about"><code>:about</code></a>
+                    <div class="dropdown item">
+                        <input id="feed-dropdown" type="checkbox">
+                        <label for="feed-dropdown"><code class="link-like">:feed</code></label>
+                        <span class="dropdown-itemlist">
+                            <!-- white-space: pre as an ugly work-around to aligning on the : -->
+                            <a href="/feed.rss"><code style="white-space: pre;">:rss </code></a>
+                            <a href="/feed.atom"><code>:atom</code></a>
+                        </span>
+                    </div>
+                    <code>)</code>
+                </nav>
+            </header>
+            <article>
+                <div class="title">
+                    <h1 id="content">{{Render .Title}}</h1>
+                    <p class="abstract">{{Render .Abstract}}</p>
+                </div>
+                <!-- @todo: Put latest entry highlighted on top -->
+                <!-- @todo: Pinned entries -->
+                {{range .Listing}}
+                <div class="blog-entry">
+                    {{if .AltTitle}}
+                    <h2><a href="#">{{Render .Title}} &mdash; {{Render .AltTitle}}</a></h2>
+                    {{else}}
+                    <h2><a href="#">{{Render .Title}}</a></h2>
+                    {{end}}
+                    <aside class="content-info">
+                        <div class="info-line">
+                            <p><small>{{.Published}}</small></p>
+                            <p><small>~{{.EstReading}}&tprime;</small></p>
+                        </div>
+                        <div class="info-line taglist">
+                        {{range .Tags}}<p><a href="/:{{.}}">:{{.}}</a></p>
+                        {{end}}</div>
+                    </aside>
+                    <p>{{Render .Abstract}}</p>
+                </div>
+                {{end}}
+            <article>
+            <footer>
+                <p id="eof">STOP)))))</p>
+                <!-- @todo: link to copyleft licence? -->
+                <address>&copy; {{.CopyrightYears .Site.Birthday}} <a href="mailto:{{ObfuscateText .Site.Email}}">{{Render .Site.Owner}}</a></address>
+                <span class="credits">
+                  <a href="/about#credits">Font Licenses</a>
+                  <a href="/about">About</a>
+                  <a href="/feed.rss">RSS</a>
+                  <a href="/feed.atom">Atom</a>
+                </span>
+            </footer>
+        </main>
+    </body>
+</html>
