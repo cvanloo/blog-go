@@ -12,7 +12,7 @@ import (
 
 type (
 	MakeGenVisitor struct {
-		parser.NopVisitor
+		//parser.NopVisitor
 		TemplateData *Blog
 		Errors       error
 		currentSection1 *Section
@@ -209,11 +209,81 @@ func (v *MakeGenVisitor) VisitAmpSpecial(a *parser.AmpSpecial) {
 	v.currentSOC = append(v.currentSOC, getAmpSpecial(string(*a)))
 }
 
+func (v *MakeGenVisitor) VisitEmphasis(e *parser.Emphasis) {
+	v.currentSOC = append(v.currentSOC, Emphasis{stringRenderableFromTextRich(parser.TextRich(*e))})
+}
+
+func (v *MakeGenVisitor) VisitStrong(e *parser.Strong) {
+	v.currentSOC = append(v.currentSOC, Strong{stringRenderableFromTextRich(parser.TextRich(*e))})
+}
+
+func (v *MakeGenVisitor) VisitEmphasisStrong(e *parser.EmphasisStrong) {
+	v.currentSOC = append(v.currentSOC, EmphasisStrong{stringRenderableFromTextRich(parser.TextRich(*e))})
+}
+
+func (v *MakeGenVisitor) VisitEnquoteDouble(e *parser.EnquoteDouble) {
+	v.currentSOC = append(v.currentSOC, EnquoteDouble{stringRenderableFromTextRich(parser.TextRich(*e))})
+}
+
+func (v *MakeGenVisitor) VisitEnquoteAngled(e *parser.EnquoteAngled) {
+	v.currentSOC = append(v.currentSOC, EnquoteAngled{stringRenderableFromTextRich(parser.TextRich(*e))})
+}
+
+func (v *MakeGenVisitor) VisitLinkify(l *parser.Linkify) {
+	v.currentSOC = append(v.currentSOC, Link{
+		Name: StringOnlyContent{Text(*l)},
+		Href: string(*l),
+	})
+}
+
+func (v *MakeGenVisitor) VisitMarker(m *parser.Marker) {
+	v.currentSOC = append(v.currentSOC, Marker{
+		stringRenderableFromTextRich(parser.TextRich(*m)),
+	})
+}
+
+func (v *MakeGenVisitor) VisitMono(m *parser.Mono) {
+	v.currentSOC = append(v.currentSOC, Mono(*m))
+}
+
+func (v *MakeGenVisitor) VisitStrikethrough(s *parser.Strikethrough) {
+	v.currentSOC = append(v.currentSOC, Strikethrough{
+		stringRenderableFromTextRich(parser.TextRich(*s)),
+	})
+}
+
 func (v *MakeGenVisitor) LeaveParagraph(p *parser.Paragraph) {
 	v.currentParagraph.Content = v.currentSOC
 	v.currentSOC = nil
 	v.currentSection.Content = append(v.currentSection.Content, *v.currentParagraph)
 	v.currentParagraph = nil
+}
+
+func (v *MakeGenVisitor) VisitBlockQuote(b *parser.BlockQuote) {
+	v.currentSection.Content = append(v.currentSection.Content, Blockquote{
+		QuoteText: stringRenderableFromTextRich(b.QuoteText),
+		Author: stringRenderableFromTextSimple(b.Author),
+		Source: stringRenderableFromTextSimple(b.Source),
+	})
+}
+
+func (v *MakeGenVisitor) VisitCodeBlock(c *parser.CodeBlock) {
+	v.currentSection.Content = append(v.currentSection.Content, CodeBlock{
+		Attributes: Attributes(c.Attributes),
+		Lines: c.Lines,
+	})
+}
+
+func (v *MakeGenVisitor) VisitHorizontalRule(h *parser.HorizontalRule) {
+	v.currentSection.Content = append(v.currentSection.Content, HorizontalRule{})
+}
+
+func (v *MakeGenVisitor) VisitImage(i *parser.Image) {
+	v.currentSection.Content = append(v.currentSection.Content, Image{
+		Name: i.Name,
+		Alt: stringRenderableFromTextSimple(i.Alt),
+		Title: stringRenderableFromTextSimple(i.Title),
+	})
 }
 
 func (v *MakeGenVisitor) LeaveSection(s *parser.Section) {
@@ -229,6 +299,9 @@ func (v *MakeGenVisitor) LeaveSection(s *parser.Section) {
 		v.currentSection2 = nil
 		v.currentSection = v.currentSection1
 	}
+}
+
+func (v *MakeGenVisitor) LeaveBlog(b *parser.Blog) {
 }
 
 func stringFromTextSimple(t parser.TextSimple) string {

@@ -56,6 +56,19 @@ func MakeUniqueID(element any) (string, error) {
 	}
 }
 
+var (
+	mu sync.Mutex
+	currentID int
+	seenIDs = map[string]struct{}{}
+)
+
+func NextID() int {
+	mu.Lock()
+	defer mu.Unlock()
+	currentID++
+	return currentID
+}
+
 type (
 	Template struct {
 		*template.Template
@@ -524,23 +537,6 @@ func (b *Blog) RevisedFull() string {
 	return b.Published.Revised.Format(time.RFC3339)
 }
 
-func (b *Blog) AbstractShort() StringRenderable {
-	return b.Abstract // @todo: cut short? one - two sentences?
-}
-
 func (b *Blog) HasAbstract() bool {
 	return b.Abstract != nil
-}
-
-var (
-	mu sync.Mutex
-	currentID int
-	seenIDs = map[string]struct{}{}
-)
-
-func NextID() int {
-	mu.Lock()
-	defer mu.Unlock()
-	currentID++
-	return currentID
 }

@@ -78,7 +78,7 @@ func (m Markup) Run() (runErr error) {
 					return nil
 				}
 				if !d.IsDir() {
-					if !(filepath.Ext(path) == ".md" || filepath.Ext(path) == ".ᗢ") {
+					if !(filepath.Ext(path) == ".md" || filepath.Ext(path) == ".ᗢ") { // @todo: make configurable
 						return nil
 					}
 					fd, err := os.Open(path)
