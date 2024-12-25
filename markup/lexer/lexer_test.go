@@ -895,6 +895,39 @@ Check out this cool [website](https://blog.vanloo.ch) I found.
 			},
 		},
 		{
+			name: "Linkify",
+			source: `
+# Section 1
+
+Check out this cool blog: <https://blog.vanloo.ch>.
+
+## Section 2
+
+Check out this cool blog: <https://blog.vanloo.ch>.
+`,
+			expected: []lexer.Token{
+				{Type: lexer.TokenSection1Begin, Text: "#"},
+				{Type: lexer.TokenText, Text: "Section 1"},
+				{Type: lexer.TokenSection1Content, Text: ""},
+				{Type: lexer.TokenParagraphBegin, Text: ""},
+				{Type: lexer.TokenText, Text: "Check out this cool blog: "},
+				{Type: lexer.TokenLinkify, Text: "https://blog.vanloo.ch"},
+				{Type: lexer.TokenText, Text: "."},
+				{Type: lexer.TokenParagraphEnd, Text: ""},
+				{Type: lexer.TokenSection2Begin, Text: "##"},
+				{Type: lexer.TokenText, Text: "Section 2"},
+				{Type: lexer.TokenSection2Content, Text: ""},
+				{Type: lexer.TokenParagraphBegin, Text: ""},
+				{Type: lexer.TokenText, Text: "Check out this cool blog: "},
+				{Type: lexer.TokenLinkify, Text: "https://blog.vanloo.ch"},
+				{Type: lexer.TokenText, Text: ".\n"},
+				{Type: lexer.TokenParagraphEnd, Text: ""},
+				{Type: lexer.TokenSection2End, Text: ""},
+				{Type: lexer.TokenSection1End, Text: ""},
+				{Type: lexer.TokenEOF, Text: ""},
+			},
+		},
+		{
 			name: "Paragraph followed by a term definition (section 1)",
 			source: `
 # Section 1
