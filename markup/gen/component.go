@@ -96,16 +96,7 @@ func Handler(blog *Blog, onError func(error)) http.HandlerFunc {
 }
 
 type (
-	Attributeable interface {
-		SetID(id string)
-		GetID() string
-		SetAttr(key, val string)
-		GetAttr(key string) (string, bool)
-	}
-	Attributes struct {
-		ID string
-		Fields map[string]string
-	}
+	Attributes map[string]string
 	Blog struct {
 		UrlPath string
 		Author Author
@@ -215,26 +206,6 @@ type (
 		Date time.Time
 	}
 )
-
-func (a Attributes) SetAttr(key, val string) {
-	if a.Fields == nil {
-		a.Fields = map[string]string{}
-	}
-	a.Fields[key] = val
-}
-
-func (a Attributes) GetAttr(key string) (string, bool) {
-	val, ok := a.Fields[key]
-	return val, ok
-}
-
-func (a Attributes) SetID(id string) {
-	a.ID = id
-}
-
-func (a Attributes) GetID() string {
-	return a.ID
-}
 
 func (soc StringOnlyContent) Render() (template.HTML, error) {
 	return template.HTML(soc.Text()), nil
@@ -466,9 +437,8 @@ func (s *TOCSection) HasNextLevel() bool {
 }
 
 func (s Section) ID() string {
-	// @todo: check and error if IDs collide (here? and/or in parser?)
-	if len(s.Attributes.ID) != 0 {
-		return s.Attributes.ID
+	if id, ok := s.Attributes["id"]; ok {
+		return id
 	}
 	return strings.ReplaceAll(strings.ToLower(s.Heading.Text()), " ", "-")
 }

@@ -157,7 +157,7 @@ func (v *MakeGenVisitor) VisitSection(s *parser.Section) {
 		panic(fmt.Errorf("invalid section level: %d", s.Level))
 	case 1:
 		v.currentSection1 = &Section{
-			// @todo: Attributes
+			Attributes: Attributes(s.Attributes),
 			Level: s.Level,
 			Heading: stringRenderableFromTextRich(s.Heading),
 		}
@@ -168,7 +168,7 @@ func (v *MakeGenVisitor) VisitSection(s *parser.Section) {
 		})
 	case 2:
 		v.currentSection2 = &Section{
-			// @todo: Attributes
+			Attributes: Attributes(s.Attributes),
 			Level: s.Level,
 			Heading: stringRenderableFromTextRich(s.Heading),
 		}

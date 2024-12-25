@@ -397,16 +397,16 @@ var BlogGenTestStruct = gen.Blog{
 	TOC: gen.TableOfContents{
 		Sections: []gen.TOCSection{
 			{
-				ID: "こんにちは、世界！",
-				Heading: gen.StringOnlyContent{gen.Text("こんにちは、世界！")},
+				ID: "s1",
+				Heading: gen.StringOnlyContent{gen.Text("こんにちは、世界！ ")},
 				NextLevel: []gen.TOCSection{
 					{
 						ID: "lorem-ipsum",
 						Heading: gen.StringOnlyContent{gen.Text("Lorem Ipsum")},
 					},
 					{
-						ID: "lorem-epsum",
-						Heading: gen.StringOnlyContent{gen.Text("Lorem Epsum")},
+						ID: "s2.2",
+						Heading: gen.StringOnlyContent{gen.Text("Lorem Epsum ")},
 					},
 				},
 			},
@@ -419,7 +419,10 @@ var BlogGenTestStruct = gen.Blog{
 	Sections: []gen.Section{
 		{
 			Level: 1,
-			Heading: gen.StringOnlyContent{gen.Text("こんにちは、世界！")},
+			Attributes: map[string]string{
+				"id": "s1",
+			},
+			Heading: gen.StringOnlyContent{gen.Text("こんにちは、世界！ ")},
 			Content: []gen.Renderable{
 				gen.Paragraph{
 					Content: gen.StringOnlyContent{gen.Text("Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.\nUt enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.\nDuis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.")},
@@ -454,7 +457,10 @@ var BlogGenTestStruct = gen.Blog{
 				},
 				gen.Section{
 					Level: 2,
-					Heading: gen.StringOnlyContent{gen.Text("Lorem Epsum")},
+					Attributes: map[string]string{
+						"id": "s2.2",
+					},
+					Heading: gen.StringOnlyContent{gen.Text("Lorem Epsum ")},
 					Content: []gen.Renderable{
 						gen.Paragraph{
 							Content: gen.StringOnlyContent{
