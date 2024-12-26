@@ -323,7 +323,10 @@ func (p *templatePreProcessor) processPost(m markupResult) error {
 	})
 	for _, tag := range templateData.Tags {
 		ti := p.tags[string(tag)]
-		ti.Title = page.Text(tag)
+		ti.Title = page.StringOnlyContent{
+			page.Text("Posts tagged with :"),
+			page.Text(tag),
+		}
 		ti.UrlPath = fmt.Sprintf(":%s", tag)
 		ti.Listing = append(ti.Listing, page.PostItem{
 			Title: templateData.Title,
