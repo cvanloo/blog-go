@@ -6,6 +6,7 @@ import (
 	"embed"
 	"io"
 	"fmt"
+	"sort"
 )
 
 //go:embed index.gohtml
@@ -37,6 +38,11 @@ type (
 
 func WriteIndex(w io.Writer, d IndexData) error {
 	d.Site = SiteInfo // @todo
+	sort.Slice(d.Listing, func(i, j int) bool {
+		p1 := d.Listing[i].Published.Published
+		p2 := d.Listing[j].Published.Published
+		return p1.Compare(p2) > 0 // reverse chronological listing
+	})
 	return index.Execute(w, "index.gohtml", d)
 }
 
