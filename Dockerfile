@@ -13,4 +13,5 @@ RUN go run ./cmd/koneko/koneko.go -env ./日記/.env -source ./日記 -out ./pub
 
 FROM caddy:2.9-alpine
 COPY --from=build /usr/src/app/public/ /srv
+COPY 日記/about.html /srv/about.html
 COPY Caddyfile /etc/caddy/Caddyfile
