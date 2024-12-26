@@ -139,7 +139,7 @@ var LexerTestTokens = MockTokens{
 	{Type: lexer.TokenEOF, Text: ""},
 }
 
-var BlogParserTestStruct = parser.Blog{
+var BlogParserTestStruct = &parser.Blog{
 	Meta: parser.Meta{
 		"url-path": []parser.TextSimple{
 			[]parser.Node{
@@ -262,7 +262,7 @@ var BlogParserTestStruct = parser.Blog{
 	TermDefinitions: map[string]parser.TextRich{},
 }
 
-var BlogParserFixedTestStruct = parser.Blog{
+var BlogParserFixedTestStruct = &parser.Blog{
 	Meta: parser.Meta{
 		"url-path": []parser.TextSimple{
 			[]parser.Node{

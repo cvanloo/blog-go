@@ -38,6 +38,7 @@ type (
 )
 
 func WriteListing(w io.Writer, d ListingData) error {
+	d.Site = SiteInfo // @todo
 	return listing.Execute(w, "listing.gohtml", d)
 }
 

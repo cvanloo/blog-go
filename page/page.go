@@ -7,21 +7,17 @@ import (
 	"sync"
 	"html/template"
 	"net/url"
-
-	. "github.com/cvanloo/blog-go/assert"
 )
 
-var site = Site{
-	Address: Must(url.Parse("https://blog.vanloo.ch/")),
-	Name: "save-lisp-and-die",
-}
+var SiteInfo Site
 
 type (
 	Site struct {
 		Address *url.URL // https://blog.vanloo.ch/
 		Name string // save-lisp-and-die
-		DefaultTagline string // A blog about programming <weird> computers using <weird> languages.
+		DefaultTagline StringRenderable // A blog about programming <weird> computers using <weird> languages.
 		RelMe string // https://tech.lgbt/@attaboy
+		FediCreator string // @attaboy@tech.lgbt
 		Owner StringRenderable // Colin van~Loo
 		Email string
 		Birthday time.Time // 2024
@@ -34,11 +30,12 @@ type (
 	PostItem struct {
 		Title, AltTitle StringRenderable
 		UrlPath string
-		Tags []string
+		Tags []Tag
 		Abstract StringRenderable
 		EstReading int
 		Published Revision
 	}
+	Tag string
 )
 
 type (
@@ -50,7 +47,7 @@ type (
 	}
 	StringRenderable interface {
 		Renderable
-		Text() (string, error)
+		Text() (string)
 	}
 	Identifiable interface {
 		ID() string
@@ -139,4 +136,8 @@ func CopyrightYear() string {
 
 func CopyrightYears(start time.Time) template.HTML {
 	return template.HTML(fmt.Sprintf("%s&ndash;%s", start.Format("2006"), time.Now().Format("2006")))
+}
+
+func (t Tag) String() string {
+	return string(t)
 }

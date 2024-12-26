@@ -356,6 +356,11 @@ div.title {
         text-align: center;
     }
 
+    .abstract {
+        margin: 0;
+        text-align: justify;
+    }
+
     @media screen and (min-width: 90ch) {
         .tagline {
             padding: 0 2em 1em 2em;
@@ -758,9 +763,8 @@ div.quote {
     margin: .5em auto;
 
     .series-next,
+    .series-title,
     .series-prev {
-        width: 15ch;
-        height: 5ch;
         padding: 5px 0;
         overflow: hidden;
 
@@ -776,9 +780,31 @@ div.quote {
         }
     }
 
+    @media screen and (min-width: 90ch) {
+        .series-next,
+        .series-title,
+        .series-prev {
+            width: 15ch;
+            height: 5ch;
+        }
+
+        .series-title {
+            margin: auto;
+            width: 25ch;
+        }
+
+    }
+
+    .series-title {
+        text-align: center;
+    }
+
     .series-next {
         text-align: right;
-        margin-left: auto;
+    }
+
+    @media screen and (max-width: 89ch) {
+        flex-direction: column;
     }
 }
 

@@ -41,32 +41,34 @@
             <article>
                 <div class="index-title">
                     <h1 id="content">({{.Site.Name}}…</h1>
-                    <p id="tagline">…{{.Site.DefaultTagline}})</p>
+                    <p id="tagline">…{{Render .Site.DefaultTagline}})</p>
                 </div>
                 {{range .Listing}}
                 <div class="blog-entry">
                     {{if .AltTitle}}
-                    <h2><a href="#">{{Render .Title}} &mdash; {{Render .AltTitle}}</a></h2>
+                    <h2><a href="{{.UrlPath}}">{{Render .Title}} &mdash; {{Render .AltTitle}}</a></h2>
                     {{else}}
-                    <h2><a href="#">{{Render .Title}}</a></h2>
+                    <h2><a href="{{.UrlPath}}">{{Render .Title}}</a></h2>
                     {{end}}
                     <aside class="content-info">
                         <div class="info-line">
                             <p><small>{{.Published}}</small></p>
-                            <p><small>~{{.EstReading}}&tprime;</small></p>
+                            <p><small>~{{.EstReading}}&prime;</small></p>
                         </div>
                         <div class="info-line taglist">
                         {{range .Tags}}<p><a href="/:{{.}}">:{{.}}</a></p>
                         {{end}}</div>
                     </aside>
+                    {{if .Abstract}}
                     <p>{{Render .Abstract}}</p>
+                    {{end}}
                 </div>
                 {{end}}
             <article>
             <footer>
                 <p id="eof">STOP)))))</p>
                 <!-- @todo: link to copyleft licence? -->
-                <address>&copy; {{.CopyrightYears .Site.Birthday}} <a href="mailto:{{ObfuscateText .Site.Email}}">{{Render .Site.Owner}}</a></address>
+                <address>&copy; {{CopyrightYears .Site.Birthday}} <a href="mailto:{{ObfuscateText .Site.Email}}">{{Render .Site.Owner}}</a></address>
                 <span class="credits">
                   <a href="/about#credits">Font Licenses</a>
                   <a href="/about">About</a>

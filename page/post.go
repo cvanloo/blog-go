@@ -39,7 +39,7 @@ func init() {
 type (
 	Attributes map[string]string
 	Post struct {
-		Site Site // @todo: only global?
+		Site Site
 		UrlPath string
 		Author Author
 		Lang string
@@ -61,8 +61,9 @@ type (
 		RelMe StringRenderable // https://tech.lgbt/@attaboy
 		FediCreator StringRenderable // @attaboy@tech.lgbt
 	}
-	Tag string
 	Series struct {
+		Name StringRenderable
+		Link string
 		Prev, Next *SeriesItem
 	}
 	SeriesItem struct {
@@ -143,28 +144,20 @@ type (
 )
 
 func WritePost(w io.Writer, p Post) error {
-	p.Site = site // @todo
+	p.Site = SiteInfo // @todo
 	return post.Execute(w, "post.gohtml", p)
 }
 
 func (soc StringOnlyContent) Render() (template.HTML, error) {
-	t, err := soc.Text()
-	return template.HTML(t), err
+	return template.HTML(soc.Text()), nil
 }
 
-func (soc StringOnlyContent) Text() (string, error) {
-	var (
-		builder strings.Builder
-		err error
-	)
+func (soc StringOnlyContent) Text() string {
+	var builder strings.Builder
 	for _, s := range soc {
-		t, terr := s.Text()
-		if terr != nil {
-			err = errors.Join(err, terr)
-		}
-		builder.WriteString(t)
+		builder.WriteString(s.Text())
 	}
-	return builder.String(), err
+	return builder.String()
 }
 
 func (soc StringOnlyContent) String() string {
@@ -176,92 +169,76 @@ func (t Text) Render() (template.HTML, error) {
 	return template.HTML(t), nil
 }
 
-func (t Text) Text() (string, error) {
-	return string(t), nil
+func (t Text) Text() string {
+	return string(t)
 }
 
 func (s Strong) Render() (template.HTML, error) {
-	t, err := s.Text()
-	return template.HTML(t), err
+	return template.HTML(s.Text()), nil
 }
 
-func (s Strong) Text() (string, error) {
-	t, err := s.StringOnlyContent.Text()
-	return fmt.Sprintf("<strong>%s</strong>", t), err
+func (s Strong) Text() string {
+	return fmt.Sprintf("<strong>%s</strong>", s.StringOnlyContent.Text())
 }
 
 func (e Emphasis) Render() (template.HTML, error) {
-	t, err := e.Text()
-	return template.HTML(t), err
+	return template.HTML(e.Text()), nil
 }
 
-func (e Emphasis) Text() (string, error) {
-	t, err := e.StringOnlyContent.Text()
-	return fmt.Sprintf("<em>%s</em>", t), err
+func (e Emphasis) Text() string {
+	return fmt.Sprintf("<em>%s</em>", e.StringOnlyContent.Text())
 }
 
 func (e EmphasisStrong) Render() (template.HTML, error) {
-	t, err := e.Text()
-	return template.HTML(t), err
+	return template.HTML(e.Text()), nil
 }
 
-func (e EmphasisStrong) Text() (string, error) {
-	t, err := e.StringOnlyContent.Text()
-	return fmt.Sprintf("<em><strong>%s</strong></em>", t), err
+func (e EmphasisStrong) Text() string {
+	return fmt.Sprintf("<em><strong>%s</strong></em>", e.StringOnlyContent.Text())
 }
 
 func (m Mono) Render() (template.HTML, error) {
-	t, err := m.Text()
-	return template.HTML(t), err
+	return template.HTML(m.Text()), nil
 }
 
-func (m Mono) Text() (string, error) {
-	return fmt.Sprintf("<code>%s</code>", m), nil
+func (m Mono) Text() string {
+	return fmt.Sprintf("<code>%s</code>", m)
 }
 
 func (q EnquoteDouble) Render() (template.HTML, error) {
-	t, err := q.Text()
-	return template.HTML(t), err
+	return template.HTML(q.Text()), nil
 }
 
-func (q EnquoteDouble) Text() (string, error) {
-	t, err := q.StringOnlyContent.Text()
-	return fmt.Sprintf("&ldquo;%s&rdquo;", t), err
+func (q EnquoteDouble) Text() string {
+	return fmt.Sprintf("&ldquo;%s&rdquo;", q.StringOnlyContent.Text())
 }
 
 func (q EnquoteAngled) Render() (template.HTML, error) {
-	t, err := q.Text()
-	return template.HTML(t), err
+	return template.HTML(q.Text()), nil
 }
 
-func (q EnquoteAngled) Text() (string, error) {
-	t, err := q.StringOnlyContent.Text()
-	return fmt.Sprintf("&laquo;%s&raquo;", t), err
+func (q EnquoteAngled) Text() string {
+	return fmt.Sprintf("&laquo;%s&raquo;", q.StringOnlyContent.Text())
 }
 
-func (s Strikethrough) Text() (string, error) {
-	t, err := s.StringOnlyContent.Text()
-	return fmt.Sprintf("<s>%s</s>", t), err
+func (s Strikethrough) Text() string {
+	return fmt.Sprintf("<s>%s</s>", s.StringOnlyContent.Text())
 }
 
 func (s Strikethrough) Render() (template.HTML, error) {
-	t, err := s.Text()
-	return template.HTML(t), err
+	return template.HTML(s.Text()), nil
 }
 
-func (m Marker) Text() (string, error) {
-	t, err := m.StringOnlyContent.Text()
-	return fmt.Sprintf("<mark>%s</mark>", t), err
+func (m Marker) Text() string {
+	return fmt.Sprintf("<mark>%s</mark>", m.StringOnlyContent.Text())
 }
 
 func (m Marker) Render() (template.HTML, error) {
-	t, err := m.Text()
-	return template.HTML(t), err
+	return template.HTML(m.Text()), nil
 }
 
 func (l Link) Render() (template.HTML, error) {
-	t, err := l.Text()
-	return template.HTML(t), err
+	return template.HTML(l.Text()), nil
 }
 
 func (l Link) Target() (string, error) {
@@ -272,32 +249,31 @@ func (l Link) Target() (string, error) {
 	if err != nil {
 		return "_blank", err
 	}
-	if href.Host == site.Address.Host {
+	if href.Host == SiteInfo.Address.Host {
 		return "_self", nil
 	}
 	return "_blank", nil
 }
 
-func (l Link) Text() (string, error) {
+func (l Link) Text() string {
 	bs := &bytes.Buffer{}
-	err := post.Execute(bs, "link.gohtml", l)
-	return strings.TrimSpace(bs.String()), err
+	PanicIf(post.Execute(bs, "link.gohtml", l))
+	return strings.TrimSpace(bs.String())
 }
 
-func (l Link) NameOrHref() (string, error) {
+func (l Link) NameOrHref() string {
 	if l.Name != nil {
 		return l.Name.Text()
 	}
-	return l.Href, nil
+	return l.Href
 }
 
 func (e EscapedString) Render() (template.HTML, error) {
-	t, err := e.Text()
-	return template.HTML(t), err
+	return template.HTML(e.Text()), nil
 }
 
-func (e EscapedString) Text() (string, error) {
-	return string(e), nil
+func (e EscapedString) Text() string {
+	return string(e)
 }
 
 const (
@@ -318,19 +294,18 @@ const (
 )
 
 func (sn Sidenote) Render() (template.HTML, error) {
-	t, err := sn.Text()
-	return template.HTML(t), err
+	return template.HTML(sn.Text()), nil
 }
 
-func (sn Sidenote) Text() (string, error) {
+func (sn Sidenote) Text() string {
 	bs := &bytes.Buffer{}
-	err := post.Execute(bs, "sidenote.gohtml", sn)
-	return strings.TrimSpace(bs.String()), err
+	PanicIf(post.Execute(bs, "sidenote.gohtml", sn))
+	return strings.TrimSpace(bs.String())
 }
 
 func (p Post) Canonical() string {
 	path := p.UrlPath
-	return fmt.Sprintf("%s://%s/%s", site.Address.Scheme, site.Address.Host, path)
+	return fmt.Sprintf("%s://%s/%s", SiteInfo.Address.Scheme, SiteInfo.Address.Host, path)
 }
 
 func (p Post) FirstSectionID() string {
@@ -338,7 +313,7 @@ func (p Post) FirstSectionID() string {
 	return p.Sections[0].ID()
 }
 
-func (p Post) FirstSectionName() (string, error) {
+func (p Post) FirstSectionName() string {
 	Assert(len(p.Sections) > 0, "blog must consist of at least one section")
 	return p.Sections[0].Heading.Text()
 }
@@ -348,10 +323,6 @@ func (p Post) LastRevision() time.Time {
 		return *p.Published.Revised
 	}
 	return p.Published.Published
-}
-
-func (t Tag) String() string {
-	return string(t)
 }
 
 func (p Post) IsPartOfSeries() bool {
@@ -385,9 +356,7 @@ func (s Section) ID() string {
 	if id, ok := s.Attributes["id"]; ok {
 		return id
 	}
-	t, err := s.Heading.Text()
-	_ = err // @todo
-	return strings.ReplaceAll(strings.ToLower(t), " ", "-")
+	return strings.ReplaceAll(strings.ToLower(s.Heading.Text()), " ", "-")
 }
 
 func (s Section) SectionLevel1() bool {
@@ -461,7 +430,7 @@ func (p Post) CopyrightYears() template.HTML {
 	return template.HTML(p.Published.Published.Format("2006"))
 }
 
-func (p Post) ObfuscatedEmail() (template.HTML, error) {
+func (p Post) ObfuscatedEmail() template.HTML {
 	const (
 		janetStart = `janet -e '(print (string/from-bytes (splice (map (fn [c] (if (<= 97 c 122) (+ 97 (mod (+ c -97 13) 26)) c)) &quot;`
 		janetEnd = `&quot;))))'`
@@ -475,8 +444,7 @@ func (p Post) ObfuscatedEmail() (template.HTML, error) {
 		}
 		return string(out)
 	}
-	t, err := p.Author.Email.Text()
-	return template.HTML(janetStart + rot13(t) + janetEnd), err
+	return template.HTML(janetStart + rot13(p.Author.Email.Text()) + janetEnd)
 }
 
 type (
@@ -596,8 +564,13 @@ func (v *MakeGenVisitor) VisitBlog(b *parser.Blog) {
 		v.TemplateData.EstReading = i
 	}
 	if series, ok := b.Meta["series"]; ok {
-		// @todo
-		_ = series
+		if len(series) > 1 {
+			v.Errors = errors.Join(v.Errors, errors.New("multiple definitions of meta key: series"))
+		}
+		v.TemplateData.Series = &Series{
+			Name: stringRenderableFromTextSimple(series[0]),
+			Link: stringFromTextSimple(series[0]), // @todo: allow custom link
+		}
 	}
 	if enableRevisionWarning, ok := b.Meta["enable-revision-warning"]; ok {
 		if len(enableRevisionWarning) > 1 {

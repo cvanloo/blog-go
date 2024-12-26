@@ -3,6 +3,7 @@ package parser
 import (
 	"errors"
 	"fmt"
+	"strings"
 
 	//"github.com/kr/pretty"
 
@@ -129,6 +130,29 @@ type (
 	}
 	Meta map[string][]TextSimple // slice value to allow for duplicate keys
 )
+
+func getText(t TextSimple) (string, bool) {
+	var builder strings.Builder
+	for _, n := range t {
+		if e, ok := n.(*Text); ok {
+			builder.WriteString(string(*e))
+		} else {
+			return builder.String(), false
+		}
+	}
+	return builder.String(), true
+}
+
+func (m Meta) Template() (string, bool) {
+	ts, ok := m["template"]
+	if !ok {
+		return "", false
+	}
+	if len(ts) <= 0 {
+		return "", false
+	}
+	return getText(ts[0])
+}
 
 func (t *TextSimple) Append(n Node) bool {
 	switch n.(type) {
@@ -491,7 +515,8 @@ var (
 	ErrSectionMissingHeading = errors.New("section must have a heading")
 )
 
-func Parse(lx LexResult) (blog Blog, err error) {
+func Parse(lx LexResult) (blog *Blog, err error) {
+	blog = &Blog{}
 	// kinda sad how the zero value of a map isn't useable ;-(
 	blog.LinkDefinitions = map[string]string{}
 	blog.SidenoteDefinitions = map[string]TextRich{}
