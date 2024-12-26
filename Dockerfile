@@ -8,9 +8,8 @@ COPY markup ./markup
 COPY page ./page
 COPY config ./config
 COPY public ./public
-COPY .env ./.env
 COPY 日記 ./日記
-RUN go run ./cmd/koneko/koneko.go -source ./日記 -out ./public
+RUN go run ./cmd/koneko/koneko.go -env ./日記/.env -source ./日記 -out ./public
 
 FROM caddy:2.9-alpine
 COPY --from=build /usr/src/app/public/ /srv
