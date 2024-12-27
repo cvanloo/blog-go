@@ -487,6 +487,7 @@ code {
     line-height: 1.5;
     word-break: keep-all;
     word-wrap: anywhere;
+    text-align: start;
 }
 
 code.block span.line-number {
@@ -495,11 +496,13 @@ code.block span.line-number {
     position: relative;
     counter-increment: line;
     display: inline-block;
-    width: calc(100% - var(--number-column-width));
     border-top: 1px solid light-dark(#cce, #2E2E2C);
-    padding-left: var(--number-column-width);
+    width: 100%;
 
     @media screen and (min-width: 90ch) {
+        width: calc(100% - var(--number-column-width));
+        padding-left: var(--number-column-width);
+
         &::before {
             position: absolute;
             left: 0;
@@ -866,6 +869,7 @@ section#wanted {
         text-transform: uppercase;
         letter-spacing: .8rem;
 
+        overflow: hidden; /* because narrow screens */
         @media screen and (max-width: 69ch) {
             letter-spacing: .6rem;
         }

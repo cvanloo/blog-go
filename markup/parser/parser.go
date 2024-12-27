@@ -530,7 +530,7 @@ func Parse(lx LexResult) (blog *Blog, err error) {
 		currentSection1, currentSection2 *Section
 		currentAttributes                = Attributes{}
 		currentHTMLElement               = HtmlTag{Args: map[string]string{}}
-		currentCodeBlock                 = &CodeBlock{}
+		currentCodeBlock                 = &CodeBlock{Attributes: Attributes{}}
 		currentImage                     = &Image{}
 		currentBlockquote                = &BlockQuote{}
 		currentSidenote                  = &Sidenote{}
@@ -900,6 +900,10 @@ func Parse(lx LexResult) (blog *Blog, err error) {
 				if !(isTextNode(lexeme) && level.TextRich.Append(newTextNode(lexeme))) {
 					err = errors.Join(err, newError(lexeme, state, ErrInvalidToken))
 				}
+			case lexer.TokenEmphasisBegin:
+				levels.Push(&Level{ReturnToState: ParsingEnquoteDouble})
+				state = ParsingEmphasis
+				// @todo: and all the others
 			case lexer.TokenEnquoteDoubleEnd:
 				levels.Pop()
 				parent := levels.Top()
@@ -1087,7 +1091,7 @@ func Parse(lx LexResult) (blog *Blog, err error) {
 				levels.Pop()
 				parent := levels.Top()
 				parent.Content = append(parent.Content, currentCodeBlock)
-				currentCodeBlock = &CodeBlock{}
+				currentCodeBlock = &CodeBlock{Attributes: Attributes{}}
 				state = level.ReturnToState
 			}
 		case ParsingCodeBlockAfterAttr:
@@ -1101,7 +1105,7 @@ func Parse(lx LexResult) (blog *Blog, err error) {
 				parent := levels.Top()
 				currentCodeBlock.Lines = level.Strings
 				parent.Content = append(parent.Content, currentCodeBlock)
-				currentCodeBlock = &CodeBlock{}
+				currentCodeBlock = &CodeBlock{Attributes: Attributes{}}
 				state = level.ReturnToState
 			}
 		case ParsingImage:

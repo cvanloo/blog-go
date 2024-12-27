@@ -911,8 +911,12 @@ func (lx *Lexer) LexCodeBlock() {
 		lx.LexAttributeList()
 	}
 	lx.ExpectAndSkip("\n")
-	lx.NextUntilMatch("```") // @todo: lex line-by-line
-	lx.Emit(TokenText)
+	for lx.Peek(3) != "```" {
+		lx.NextUntilMatch("\n")
+		//lx.Next1() // @todo: include newline or nah?
+		lx.Emit(TokenText)
+		lx.ExpectAndSkip("\n")
+	}
 	lx.Expect("```")
 	lx.Emit(TokenCodeBlockEnd)
 	lx.ExpectAndSkip("\n")
