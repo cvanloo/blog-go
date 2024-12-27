@@ -760,7 +760,7 @@ div.quote {
 }
 
 #series {
-    display: flex;
+    display: grid;
     margin: .5em auto;
 
     .series-next,
@@ -782,6 +782,8 @@ div.quote {
     }
 
     @media screen and (min-width: 90ch) {
+        grid-template-columns: 15ch auto 15ch;
+
         .series-next,
         .series-title,
         .series-prev {
@@ -790,6 +792,8 @@ div.quote {
         }
 
         .series-title {
+            grid-column-start: 2;
+
             margin: auto;
             width: 25ch;
         }
@@ -805,7 +809,6 @@ div.quote {
     }
 
     @media screen and (max-width: 89ch) {
-        flex-direction: column;
     }
 }
 
