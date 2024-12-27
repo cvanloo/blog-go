@@ -135,7 +135,11 @@ func CopyrightYear() string {
 }
 
 func CopyrightYears(start time.Time) template.HTML {
-	return template.HTML(fmt.Sprintf("%s&ndash;%s", start.Format("2006"), time.Now().Format("2006")))
+	now := time.Now()
+	if now.Year() != start.Year() {
+		return template.HTML(fmt.Sprintf("%s&ndash;%s", start.Format("2006"), now.Format("2006")))
+	}
+	return template.HTML(start.Format("2006"))
 }
 
 func (t Tag) String() string {
