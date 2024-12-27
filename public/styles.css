@@ -865,6 +865,10 @@ section#wanted {
         margin: 0;
         text-transform: uppercase;
         letter-spacing: .8rem;
+
+        @media screen and (max-width: 69ch) {
+            letter-spacing: .6rem;
+        }
     }
 
     section[class*="deg"] {
