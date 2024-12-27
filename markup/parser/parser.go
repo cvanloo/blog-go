@@ -903,7 +903,25 @@ func Parse(lx LexResult) (blog *Blog, err error) {
 			case lexer.TokenEmphasisBegin:
 				levels.Push(&Level{ReturnToState: ParsingEnquoteDouble})
 				state = ParsingEmphasis
-				// @todo: and all the others
+			case lexer.TokenEmphasisStrongBegin:
+				levels.Push(&Level{ReturnToState: ParsingEnquoteDouble})
+				state = ParsingEmphasisStrong
+			case lexer.TokenStrongBegin:
+				levels.Push(&Level{ReturnToState: ParsingEnquoteDouble})
+				state = ParsingStrong
+			case lexer.TokenStrikethroughBegin:
+				levels.Push(&Level{ReturnToState: ParsingEnquoteDouble})
+				state = ParsingStrikethrough
+			case lexer.TokenMarkerBegin:
+				levels.Push(&Level{ReturnToState: ParsingEnquoteDouble})
+				state = ParsingMarker
+			case lexer.TokenHtmlTagOpen:
+				levels.Push(&Level{ReturnToState: ParsingEnquoteDouble})
+				state = ParsingHtmlElement
+			case lexer.TokenLinkableBegin:
+				levels.Push(&Level{ReturnToState: ParsingEnquoteDouble})
+				state = ParsingLinkable
+				// @todo: EnquoteAngled?
 			case lexer.TokenEnquoteDoubleEnd:
 				levels.Pop()
 				parent := levels.Top()
@@ -917,6 +935,27 @@ func Parse(lx LexResult) (blog *Blog, err error) {
 				if !(isTextNode(lexeme) && level.TextRich.Append(newTextNode(lexeme))) {
 					err = errors.Join(err, newError(lexeme, state, ErrInvalidToken))
 				}
+			case lexer.TokenEmphasisBegin:
+				levels.Push(&Level{ReturnToState: ParsingEnquoteAngled})
+				state = ParsingEmphasis
+			case lexer.TokenEmphasisStrongBegin:
+				levels.Push(&Level{ReturnToState: ParsingEnquoteAngled})
+				state = ParsingEmphasisStrong
+			case lexer.TokenStrongBegin:
+				levels.Push(&Level{ReturnToState: ParsingEnquoteAngled})
+				state = ParsingStrong
+			case lexer.TokenStrikethroughBegin:
+				levels.Push(&Level{ReturnToState: ParsingEnquoteAngled})
+				state = ParsingStrikethrough
+			case lexer.TokenMarkerBegin:
+				levels.Push(&Level{ReturnToState: ParsingEnquoteAngled})
+				state = ParsingMarker
+			case lexer.TokenHtmlTagOpen:
+				levels.Push(&Level{ReturnToState: ParsingEnquoteAngled})
+				state = ParsingHtmlElement
+			case lexer.TokenLinkableBegin:
+				levels.Push(&Level{ReturnToState: ParsingEnquoteAngled})
+				state = ParsingLinkable
 			case lexer.TokenEnquoteAngledEnd:
 				levels.Pop()
 				parent := levels.Top()
@@ -930,6 +969,30 @@ func Parse(lx LexResult) (blog *Blog, err error) {
 				if !(isTextNode(lexeme) && level.TextRich.Append(newTextNode(lexeme))) {
 					err = errors.Join(err, newError(lexeme, state, ErrInvalidToken))
 				}
+			case lexer.TokenEmphasisStrongBegin:
+				levels.Push(&Level{ReturnToState: ParsingEmphasis})
+				state = ParsingStrong // instead of ParsingEmphasisStrong, because we're already inside an emphasis
+			case lexer.TokenStrongBegin:
+				levels.Push(&Level{ReturnToState: ParsingEmphasis})
+				state = ParsingStrong
+			case lexer.TokenStrikethroughBegin:
+				levels.Push(&Level{ReturnToState: ParsingEmphasis})
+				state = ParsingStrikethrough
+			case lexer.TokenMarkerBegin:
+				levels.Push(&Level{ReturnToState: ParsingEmphasis})
+				state = ParsingMarker
+			case lexer.TokenHtmlTagOpen:
+				levels.Push(&Level{ReturnToState: ParsingEmphasis})
+				state = ParsingHtmlElement
+			case lexer.TokenLinkableBegin:
+				levels.Push(&Level{ReturnToState: ParsingEmphasis})
+				state = ParsingLinkable
+			case lexer.TokenEnquoteDoubleBegin:
+				levels.Push(&Level{ReturnToState: ParsingEmphasis})
+				state = ParsingEnquoteDouble
+			case lexer.TokenEnquoteAngledBegin:
+				levels.Push(&Level{ReturnToState: ParsingEmphasis})
+				state = ParsingEnquoteAngled
 			case lexer.TokenEmphasisEnd:
 				levels.Pop()
 				parent := levels.Top()
@@ -943,6 +1006,30 @@ func Parse(lx LexResult) (blog *Blog, err error) {
 				if !(isTextNode(lexeme) && level.TextRich.Append(newTextNode(lexeme))) {
 					err = errors.Join(err, newError(lexeme, state, ErrInvalidToken))
 				}
+			case lexer.TokenEmphasisStrongBegin:
+				levels.Push(&Level{ReturnToState: ParsingStrong})
+				state = ParsingEmphasis // intead of ParsingEmphasisStrong, because we're already inside a strong
+			case lexer.TokenEmphasisBegin:
+				levels.Push(&Level{ReturnToState: ParsingStrong})
+				state = ParsingEmphasis
+			case lexer.TokenStrikethroughBegin:
+				levels.Push(&Level{ReturnToState: ParsingStrong})
+				state = ParsingStrikethrough
+			case lexer.TokenMarkerBegin:
+				levels.Push(&Level{ReturnToState: ParsingStrong})
+				state = ParsingMarker
+			case lexer.TokenHtmlTagOpen:
+				levels.Push(&Level{ReturnToState: ParsingStrong})
+				state = ParsingHtmlElement
+			case lexer.TokenLinkableBegin:
+				levels.Push(&Level{ReturnToState: ParsingStrong})
+				state = ParsingLinkable
+			case lexer.TokenEnquoteDoubleBegin:
+				levels.Push(&Level{ReturnToState: ParsingStrong})
+				state = ParsingEnquoteDouble
+			case lexer.TokenEnquoteAngledBegin:
+				levels.Push(&Level{ReturnToState: ParsingStrong})
+				state = ParsingEnquoteAngled
 			case lexer.TokenStrongEnd:
 				levels.Pop()
 				parent := levels.Top()
@@ -956,6 +1043,32 @@ func Parse(lx LexResult) (blog *Blog, err error) {
 				if !(isTextNode(lexeme) && level.TextRich.Append(newTextNode(lexeme))) {
 					err = errors.Join(err, newError(lexeme, state, ErrInvalidToken))
 				}
+			case lexer.TokenStrongBegin:
+				// ignore the token
+			case lexer.TokenStrongEnd:
+				// ignore the token
+			case lexer.TokenEmphasisBegin:
+				// ignore the token
+			case lexer.TokenEmphasisEnd:
+				// ignore the token
+			case lexer.TokenStrikethroughBegin:
+				levels.Push(&Level{ReturnToState: ParsingEmphasisStrong})
+				state = ParsingStrikethrough
+			case lexer.TokenMarkerBegin:
+				levels.Push(&Level{ReturnToState: ParsingEmphasisStrong})
+				state = ParsingMarker
+			case lexer.TokenHtmlTagOpen:
+				levels.Push(&Level{ReturnToState: ParsingEmphasisStrong})
+				state = ParsingHtmlElement
+			case lexer.TokenLinkableBegin:
+				levels.Push(&Level{ReturnToState: ParsingEmphasisStrong})
+				state = ParsingLinkable
+			case lexer.TokenEnquoteDoubleBegin:
+				levels.Push(&Level{ReturnToState: ParsingEmphasisStrong})
+				state = ParsingEnquoteDouble
+			case lexer.TokenEnquoteAngledBegin:
+				levels.Push(&Level{ReturnToState: ParsingEmphasisStrong})
+				state = ParsingEnquoteAngled
 			case lexer.TokenEmphasisStrongEnd:
 				levels.Pop()
 				parent := levels.Top()
@@ -969,6 +1082,31 @@ func Parse(lx LexResult) (blog *Blog, err error) {
 				if !(isTextNode(lexeme) && level.TextRich.Append(newTextNode(lexeme))) {
 					err = errors.Join(err, newError(lexeme, state, ErrInvalidToken))
 				}
+			case lexer.TokenEmphasisBegin:
+				levels.Push(&Level{ReturnToState: ParsingStrikethrough})
+				state = ParsingEmphasis
+			case lexer.TokenStrongBegin:
+				levels.Push(&Level{ReturnToState: ParsingStrikethrough})
+				state = ParsingStrong
+			case lexer.TokenEmphasisStrongBegin:
+				levels.Push(&Level{ReturnToState: ParsingStrikethrough})
+				state = ParsingEmphasisStrong
+			case lexer.TokenEnquoteDoubleBegin:
+				levels.Push(&Level{ReturnToState: ParsingStrikethrough})
+				state = ParsingEnquoteDouble
+			case lexer.TokenEnquoteAngledBegin:
+				levels.Push(&Level{ReturnToState: ParsingStrikethrough})
+				state = ParsingEnquoteAngled
+			case lexer.TokenMarkerBegin:
+				levels.Push(&Level{ReturnToState: ParsingStrikethrough})
+				state = ParsingMarker
+			case lexer.TokenHtmlTagOpen:
+				levels.Push(&Level{ReturnToState: ParsingStrikethrough})
+				currentHTMLElement.Name = lexeme.Text
+				state = ParsingHtmlElement
+			case lexer.TokenLinkableBegin:
+				levels.Push(&Level{ReturnToState: ParsingStrikethrough})
+				state = ParsingLinkable
 			case lexer.TokenStrikethroughEnd:
 				levels.Pop()
 				parent := levels.Top()
@@ -982,6 +1120,31 @@ func Parse(lx LexResult) (blog *Blog, err error) {
 				if !(isTextNode(lexeme) && level.TextRich.Append(newTextNode(lexeme))) {
 					err = errors.Join(err, newError(lexeme, state, ErrInvalidToken))
 				}
+			case lexer.TokenEmphasisBegin:
+				levels.Push(&Level{ReturnToState: ParsingParagraph})
+				state = ParsingEmphasis
+			case lexer.TokenStrongBegin:
+				levels.Push(&Level{ReturnToState: ParsingParagraph})
+				state = ParsingStrong
+			case lexer.TokenEmphasisStrongBegin:
+				levels.Push(&Level{ReturnToState: ParsingParagraph})
+				state = ParsingEmphasisStrong
+			case lexer.TokenEnquoteDoubleBegin:
+				levels.Push(&Level{ReturnToState: ParsingParagraph})
+				state = ParsingEnquoteDouble
+			case lexer.TokenEnquoteAngledBegin:
+				levels.Push(&Level{ReturnToState: ParsingParagraph})
+				state = ParsingEnquoteAngled
+			case lexer.TokenStrikethroughBegin:
+				levels.Push(&Level{ReturnToState: ParsingParagraph})
+				state = ParsingStrikethrough
+			case lexer.TokenHtmlTagOpen:
+				levels.Push(&Level{ReturnToState: ParsingParagraph})
+				currentHTMLElement.Name = lexeme.Text
+				state = ParsingHtmlElement
+			case lexer.TokenLinkableBegin:
+				levels.Push(&Level{ReturnToState: ParsingParagraph})
+				state = ParsingLinkable
 			case lexer.TokenMarkerEnd:
 				levels.Pop()
 				parent := levels.Top()
