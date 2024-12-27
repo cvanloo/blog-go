@@ -1421,6 +1421,10 @@ func Parse(lx LexResult) (blog *Blog, err error) {
 			switch lexeme.Type {
 			default:
 				// @todo: anything of a paragraph goes... (???)
+			case lexer.TokenHtmlTagOpen:
+				levels.Push(&Level{ReturnToState: ParsingHtmlElementContent})
+				currentHTMLElement.Name = lexeme.Text // @todo: this won't work with nested!!!
+				state = ParsingHtmlElement
 			case lexer.TokenHtmlTagClose:
 				levels.Pop()
 				state = level.ReturnToState

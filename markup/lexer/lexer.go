@@ -1729,6 +1729,7 @@ func (lx *Lexer) LexHtmlElementAttributes() {
 func (lx *Lexer) LexHtmlElementContent(tag string) {
 	lx.Emit(TokenHtmlTagContent)
 	if lx.HasCloseTag(tag) {
+		lx.SkipWhitespace()
 		for !lx.IsEOF() {
 			if lx.Peek(2) == "</" {
 				lx.SkipNext(2)
@@ -1741,8 +1742,16 @@ func (lx *Lexer) LexHtmlElementContent(tag string) {
 				lx.ExpectAndSkip(">")
 				break
 			}
-			// @todo: first check if there is a nested html element
-			lx.LexParagraph()
+			if lx.Peek1() == '<' {
+				if lx.MatchAtPos("<http://") || lx.MatchAtPos("<https://") || lx.MatchAtPos("<mailto:") {
+					lx.LexParagraph()
+				} else {
+					lx.LexHtmlElement()
+				}
+			} else {
+				lx.LexParagraph()
+			}
+			lx.SkipWhitespace()
 		}
 	}
 	lx.Emit(TokenHtmlTagClose)
