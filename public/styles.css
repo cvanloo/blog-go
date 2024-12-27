@@ -363,13 +363,13 @@ div.title {
 
     @media screen and (min-width: 90ch) {
         .tagline {
-            padding: 0 2em 1em 2em;
+            padding: 0 2em 2em 2em;
         }
     }
 
     @media screen and (max-width: 89ch) {
         .tagline {
-            padding: 0 .5em .2em .5em;
+            padding: 0 .5em .5em .5em;
         }
     }
 }
