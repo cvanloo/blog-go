@@ -1,2 +1,2 @@
-<pre><code class="block">{{range .Lines}}<span class="line-number">{{.}}</span>
+<pre><code class="block">{{range .Lines}}<span class="line-number">{{if .}}{{.}}{{else}}&#8203;{{end}}</span>
 {{end}}</code></pre>
