@@ -66,6 +66,8 @@ type (
 		VisitBlockQuote(*BlockQuote)
 		VisitCodeBlock(*CodeBlock)
 		VisitHorizontalRule(*HorizontalRule)
+		VisitHtml(*Html)
+		LeaveHtml(*Html)
 	}
 
 	Attributes map[string]string
@@ -111,6 +113,11 @@ type (
 	Text           string
 	AmpSpecial     string
 	Linkify        string
+	Html struct {
+		Attributes
+		Name string
+		Content []Node
+	}
 
 	NopVisitor           struct{}
 	FixReferencesVisitor struct {
@@ -292,6 +299,14 @@ func (h *HorizontalRule) Accept(v Visitor) {
 	v.VisitHorizontalRule(h)
 }
 
+func (h *Html) Accept(v Visitor) {
+	v.VisitHtml(h)
+	for _, c := range h.Content {
+		c.Accept(v)
+	}
+	v.LeaveHtml(h)
+}
+
 func (v NopVisitor) VisitBlog(b *Blog) {
 }
 
@@ -361,6 +376,12 @@ func (v NopVisitor) VisitCodeBlock(*CodeBlock) {
 func (v NopVisitor) VisitHorizontalRule(*HorizontalRule) {
 }
 
+func (v NopVisitor) VisitHtml(*Html) {
+}
+
+func (v NopVisitor) LeaveHtml(*Html) {
+}
+
 func (v *FixReferencesVisitor) VisitBlog(b *Blog) {
 	v.LinkDefinitions = b.LinkDefinitions
 	v.SidenoteDefinitions = b.SidenoteDefinitions
@@ -421,6 +442,7 @@ type (
 		TextSimple    TextSimple
 		TextRich      TextRich
 		Content       []Node
+		Html          *Html
 	}
 	Levels struct {
 		levels []*Level
@@ -457,6 +479,7 @@ func (l *Level) PopString() (s string) {
 	return s
 }
 
+// @todo: really stupid function, remove it
 func (l *Level) Clear() {
 	l.Strings = []string{}
 	l.TextSimple = TextSimple{}
@@ -529,7 +552,6 @@ func Parse(lx LexResult) (blog *Blog, err error) {
 	var (
 		currentSection1, currentSection2 *Section
 		currentAttributes                = Attributes{}
-		currentHTMLElement               = HtmlTag{Args: map[string]string{}}
 		currentCodeBlock                 = &CodeBlock{Attributes: Attributes{}}
 		currentImage                     = &Image{}
 		currentBlockquote                = &BlockQuote{}
@@ -550,8 +572,7 @@ func Parse(lx LexResult) (blog *Blog, err error) {
 				levels.Push(&Level{ReturnToState: ParsingDocument})
 				state = ParsingMeta
 			case lexer.TokenHtmlTagOpen:
-				levels.Push(&Level{ReturnToState: ParsingDocument})
-				currentHTMLElement.Name = lexeme.Text
+				levels.Push(&Level{ReturnToState: ParsingDocument, Html: &Html{Name: lexeme.Text}})
 				state = ParsingHtmlElement
 			case lexer.TokenSection1Begin:
 				levels.Push(&Level{ReturnToState: ParsingDocument})
@@ -577,8 +598,7 @@ func Parse(lx LexResult) (blog *Blog, err error) {
 			default:
 				err = errors.Join(err, newError(lexeme, state, ErrInvalidToken))
 			case lexer.TokenHtmlTagOpen:
-				levels.Push(&Level{ReturnToState: ParsingDocument})
-				currentHTMLElement.Name = lexeme.Text
+				levels.Push(&Level{ReturnToState: ParsingDocument, Html: &Html{Name: lexeme.Text}})
 				state = ParsingHtmlElement
 			case lexer.TokenSection1Begin:
 				levels.Push(&Level{ReturnToState: ParsingDocument})
@@ -750,8 +770,7 @@ func Parse(lx LexResult) (blog *Blog, err error) {
 				levels.Push(&Level{ReturnToState: ParsingSection1Content})
 				state = ParsingBlockquote
 			case lexer.TokenHtmlTagOpen:
-				levels.Push(&Level{ReturnToState: ParsingSection1Content})
-				currentHTMLElement.Name = lexeme.Text
+				levels.Push(&Level{ReturnToState: ParsingSection1Content, Html: &Html{Name: lexeme.Text}})
 				state = ParsingHtmlElement
 			case lexer.TokenLinkDef:
 				levels.Push(&Level{ReturnToState: ParsingSection1Content})
@@ -829,8 +848,7 @@ func Parse(lx LexResult) (blog *Blog, err error) {
 				levels.Push(&Level{ReturnToState: ParsingSection2Content})
 				state = ParsingBlockquote
 			case lexer.TokenHtmlTagOpen:
-				levels.Push(&Level{ReturnToState: ParsingSection2Content})
-				currentHTMLElement.Name = lexeme.Text
+				levels.Push(&Level{ReturnToState: ParsingSection2Content, Html: &Html{Name: lexeme.Text}})
 				state = ParsingHtmlElement
 			case lexer.TokenLinkDef:
 				levels.Push(&Level{ReturnToState: ParsingSection2Content})
@@ -880,8 +898,7 @@ func Parse(lx LexResult) (blog *Blog, err error) {
 				levels.Push(&Level{ReturnToState: ParsingParagraph})
 				state = ParsingMarker
 			case lexer.TokenHtmlTagOpen:
-				levels.Push(&Level{ReturnToState: ParsingParagraph})
-				currentHTMLElement.Name = lexeme.Text
+				levels.Push(&Level{ReturnToState: ParsingParagraph, Html: &Html{Name: lexeme.Text}})
 				state = ParsingHtmlElement
 			case lexer.TokenLinkableBegin:
 				levels.Push(&Level{ReturnToState: ParsingParagraph})
@@ -1101,8 +1118,7 @@ func Parse(lx LexResult) (blog *Blog, err error) {
 				levels.Push(&Level{ReturnToState: ParsingStrikethrough})
 				state = ParsingMarker
 			case lexer.TokenHtmlTagOpen:
-				levels.Push(&Level{ReturnToState: ParsingStrikethrough})
-				currentHTMLElement.Name = lexeme.Text
+				levels.Push(&Level{ReturnToState: ParsingStrikethrough, Html: &Html{Name: lexeme.Text}})
 				state = ParsingHtmlElement
 			case lexer.TokenLinkableBegin:
 				levels.Push(&Level{ReturnToState: ParsingStrikethrough})
@@ -1139,8 +1155,7 @@ func Parse(lx LexResult) (blog *Blog, err error) {
 				levels.Push(&Level{ReturnToState: ParsingParagraph})
 				state = ParsingStrikethrough
 			case lexer.TokenHtmlTagOpen:
-				levels.Push(&Level{ReturnToState: ParsingParagraph})
-				currentHTMLElement.Name = lexeme.Text
+				levels.Push(&Level{ReturnToState: ParsingParagraph, Html: &Html{Name: lexeme.Text}})
 				state = ParsingHtmlElement
 			case lexer.TokenLinkableBegin:
 				levels.Push(&Level{ReturnToState: ParsingParagraph})
@@ -1385,6 +1400,7 @@ func Parse(lx LexResult) (blog *Blog, err error) {
 			default:
 			case lexer.TokenHtmlTagAttrKey:
 				level.PushString(lexeme.Text)
+				level.Html.Attributes = Attributes{}
 				state = ParsingHtmlElementAttributes
 			case lexer.TokenHtmlTagContent:
 				state = ParsingHtmlElementContent
@@ -1400,7 +1416,7 @@ func Parse(lx LexResult) (blog *Blog, err error) {
 					Assert(len(level.Strings) == 1, "")
 					val = level.PopString()
 				}
-				currentHTMLElement.Args[key] = val
+				level.Html.Attributes[key] = val
 				// start next key
 				level.PushString(lexeme.Text)
 			case lexer.TokenHtmlTagAttrVal:
@@ -1413,92 +1429,28 @@ func Parse(lx LexResult) (blog *Blog, err error) {
 					Assert(len(level.Strings) == 1, "")
 					val = level.PopString()
 				}
-				currentHTMLElement.Args[key] = val
+				level.Html.Attributes[key] = val
 				// go to parsing element content
 				state = ParsingHtmlElementContent
 			}
 		case ParsingHtmlElementContent:
 			switch lexeme.Type {
 			default:
-				// @todo: anything of a paragraph goes... (???)
-			case lexer.TokenHtmlTagOpen:
+				err = errors.Join(err, newError(lexeme, state, ErrInvalidToken))
+			case lexer.TokenParagraphBegin:
 				levels.Push(&Level{ReturnToState: ParsingHtmlElementContent})
-				currentHTMLElement.Name = lexeme.Text // @todo: this won't work with nested!!!
+				state = ParsingParagraph
+			case lexer.TokenHtmlTagOpen:
+				levels.Push(&Level{ReturnToState: ParsingHtmlElementContent, Html: &Html{Name: lexeme.Text}})
 				state = ParsingHtmlElement
 			case lexer.TokenHtmlTagClose:
 				levels.Pop()
+				parent := levels.Top()
+				level.Html.Content = level.Content
+				parent.Content = append(parent.Content, level.Html)
 				state = level.ReturnToState
 			}
 		}
 	}
 	return
 }
-
-/*
-	switch state {
-	case ParsingHtmlTag:
-		level := levels.Top()
-		switch lexeme.Type {
-		default:
-		case lexer.TokenHtmlTagAttrKey:
-			level.PushString(lexeme.Text)
-		case lexer.TokenHtmlTagAttrVal:
-			attrKey := level.PopString()
-			currentHtmlTag.Args[attrKey] = lexeme.Text
-		case lexer.TokenHtmlTagContent:
-			Assert(len(level.Strings) == 0, "key/value pair mismatch")
-			state = ParsingHtmlTagContent
-		case lexer.TokenHtmlTagClose:
-			_ = levels.Pop()
-			content, evalErr := evaluateHtmlTag(&blog, currentHtmlTag)
-			err = errors.Join(err, evalErr)
-			if content != nil {
-				if levels.Len() == 0 {
-					err = errors.Join(err, newError(lexeme, state, errors.New("all content must be contained within a section")))
-				} else {
-					paren := levels.Top()
-					switch c := content.(type) {
-					case gen.StringRenderable:
-						paren.PushText(c)
-					case gen.Renderable:
-						paren.PushContent(c)
-					}
-				}
-			}
-			currentHtmlTag = HtmlTag{Args: map[string]string{}}
-			state = level.ReturnToState
-		}
-	case ParsingHtmlTagContent:
-		level := levels.Top()
-		switch {
-		case isTextContent(lexeme.Type):
-			level.PushText(newTextContent(lexeme))
-			fallthrough
-		case lexeme.Type == lexer.TokenText:
-			level.PushString(lexeme.Text)
-		case lexeme.Type == lexer.TokenHtmlTagOpen:
-			levels.Push(&Level{ReturnToState: ParsingHtmlTagContent})
-			state = ParsingHtmlTag
-		case lexeme.Type == lexer.TokenHtmlTagClose:
-			_ = levels.Pop()
-			currentHtmlTag.Strings = level.Strings
-			currentHtmlTag.Text = level.TextValues
-			content, evalErr := evaluateHtmlTag(&blog, currentHtmlTag)
-			err = errors.Join(err, newError(lexeme, state, evalErr))
-			if content != nil {
-				if levels.Len() == 0 {
-					err = errors.Join(err, newError(lexeme, state, errors.New("all content must be contained within a section")))
-				} else {
-					paren := levels.Top()
-					switch c := content.(type) {
-					case gen.StringRenderable:
-						paren.PushText(c)
-					case gen.Renderable:
-						paren.PushContent(c)
-					}
-				}
-			}
-			currentHtmlTag = HtmlTag{Args: map[string]string{}}
-			state = level.ReturnToState
-		}
-*/

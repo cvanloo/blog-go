@@ -457,6 +457,9 @@ type (
 		currentSection *Section
 		currentParagraph *Paragraph
 		currentSOC StringOnlyContent
+
+		currentRelevantBox *RelevantBox
+		currentRelevantItem *ReadingItem
 	}
 )
 
@@ -740,6 +743,34 @@ func (v *MakeGenVisitor) LeaveSection(s *parser.Section) {
 		v.currentSection1.Content = append(v.currentSection1.Content, *v.currentSection2)
 		v.currentSection2 = nil
 		v.currentSection = v.currentSection1
+	}
+}
+
+func (v *MakeGenVisitor) VisitHtml(h *parser.Html) {
+	// @todo
+	switch h.Name {
+	default:
+	case "Abstract":
+		//stringRenderableFromTextRich(h.Content)
+		if v.currentRelevantBox == nil {
+			// add abstract to blog
+		} else {
+			// add abstract to currentRelevantItem (if it is set, otherwise record error)
+		}
+	case "RelevantBox":
+	case "Relevant":
+	case "Author":
+	}
+}
+
+func (v *MakeGenVisitor) LeaveHtml(h *parser.Html) {
+	// @todo
+	switch h.Name {
+	default:
+	case "Abstract":
+	case "RelevantBox":
+	case "Relevant":
+	case "Author":
 	}
 }
 
