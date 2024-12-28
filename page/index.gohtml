@@ -61,8 +61,12 @@
                         {{range .Tags}}<p><a href="/:{{.}}">:{{.}}</a></p>
                         {{end}}</div>
                     </aside>
-                    {{if .Abstract.Content}}
-                    {{Render .Abstract}}
+                    {{if .Abstract}}
+                    {{range .Abstract}}
+                    {{Render .}}
+                    {{end}}
+                    {{else if .Description}}
+                    {{.Description}}
                     {{end}}
                 </div>
                 {{end}}

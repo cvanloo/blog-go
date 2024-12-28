@@ -31,7 +31,8 @@ type (
 		Title, AltTitle StringRenderable
 		UrlPath string
 		Tags []Tag
-		Abstract Paragraph
+		Description string
+		Abstract []Renderable
 		EstReading int
 		Published Revision
 	}

@@ -109,10 +109,10 @@
                 </div>
                 {{end}}
                 {{Render .TOC}}
-                {{if .HasAbstract}}
+                {{if .Abstract}}
                 <section id="Abstract">
                     <h2><a href="#Abstract">Abstract</a></h2>
-                    {{Render .Abstract}}
+                    {{range .Abstract}}{{Render .}}{{end}}
                 </section>
                 {{end}}
                 {{range .Sections}}
@@ -128,7 +128,7 @@
                         <div class="reading-item">
                             <a href="{{.Link}}" target="_blank">{{Render .Title}}</a>
                             <p><small>{{.FormatDate}}, by <a href="{{.AuthorLink}}" target="_blank">{{Render .Author}}</a></small></p>
-                            {{Render .Abstract}}
+                            {{range .Abstract}}{{Render .}}{{end}}
                         </div>
                         {{end}}
                     </div>

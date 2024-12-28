@@ -45,7 +45,7 @@ type (
 		Lang string
 		Title, AltTitle StringRenderable
 		Description string
-		Abstract Paragraph
+		Abstract []Renderable
 		Published Revision
 		EstReading int
 		Tags []Tag
@@ -139,7 +139,7 @@ type (
 	ReadingItem struct {
 		Link, AuthorLink string
 		Title, Author StringRenderable
-		Abstract Paragraph
+		Abstract []Renderable
 		Date time.Time
 	}
 )
@@ -418,10 +418,6 @@ func (p Post) PublishedFull() string {
 func (p Post) RevisedFull() string {
 	Assert(p.Published.HasRevision(), "must check HasRevision to know if it is safe to access Revised")
 	return p.Published.Revised.Format(time.RFC3339)
-}
-
-func (p Post) HasAbstract() bool {
-	return p.Abstract.Content != nil
 }
 
 func (p Post) CopyrightYears() template.HTML {
@@ -771,7 +767,7 @@ type (
 		nestingCount int
 	}
 	HtmlAbstract struct{
-		p Paragraph
+		content []Renderable
 		err error
 	}
 	HtmlRelevantBox struct {
@@ -786,26 +782,16 @@ func (h *HtmlInvalid) Append(r Renderable) {
 }
 
 func (h *HtmlAbstract) Append(r Renderable) {
-	if h.p.Content != nil {
-		h.err = errors.Join(h.err, fmt.Errorf("<Abstract> already contains a Paragraph, cannot have more: %v", r))
-	} else if p, ok := r.(Paragraph); ok {
-		h.p = p
-	} else {
-		h.err = errors.Join(h.err, fmt.Errorf("<Abstract> can only contain a single Paragraph: %v", r))
-	}
+	// @todo: maybe don't allow just anything here... (only paragraphs, no sections...) [:abstract-content:]
+	h.content = append(h.content, r)
 }
 
 func (h *HtmlRelevantBox) Append(r Renderable) {
 	if h.currentItem == nil {
 		h.err = errors.Join(h.err, fmt.Errorf("<RelevantBox> cannot contain content other than <Relevant>: %v", r))
-	} else if h.currentItem.Abstract.Content != nil {
-		h.err = errors.Join(h.err, fmt.Errorf("<RelevantBox><Relevant> can contain only a single Paragraph: %v", r))
 	} else {
-		if p, ok := r.(Paragraph); ok {
-			h.currentItem.Abstract = p
-		} else {
-			h.err = errors.Join(h.err, fmt.Errorf("<RelevantBox><Relevant> cannot contain content other than a single Paragraph: %v", r))
-		}
+		// @todo: maybe don't allow just anything here... (only paragraphs, no sections...) [:abstract-content:]
+		h.currentItem.Abstract = append(h.currentItem.Abstract, r)
 	}
 }
 
@@ -958,7 +944,7 @@ func (a *HtmlAbstract) htmlAbstract(v *MakeGenVisitor, h *parser.Html, entering 
 		v.Errors = errors.Join(v.Errors, fmt.Errorf("<Abstract> cannot contain any child html elements: %s", h.Name))
 	} else {
 		v.Errors = errors.Join(v.Errors, a.err)
-		v.TemplateData.Abstract = a.p
+		v.TemplateData.Abstract = a.content
 		v.htmlState = v.htmlTopLevel
 	}
 }
