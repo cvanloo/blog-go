@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/gorilla/feeds"
+	readingtime "github.com/begmaroman/reading-time"
 
 	"github.com/cvanloo/blog-go/markup/lexer"
 	"github.com/cvanloo/blog-go/markup/parser"
@@ -130,6 +131,7 @@ type (
 		err error
 		lex *lexer.Lexer
 		par *parser.Blog
+		est *readingtime.Result
 	}
 
 	templatePreProcessor struct {
@@ -241,41 +243,43 @@ func (p *markupProcessor) collect() {
 
 func (p *markupProcessor) process(src source, wg *sync.WaitGroup) {
 	log.Printf("processing: %s", src.Name)
-	lex, par, err := lexAndParse(src)
+	lex, par, est, err := lexAndParse(src)
 	p.c <- markupResult{
 		src: src,
 		err: err,
 		lex: lex,
 		par: par,
+		est: est,
 	}
 	wg.Done()
 }
 
-func lexAndParse(src source) (*lexer.Lexer, *parser.Blog, error) {
+func lexAndParse(src source) (*lexer.Lexer, *parser.Blog, *readingtime.Result, error) {
 	lex := lexer.New()
 	bs, err := io.ReadAll(src.In)
+	est := readingtime.Estimate(string(bs))
 	if err != nil {
-		return nil, nil, fmt.Errorf("processing %s failed while reading: %w", src.Name, err)
+		return nil, nil, nil, fmt.Errorf("processing %s failed while reading: %w", src.Name, err)
 	}
 	lex.LexSource(src.Name, string(bs))
 	if len(lex.Errors) > 0 {
-		return lex, nil, fmt.Errorf("processing %s failed while lexing: %w", src.Name, errors.Join(lex.Errors...))
+		return lex, nil, est, fmt.Errorf("processing %s failed while lexing: %w", src.Name, errors.Join(lex.Errors...))
 	}
 	blog, err := parser.Parse(lex)
 	if err != nil {
-		return lex, blog, fmt.Errorf("processing %s failed while parsing: %w", src.Name, err)
+		return lex, blog, est, fmt.Errorf("processing %s failed while parsing: %w", src.Name, err)
 	}
 	refFixer := &parser.FixReferencesVisitor{}
 	blog.Accept(refFixer)
 	if refFixer.Errors != nil {
-		return lex, blog, fmt.Errorf("processing %s failed while resolving references: %w", src.Name, refFixer.Errors)
+		return lex, blog, est, fmt.Errorf("processing %s failed while resolving references: %w", src.Name, refFixer.Errors)
 	}
 	if rc, ok := src.In.(io.ReadCloser); ok {
 		if err := rc.Close(); err != nil {
-			return lex, blog, err
+			return lex, blog, est, err
 		}
 	}
-	return lex, blog, nil
+	return lex, blog, est, nil
 }
 
 func newTemplatePreProcessor(markups []markupResult) templatePreProcessor {
@@ -315,6 +319,7 @@ func (p *templatePreProcessor) processPost(m markupResult) error {
 	if makeGen.Errors != nil {
 		return fmt.Errorf("processing %s failed while producing template data: %w", m.src.Name, makeGen.Errors)
 	}
+	templateData.EstReading = int(m.est.Duration.Minutes())
 	p.posts[templateData.UrlPath] = &templateData
 	if templateData.MakePublish {
 		p.index.Listing = append(p.index.Listing, page.PostItem{
