@@ -51,3 +51,11 @@ func WriteListing(w io.Writer, d ListingData) error {
 func (l ListingData) Canonical() string {
 	return fmt.Sprintf("%s://%s/%s", l.Site.Address.Scheme, l.Site.Address.Host, l.UrlPath)
 }
+
+func (l ListingData) ObfuscatedAuthorCredit() (template.HTML, error) {
+	authorName, err := l.Site.Owner.Render()
+	if err != nil {
+		return "", err
+	}
+	return template.HTML(fmt.Sprintf(`<a href="mailto:%s">%s</a>`, ObfuscateText(l.Site.Email), authorName)), nil
+}

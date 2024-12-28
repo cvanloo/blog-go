@@ -75,7 +75,7 @@
             <footer>
                 <p id="eof">STOP)))))</p>
                 <!-- @todo: link to copyleft licence? -->
-                <address>&copy; {{CopyrightYears .Site.Birthday}} <a href="mailto:{{ObfuscateText .Site.Email}}">{{Render .Site.Owner}}</a></address>
+                <address>&copy; {{CopyrightYears .Site.Birthday}} {{.ObfuscatedAuthorCredit}}</address>
                 <span class="credits">
                   <a href="/about#credits">Font Licenses</a>
                   <a href="/about">About</a>

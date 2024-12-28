@@ -140,7 +140,7 @@
                 <p id="eof">STOP)))))</p>
                 <!-- @todo: link to copyleft licence? -->
                 {{if .Author.Email}}
-                <address>&copy; {{.CopyrightYears}} <a href="mailto:{{.ObfuscatedEmail}}">{{Render .Author.Name}}</a></address>
+                <address>&copy; {{.CopyrightYears}} {{.ObfuscatedAuthorCredit}}</address>
                 {{else}}
                 <address>&copy; {{.CopyrightYears}} {{Render .Author.Name}}</address>
                 {{end}}

@@ -53,3 +53,11 @@ func (w Weird) Render() (template.HTML, error) {
 func (w Weird) Text() string {
 	return fmt.Sprintf(`<span class="weird">%s</span>`, string(w))
 }
+
+func (i IndexData) ObfuscatedAuthorCredit() (template.HTML, error) {
+	authorName, err := i.Site.Owner.Render()
+	if err != nil {
+		return "", err
+	}
+	return template.HTML(fmt.Sprintf(`<a href="mailto:%s">%s</a>`, ObfuscateText(i.Site.Email), authorName)), nil
+}

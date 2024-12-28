@@ -428,6 +428,14 @@ func (p Post) CopyrightYears() template.HTML {
 	return template.HTML(p.Published.Published.Format("2006"))
 }
 
+func (p Post) ObfuscatedAuthorCredit() (template.HTML, error) {
+	authorName, err := p.Author.Name.Render()
+	if err != nil {
+		return "", err
+	}
+	return template.HTML(fmt.Sprintf(`<a href="mailto:%s">%s</a>`, p.ObfuscatedEmail(), authorName)), nil
+}
+
 func (p Post) ObfuscatedEmail() template.HTML {
 	const (
 		janetStart = `janet -e '(print (string/from-bytes (splice (map (fn [c] (if (<= 97 c 122) (+ 97 (mod (+ c -97 13) 26)) c)) &quot;`
