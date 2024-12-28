@@ -33,7 +33,7 @@ type (
 		Site Site
 		UrlPath string
 		Title StringRenderable
-		Abstract StringRenderable
+		Abstract Paragraph
 		Listing PostListing
 	}
 )

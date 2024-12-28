@@ -42,8 +42,8 @@
             <article>
                 <div class="title">
                     <h1 id="content">{{Render .Title}}</h1>
-                    {{if .Abstract}}
-                    <p class="abstract">{{Render .Abstract}}</p>
+                    {{if .Abstract.Content}}
+                    <div class="abstract">{{Render .Abstract}}</div>
                     {{end}}
                 </div>
                 <!-- @todo: Put latest entry highlighted on top -->
@@ -64,8 +64,8 @@
                         {{range .Tags}}<p><a href="/:{{.}}">:{{.}}</a></p>
                         {{end}}</div>
                     </aside>
-                    {{if .Abstract}}
-                    <p>{{Render .Abstract}}</p>
+                    {{if .Abstract.Content}}
+                    {{Render .Abstract}}
                     {{end}}
                 </div>
                 {{end}}

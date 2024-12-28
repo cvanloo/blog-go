@@ -131,6 +131,7 @@ type (
 	Blog struct {
 		Meta                Meta
 		Sections            []*Section
+		Htmls               []*Html
 		LinkDefinitions     map[string]string
 		SidenoteDefinitions map[string]TextRich
 		TermDefinitions     map[string]TextRich
@@ -209,6 +210,9 @@ func newTextNode(lexeme lexer.Token) Node {
 
 func (b *Blog) Accept(v Visitor) {
 	v.VisitBlog(b)
+	for _, h := range b.Htmls {
+		h.Accept(v)
+	}
 	for _, s := range b.Sections {
 		s.Accept(v)
 	}
@@ -616,6 +620,12 @@ func Parse(lx LexResult) (blog *Blog, err error) {
 				currentDefinition = lexeme.Text
 				state = ParsingSidenoteDefinition
 			case lexer.TokenEOF:
+				for _, c := range level.Content {
+					// @todo: but about non html things? even possible?
+					if h, ok := c.(*Html); ok {
+						blog.Htmls = append(blog.Htmls, h)
+					}
+				}
 				levels.Pop()
 				Assert(levels.Len() == 0, "not all levels popped")
 			}
@@ -1410,12 +1420,12 @@ func Parse(lx LexResult) (blog *Blog, err error) {
 			default:
 			case lexer.TokenHtmlTagAttrKey:
 				// finish current key
-				key := level.PopString()
 				var val string
 				if len(level.Strings) > 0 {
-					Assert(len(level.Strings) == 1, "")
+					Assert(len(level.Strings) == 2, "")
 					val = level.PopString()
 				}
+				key := level.PopString()
 				level.Html.Attributes[key] = val
 				// start next key
 				level.PushString(lexeme.Text)
@@ -1423,12 +1433,12 @@ func Parse(lx LexResult) (blog *Blog, err error) {
 				level.PushString(lexeme.Text)
 			case lexer.TokenHtmlTagContent:
 				// finish last key
-				key := level.PopString()
 				var val string
 				if len(level.Strings) > 0 {
-					Assert(len(level.Strings) == 1, "")
+					Assert(len(level.Strings) == 2, "")
 					val = level.PopString()
 				}
+				key := level.PopString()
 				level.Html.Attributes[key] = val
 				// go to parsing element content
 				state = ParsingHtmlElementContent

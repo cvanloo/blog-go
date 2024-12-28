@@ -1,17 +1,17 @@
 package markup
 
 import (
-	"io"
 	"errors"
-	"os"
 	"fmt"
-	"path/filepath"
+	"io"
 	"io/fs"
 	"log"
+	"os"
+	"path/filepath"
+	"slices"
+	"sort"
 	"sync"
 	"time"
-	"sort"
-	"slices"
 
 	"github.com/gorilla/feeds"
 
@@ -23,18 +23,18 @@ import (
 
 type (
 	Markup struct {
-		SiteInfo page.Site
-		IncludeExt []string
-		ExcludeExt []string
-		SourcePaths []string
-		Sources []source
+		SiteInfo      page.Site
+		IncludeExt    []string
+		ExcludeExt    []string
+		SourcePaths   []string
+		Sources       []source
 		StaticSources []string
-		OutDir string
+		OutDir        string
 	}
 	MarkupOption func(*Markup)
-	source struct {
+	source       struct {
 		Name string
-		In io.Reader
+		In   io.Reader
 	}
 )
 
@@ -70,7 +70,7 @@ func Source(name string, in io.Reader) MarkupOption {
 	return func(m *Markup) {
 		m.Sources = append(m.Sources, source{
 			Name: name,
-			In: in,
+			In:   in,
 		})
 	}
 }
@@ -93,15 +93,19 @@ func (m Markup) Run() (runErr error) {
 	mp := newMarkupProcessor(m.IncludeExt, m.ExcludeExt, m.SourcePaths, m.Sources)
 	runErr = errors.Join(runErr, mp.Run())
 
+	// @todo: only continue processing error free sources
+	if runErr != nil {
+		return runErr
+	}
 	// @todo: make sure url paths don't collide!
-	
+
 	tp := newTemplatePreProcessor(mp.results)
 	runErr = errors.Join(runErr, tp.Run())
 
 	gp := newTemplateGenProcessor(m.OutDir, tp)
 	runErr = errors.Join(runErr, gp.Run())
 
-	fp := newFeedProcessor(m.OutDir,gp.posts)
+	fp := newFeedProcessor(m.OutDir, gp.posts)
 	runErr = errors.Join(runErr, fp.Run())
 
 	return runErr
@@ -113,13 +117,13 @@ type (
 	}
 
 	markupProcessor struct {
-		c chan markupResult
-		includeExt []string
-		excludeExt []string
+		c           chan markupResult
+		includeExt  []string
+		excludeExt  []string
 		sourcePaths []string
-		sources []source
-		results []markupResult
-		err error
+		sources     []source
+		results     []markupResult
+		err         error
 	}
 	markupResult struct {
 		src source
@@ -130,33 +134,33 @@ type (
 
 	templatePreProcessor struct {
 		markups []markupResult
-		tags map[string]page.ListingData
-		series map[string]page.ListingData
-		posts map[string]*page.Post
-		index page.IndexData
+		tags    map[string]page.ListingData
+		series  map[string]page.ListingData
+		posts   map[string]*page.Post
+		index   page.IndexData
 	}
 
 	templateGenProcessor struct {
 		outDir string
-		tags []page.ListingData
+		tags   []page.ListingData
 		series []page.ListingData
-		posts []page.Post
-		index page.IndexData
+		posts  []page.Post
+		index  page.IndexData
 	}
 
 	feedProcessor struct {
 		outDir string
-		posts []page.Post
+		posts  []page.Post
 	}
 )
 
 func newMarkupProcessor(includeExt []string, excludeExt []string, sourcePaths []string, sources []source) markupProcessor {
 	return markupProcessor{
-		c: make(chan markupResult, 16),
-		includeExt: includeExt,
-		excludeExt: excludeExt,
+		c:           make(chan markupResult, 16),
+		includeExt:  includeExt,
+		excludeExt:  excludeExt,
 		sourcePaths: sourcePaths,
-		sources: sources,
+		sources:     sources,
 	}
 }
 
@@ -195,7 +199,7 @@ func (p *markupProcessor) Run() (runErr error) {
 							wg.Add(1)
 							go p.process(source{
 								Name: path,
-								In: fd,
+								In:   fd,
 							}, &wg)
 						}
 					}
@@ -209,7 +213,7 @@ func (p *markupProcessor) Run() (runErr error) {
 					wg.Add(1)
 					go p.process(source{
 						Name: path,
-						In: fd,
+						In:   fd,
 					}, &wg)
 				}
 			}
@@ -277,10 +281,10 @@ func lexAndParse(src source) (*lexer.Lexer, *parser.Blog, error) {
 func newTemplatePreProcessor(markups []markupResult) templatePreProcessor {
 	return templatePreProcessor{
 		markups: markups,
-		series: map[string]page.ListingData{},
-		tags: map[string]page.ListingData{},
-		posts: map[string]*page.Post{},
-		index: page.IndexData{},
+		series:  map[string]page.ListingData{},
+		tags:    map[string]page.ListingData{},
+		posts:   map[string]*page.Post{},
+		index:   page.IndexData{},
 	}
 }
 
@@ -313,13 +317,13 @@ func (p *templatePreProcessor) processPost(m markupResult) error {
 	}
 	p.posts[templateData.UrlPath] = &templateData
 	p.index.Listing = append(p.index.Listing, page.PostItem{
-		Title: templateData.Title,
-		AltTitle: templateData.AltTitle,
-		UrlPath: templateData.UrlPath,
-		Tags: templateData.Tags,
-		Abstract: templateData.Abstract,
+		Title:      templateData.Title,
+		AltTitle:   templateData.AltTitle,
+		UrlPath:    templateData.UrlPath,
+		Tags:       templateData.Tags,
+		Abstract:   templateData.Abstract,
 		EstReading: templateData.EstReading,
-		Published: templateData.Published,
+		Published:  templateData.Published,
 	})
 	for _, tag := range templateData.Tags {
 		ti := p.tags[string(tag)]
@@ -329,13 +333,13 @@ func (p *templatePreProcessor) processPost(m markupResult) error {
 		}
 		ti.UrlPath = fmt.Sprintf(":%s", tag)
 		ti.Listing = append(ti.Listing, page.PostItem{
-			Title: templateData.Title,
-			AltTitle: templateData.AltTitle,
-			UrlPath: templateData.UrlPath,
-			Tags: templateData.Tags,
-			Abstract: templateData.Abstract,
+			Title:      templateData.Title,
+			AltTitle:   templateData.AltTitle,
+			UrlPath:    templateData.UrlPath,
+			Tags:       templateData.Tags,
+			Abstract:   templateData.Abstract,
 			EstReading: templateData.EstReading,
-			Published: templateData.Published,
+			Published:  templateData.Published,
 		})
 		p.tags[string(tag)] = ti
 	}
@@ -345,13 +349,13 @@ func (p *templatePreProcessor) processPost(m markupResult) error {
 		si.Title = seriesName
 		si.UrlPath = seriesName.Text()
 		si.Listing = append(si.Listing, page.PostItem{
-			Title: templateData.Title,
-			AltTitle: templateData.AltTitle,
-			UrlPath: templateData.UrlPath,
-			Tags: templateData.Tags,
-			Abstract: templateData.Abstract,
+			Title:      templateData.Title,
+			AltTitle:   templateData.AltTitle,
+			UrlPath:    templateData.UrlPath,
+			Tags:       templateData.Tags,
+			Abstract:   templateData.Abstract,
 			EstReading: templateData.EstReading,
-			Published: templateData.Published,
+			Published:  templateData.Published,
 		})
 		p.series[seriesName.Text()] = si
 	}
@@ -372,14 +376,14 @@ func (p *templatePreProcessor) fixSeriesData() error {
 				prev := seriesListing.Listing[i-1]
 				post.Series.Prev = &page.SeriesItem{
 					Title: prev.Title,
-					Link: prev.UrlPath,
+					Link:  prev.UrlPath,
 				}
 			}
 			if i < len(seriesListing.Listing)-1 { // has next item
 				next := seriesListing.Listing[i+1]
 				post.Series.Next = &page.SeriesItem{
 					Title: next.Title,
-					Link: next.UrlPath,
+					Link:  next.UrlPath,
 				}
 			}
 		}
@@ -402,10 +406,10 @@ func newTemplateGenProcessor(outDir string, t templatePreProcessor) templateGenP
 	}
 	return templateGenProcessor{
 		outDir: outDir,
-		tags: tags,
+		tags:   tags,
 		series: series,
-		posts: posts,
-		index: t.index,
+		posts:  posts,
+		index:  t.index,
 	}
 }
 
@@ -462,18 +466,18 @@ func (p templateGenProcessor) Run() (runErr error) {
 func newFeedProcessor(outDir string, posts []page.Post) feedProcessor {
 	return feedProcessor{
 		outDir: outDir,
-		posts: posts,
+		posts:  posts,
 	}
 }
 
 func (p feedProcessor) Run() (runErr error) {
 	now := time.Now()
 	feed := &feeds.Feed{
-		Title: "",
-		Link: &feeds.Link{Href: ""},
+		Title:       "",
+		Link:        &feeds.Link{Href: ""},
 		Description: "",
-		Author: &feeds.Author{Name: ""},
-		Created: now,
+		Author:      &feeds.Author{Name: ""},
+		Created:     now,
 	}
 
 	for _, post := range p.posts {
@@ -486,12 +490,12 @@ func (p feedProcessor) Run() (runErr error) {
 			revised = *post.Published.Revised
 		}
 		feed.Items = append(feed.Items, &feeds.Item{
-			Title: title,
-			Link: &feeds.Link{Href: post.Canonical()},
+			Title:       title,
+			Link:        &feeds.Link{Href: post.Canonical()},
 			Description: desc,
-			Author: &feeds.Author{Name: author},
-			Created: published,
-			Updated: revised,
+			Author:      &feeds.Author{Name: author},
+			Created:     published,
+			Updated:     revised,
 		})
 	}
 

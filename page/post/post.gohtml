@@ -112,9 +112,7 @@
                 {{if .HasAbstract}}
                 <section id="Abstract">
                     <h2><a href="#Abstract">Abstract</a></h2>
-                    <p>
                     {{Render .Abstract}}
-                    </p>
                 </section>
                 {{end}}
                 {{range .Sections}}
@@ -124,13 +122,13 @@
                 {{with .Relevant}}
                 <div id="currently-reading">
                     <hr>
-                    <h2>{{.Heading}}</h2>
+                    <h2>{{Render .Heading}}</h2>
                     <div id="reading-section">
                         {{range .Articles}}
                         <div class="reading-item">
                             <a href="{{.Link}}" target="_blank">{{Render .Title}}</a>
                             <p><small>{{.FormatDate}}, by <a href="{{.AuthorLink}}" target="_blank">{{Render .Author}}</a></small></p>
-                            <p>{{Render .Abstract}}</p>
+                            {{Render .Abstract}}
                         </div>
                         {{end}}
                     </div>

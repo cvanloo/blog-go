@@ -45,13 +45,13 @@ type (
 		Lang string
 		Title, AltTitle StringRenderable
 		Description string
+		Abstract Paragraph
 		Published Revision
 		EstReading int
 		Tags []Tag
 		Series *Series
 		EnableRevisionWarning bool
 		TOC TableOfContents
-		Abstract StringRenderable
 		Sections []Section
 		Relevant *RelevantBox // @todo: implement: need html custom functions first
 	}
@@ -138,7 +138,8 @@ type (
 	}
 	ReadingItem struct {
 		Link, AuthorLink string
-		Title, Author, Abstract StringRenderable
+		Title, Author StringRenderable
+		Abstract Paragraph
 		Date time.Time
 	}
 )
@@ -420,7 +421,7 @@ func (p Post) RevisedFull() string {
 }
 
 func (p Post) HasAbstract() bool {
-	return p.Abstract != nil
+	return p.Abstract.Content != nil
 }
 
 func (p Post) CopyrightYears() template.HTML {
@@ -454,14 +455,20 @@ type (
 		Errors       error
 		currentSection1 *Section
 		currentSection2 *Section
-		currentSection *Section
 		currentParagraph *Paragraph
 		currentSOC StringOnlyContent
 
-		currentRelevantBox *RelevantBox
-		currentRelevantItem *ReadingItem
+		currentContainer Container
+		htmlState HtmlState
+	}
+	Container interface {
+		Append(r Renderable)
 	}
 )
+
+func (s *Section) Append(r Renderable) {
+	s.Content = append(s.Content, r)
+}
 
 func (v *MakeGenVisitor) VisitBlog(b *parser.Blog) {
 	if urlPath, ok := b.Meta["url-path"]; ok {
@@ -606,10 +613,10 @@ func (v *MakeGenVisitor) VisitSection(s *parser.Section) {
 			Level: s.Level,
 			Heading: stringRenderableFromTextRich(s.Heading),
 		}
-		v.currentSection = v.currentSection1
+		v.currentContainer = v.currentSection1
 		v.TemplateData.TOC.Sections = append(v.TemplateData.TOC.Sections, TOCSection{
-			ID: v.currentSection.ID(),
-			Heading: v.currentSection.Heading,
+			ID: v.currentSection1.ID(),
+			Heading: v.currentSection1.Heading,
 		})
 	case 2:
 		v.currentSection2 = &Section{
@@ -617,12 +624,12 @@ func (v *MakeGenVisitor) VisitSection(s *parser.Section) {
 			Level: s.Level,
 			Heading: stringRenderableFromTextRich(s.Heading),
 		}
-		v.currentSection = v.currentSection2
+		v.currentContainer = v.currentSection2
 		{
 			l := len(v.TemplateData.TOC.Sections)
 			v.TemplateData.TOC.Sections[l-1].NextLevel = append(v.TemplateData.TOC.Sections[l-1].NextLevel, TOCSection{
-				ID: v.currentSection.ID(),
-				Heading: v.currentSection.Heading,
+				ID: v.currentSection2.ID(),
+				Heading: v.currentSection2.Heading,
 			})
 		}
 	}
@@ -700,12 +707,12 @@ func (v *MakeGenVisitor) VisitStrikethrough(s *parser.Strikethrough) {
 func (v *MakeGenVisitor) LeaveParagraph(p *parser.Paragraph) {
 	v.currentParagraph.Content = v.currentSOC
 	v.currentSOC = nil
-	v.currentSection.Content = append(v.currentSection.Content, *v.currentParagraph)
+	v.currentContainer.Append(*v.currentParagraph)
 	v.currentParagraph = nil
 }
 
 func (v *MakeGenVisitor) VisitBlockQuote(b *parser.BlockQuote) {
-	v.currentSection.Content = append(v.currentSection.Content, Blockquote{
+	v.currentContainer.Append(Blockquote{
 		QuoteText: stringRenderableFromTextRich(b.QuoteText),
 		Author: stringRenderableFromTextSimple(b.Author),
 		Source: stringRenderableFromTextSimple(b.Source),
@@ -713,18 +720,18 @@ func (v *MakeGenVisitor) VisitBlockQuote(b *parser.BlockQuote) {
 }
 
 func (v *MakeGenVisitor) VisitCodeBlock(c *parser.CodeBlock) {
-	v.currentSection.Content = append(v.currentSection.Content, CodeBlock{
+	v.currentContainer.Append(CodeBlock{
 		Attributes: Attributes(c.Attributes),
 		Lines: c.Lines,
 	})
 }
 
 func (v *MakeGenVisitor) VisitHorizontalRule(h *parser.HorizontalRule) {
-	v.currentSection.Content = append(v.currentSection.Content, HorizontalRule{})
+	v.currentContainer.Append(HorizontalRule{})
 }
 
 func (v *MakeGenVisitor) VisitImage(i *parser.Image) {
-	v.currentSection.Content = append(v.currentSection.Content, Image{
+	v.currentContainer.Append(Image{
 		Name: i.Name,
 		Alt: stringRenderableFromTextSimple(i.Alt),
 		Title: stringRenderableFromTextSimple(i.Title),
@@ -738,39 +745,221 @@ func (v *MakeGenVisitor) LeaveSection(s *parser.Section) {
 	case 1:
 		v.TemplateData.Sections = append(v.TemplateData.Sections, *v.currentSection1)
 		v.currentSection1 = nil
-		v.currentSection = nil
+		v.currentContainer = nil
 	case 2:
 		v.currentSection1.Content = append(v.currentSection1.Content, *v.currentSection2)
 		v.currentSection2 = nil
-		v.currentSection = v.currentSection1
+		v.currentContainer = v.currentSection1
 	}
 }
 
 func (v *MakeGenVisitor) VisitHtml(h *parser.Html) {
-	// @todo
-	switch h.Name {
-	default:
-	case "Abstract":
-		//stringRenderableFromTextRich(h.Content)
-		if v.currentRelevantBox == nil {
-			// add abstract to blog
-		} else {
-			// add abstract to currentRelevantItem (if it is set, otherwise record error)
-		}
-	case "RelevantBox":
-	case "Relevant":
-	case "Author":
+	if v.htmlState == nil {
+		v.htmlState = v.htmlTopLevel
 	}
+	v.htmlState(v, h, true)
 }
 
 func (v *MakeGenVisitor) LeaveHtml(h *parser.Html) {
-	// @todo
-	switch h.Name {
-	default:
-	case "Abstract":
-	case "RelevantBox":
-	case "Relevant":
-	case "Author":
+	v.htmlState(v, h, false)
+}
+
+var ErrInvalidHtmlPos = errors.New("html element not allowed in this position")
+type (
+	HtmlState func(v *MakeGenVisitor, h *parser.Html, entering bool)
+	HtmlInvalid struct {
+		nestingCount int
+	}
+	HtmlAbstract struct{
+		p Paragraph
+		err error
+	}
+	HtmlRelevantBox struct {
+		relevantBox *RelevantBox
+		currentItem *ReadingItem
+		err error
+	}
+)
+
+func (h *HtmlInvalid) Append(r Renderable) {
+	// ignore
+}
+
+func (h *HtmlAbstract) Append(r Renderable) {
+	if h.p.Content != nil {
+		h.err = errors.Join(h.err, fmt.Errorf("<Abstract> already contains a Paragraph, cannot have more: %v", r))
+	} else if p, ok := r.(Paragraph); ok {
+		h.p = p
+	} else {
+		h.err = errors.Join(h.err, fmt.Errorf("<Abstract> can only contain a single Paragraph: %v", r))
+	}
+}
+
+func (h *HtmlRelevantBox) Append(r Renderable) {
+	if h.currentItem == nil {
+		h.err = errors.Join(h.err, fmt.Errorf("<RelevantBox> cannot contain content other than <Relevant>: %v", r))
+	} else if h.currentItem.Abstract.Content != nil {
+		h.err = errors.Join(h.err, fmt.Errorf("<RelevantBox><Relevant> can contain only a single Paragraph: %v", r))
+	} else {
+		if p, ok := r.(Paragraph); ok {
+			h.currentItem.Abstract = p
+		} else {
+			h.err = errors.Join(h.err, fmt.Errorf("<RelevantBox><Relevant> cannot contain content other than a single Paragraph: %v", r))
+		}
+	}
+}
+
+func (i *HtmlInvalid) htmlInvalid(v *MakeGenVisitor, h *parser.Html, entering bool) {
+	if entering {
+		i.nestingCount++
+	} else {
+		i.nestingCount--
+		if i.nestingCount == 0 {
+			v.htmlState = v.htmlTopLevel
+		}
+	}
+}
+
+func (r *HtmlRelevantBox) htmlRelevantBox(v *MakeGenVisitor, h *parser.Html, entering bool) {
+	if entering {
+		switch h.Name {
+		default:
+			v.Errors = errors.Join(v.Errors, fmt.Errorf("%s: %w", h.Name, ErrInvalidHtmlPos))
+		case "Relevant":
+			href, ok := h.Attributes["href"]
+			if !ok {
+				v.Errors = errors.Join(v.Errors, errors.New("relevant item missing its href attribute"))
+			}
+			date, ok := h.Attributes["date"]
+			var parsedDate time.Time
+			if !ok {
+				v.Errors = errors.Join(v.Errors, errors.New("relevant item missing its date attribute"))
+			} else {
+				var err error
+				parsedDate, err = time.Parse("2006-01-02", date)
+				if err != nil {
+					v.Errors = errors.Join(v.Errors, fmt.Errorf("relevant item invalid value for date attribute: %w", err))
+				}
+			}
+			title, ok := h.Attributes["title"]
+			var parsedTitle StringRenderable
+			if !ok {
+				v.Errors = errors.Join(v.Errors, errors.New("relevant item missing its title attribute"))
+			} else {
+				p, err := parseStringAsTextRich(title)
+				if err != nil {
+					v.Errors = errors.Join(v.Errors, fmt.Errorf("invalid value for title: %w", err))
+				} else {
+					parsedTitle = stringRenderableFromTextRich(p)
+				}
+			}
+			r.currentItem = &ReadingItem{
+				Link: href,
+				Title: parsedTitle,
+				Date: parsedDate,
+			}
+			v.htmlState = r.htmlRelevantItem
+		}
+	} else {
+		v.TemplateData.Relevant = r.relevantBox
+		v.Errors = errors.Join(v.Errors, r.err)
+		v.htmlState = v.htmlTopLevel
+	}
+}
+
+func (r *HtmlRelevantBox) htmlRelevantItem(v *MakeGenVisitor, h *parser.Html, entering bool) {
+	if entering {
+		switch h.Name {
+		default:
+		case "Author":
+			href := h.Attributes["href"] // optional
+			name, ok := h.Attributes["name"]
+			var parsedName StringRenderable
+			if !ok {
+				v.Errors = errors.Join(v.Errors, errors.New("relevant item's author is missing its name attribute"))
+			} else {
+				p, err := parseStringAsTextRich(name)
+				if err != nil {
+					v.Errors = errors.Join(v.Errors, fmt.Errorf("invalid value for name: %w", err))
+				} else {
+					parsedName = stringRenderableFromTextRich(p)
+				}
+			}
+			r.currentItem.AuthorLink = href
+			r.currentItem.Author = parsedName
+			v.htmlState = r.htmlRelevantItemAuthor
+		case "Abstract":
+			v.htmlState = r.htmlRelevantItemAbstract
+		}
+	} else {
+		r.relevantBox.Articles = append(r.relevantBox.Articles, *r.currentItem)
+		r.currentItem = nil
+		v.htmlState = r.htmlRelevantBox
+	}
+}
+
+func (r *HtmlRelevantBox) htmlRelevantItemAuthor(v *MakeGenVisitor, h *parser.Html, entering bool) {
+	if entering {
+		// invalid
+		v.Errors = errors.Join(v.Errors, fmt.Errorf("<RelevantItem><Author> cannot contain any content: %s", h.Name))
+	} else {
+		v.htmlState = r.htmlRelevantItem
+	}
+}
+
+func (r *HtmlRelevantBox) htmlRelevantItemAbstract(v *MakeGenVisitor, h *parser.Html, entering bool) {
+	if entering {
+		// invalid
+		v.Errors = errors.Join(v.Errors, fmt.Errorf("<RelevantItem><Abstract> cannot contain any child html elements: %s", h.Name))
+	} else {
+		v.htmlState = r.htmlRelevantItem
+	}
+}
+
+func (v *MakeGenVisitor) htmlTopLevel(_ *MakeGenVisitor, h *parser.Html, entering bool) {
+	if entering {
+		switch h.Name {
+		default:
+			v.Errors = errors.Join(v.Errors, fmt.Errorf("%s: %w", h.Name, ErrInvalidHtmlPos))
+			i := &HtmlInvalid{nestingCount: 1}
+			v.currentContainer = i
+			v.htmlState = i.htmlInvalid
+		case "Abstract":
+			a := &HtmlAbstract{}
+			v.currentContainer = a
+			v.htmlState = a.htmlAbstract
+		case "RelevantBox":
+			heading := StringOnlyContent{Text("Articles from blogs I read")}
+			if customHeading, ok := h.Attributes["title"]; ok {
+				p, err := parseStringAsTextRich(customHeading)
+				if err != nil {
+					v.Errors = errors.Join(v.Errors, fmt.Errorf("invalid value for heading: %w", err))
+				} else {
+					heading = stringRenderableFromTextRich(p)
+				}
+			}
+			r := &HtmlRelevantBox{
+				relevantBox: &RelevantBox{
+					Heading: heading,
+				},
+			}
+			v.currentContainer = r
+			v.htmlState = r.htmlRelevantBox
+		}
+	} else {
+		// invalid
+		panic("html state confused")
+	}
+}
+
+func (a *HtmlAbstract) htmlAbstract(v *MakeGenVisitor, h *parser.Html, entering bool) {
+	if entering {
+		// invalid
+		v.Errors = errors.Join(v.Errors, fmt.Errorf("<Abstract> cannot contain any child html elements: %s", h.Name))
+	} else {
+		v.Errors = errors.Join(v.Errors, a.err)
+		v.TemplateData.Abstract = a.p
+		v.htmlState = v.htmlTopLevel
 	}
 }
 
@@ -915,4 +1104,9 @@ func boolFromTextSimple(t parser.TextSimple) (bool, error) {
 	case "true":
 		return true, nil
 	}
+}
+
+func parseStringAsTextRich(s string) (parser.TextRich, error) {
+	// @todo:
+	return parser.TextRich{AsRef(parser.Text(s))}, nil
 }

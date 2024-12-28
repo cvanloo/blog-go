@@ -843,7 +843,7 @@ div.quote {
 #Abstract {
     border: 3px solid light-dark(#333, #636361);
     border-radius: 15px;
-    padding: 0 .6em 1em .6em;
+    padding: 0 1em 1em 1em;
     margin: 2em auto;
 
     @media screen and (min-width: 90ch) {
@@ -987,7 +987,7 @@ div.index-title {
 .blog-entry {
     border: 3px solid light-dark(#333, #636361);
     border-radius: 15px;
-    padding: 0 .6em 1em .6em;
+    padding: 0 1em 1em 1em;
     margin: 2em 0;
 
     @media screen and (min-width: 90ch) {
