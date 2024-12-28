@@ -316,51 +316,53 @@ func (p *templatePreProcessor) processPost(m markupResult) error {
 		return fmt.Errorf("processing %s failed while producing template data: %w", m.src.Name, makeGen.Errors)
 	}
 	p.posts[templateData.UrlPath] = &templateData
-	p.index.Listing = append(p.index.Listing, page.PostItem{
-		Title:      templateData.Title,
-		AltTitle:   templateData.AltTitle,
-		UrlPath:    templateData.UrlPath,
-		Tags:       templateData.Tags,
-		Description: templateData.Description,
-		Abstract:   templateData.Abstract,
-		EstReading: templateData.EstReading,
-		Published:  templateData.Published,
-	})
-	for _, tag := range templateData.Tags {
-		ti := p.tags[string(tag)]
-		ti.Title = page.StringOnlyContent{
-			page.Text("Posts tagged with :"),
-			page.Text(tag),
+	if templateData.MakePublish {
+		p.index.Listing = append(p.index.Listing, page.PostItem{
+			Title:      templateData.Title,
+			AltTitle:   templateData.AltTitle,
+			UrlPath:    templateData.UrlPath,
+			Tags:       templateData.Tags,
+			Description: templateData.Description,
+			Abstract:   templateData.Abstract,
+			EstReading: templateData.EstReading,
+			Published:  templateData.Published,
+		})
+		for _, tag := range templateData.Tags {
+			ti := p.tags[string(tag)]
+			ti.Title = page.StringOnlyContent{
+				page.Text("Posts tagged with :"),
+				page.Text(tag),
+			}
+			ti.UrlPath = fmt.Sprintf(":%s", tag)
+			ti.Listing = append(ti.Listing, page.PostItem{
+				Title:      templateData.Title,
+				AltTitle:   templateData.AltTitle,
+				UrlPath:    templateData.UrlPath,
+				Tags:       templateData.Tags,
+				Description: templateData.Description,
+				Abstract:   templateData.Abstract,
+				EstReading: templateData.EstReading,
+				Published:  templateData.Published,
+			})
+			p.tags[string(tag)] = ti
 		}
-		ti.UrlPath = fmt.Sprintf(":%s", tag)
-		ti.Listing = append(ti.Listing, page.PostItem{
-			Title:      templateData.Title,
-			AltTitle:   templateData.AltTitle,
-			UrlPath:    templateData.UrlPath,
-			Tags:       templateData.Tags,
-			Description: templateData.Description,
-			Abstract:   templateData.Abstract,
-			EstReading: templateData.EstReading,
-			Published:  templateData.Published,
-		})
-		p.tags[string(tag)] = ti
-	}
-	if templateData.Series != nil {
-		seriesName := templateData.Series.Name
-		si := p.series[seriesName.Text()]
-		si.Title = seriesName
-		si.UrlPath = seriesName.Text()
-		si.Listing = append(si.Listing, page.PostItem{
-			Title:      templateData.Title,
-			AltTitle:   templateData.AltTitle,
-			UrlPath:    templateData.UrlPath,
-			Tags:       templateData.Tags,
-			Description: templateData.Description,
-			Abstract:   templateData.Abstract,
-			EstReading: templateData.EstReading,
-			Published:  templateData.Published,
-		})
-		p.series[seriesName.Text()] = si
+		if templateData.Series != nil {
+			seriesName := templateData.Series.Name
+			si := p.series[seriesName.Text()]
+			si.Title = seriesName
+			si.UrlPath = seriesName.Text()
+			si.Listing = append(si.Listing, page.PostItem{
+				Title:      templateData.Title,
+				AltTitle:   templateData.AltTitle,
+				UrlPath:    templateData.UrlPath,
+				Tags:       templateData.Tags,
+				Description: templateData.Description,
+				Abstract:   templateData.Abstract,
+				EstReading: templateData.EstReading,
+				Published:  templateData.Published,
+			})
+			p.series[seriesName.Text()] = si
+		}
 	}
 	return nil
 }
@@ -418,16 +420,21 @@ func newTemplateGenProcessor(outDir string, t templatePreProcessor) templateGenP
 
 func (p templateGenProcessor) Run() (runErr error) {
 	for _, post := range p.posts {
-		out, err := os.Create(filepath.Join(p.outDir, fmt.Sprintf("%s.html", post.UrlPath))) // @todo: make UrlPath custom type
-		if err != nil {
-			runErr = errors.Join(runErr, err)
-			continue
+		if post.MakePublish {
+			out, err := os.Create(filepath.Join(p.outDir, fmt.Sprintf("%s.html", post.UrlPath))) // @todo: make UrlPath custom type
+			if err != nil {
+				runErr = errors.Join(runErr, err)
+				continue
+			}
+			if err := page.WritePost(out, post); err != nil {
+				runErr = errors.Join(runErr, err)
+				continue
+			}
+			runErr = errors.Join(runErr, out.Close())
+		} else {
+			// @todo: maybe still generate the html, but save it into a draft/ folder?
+			runErr = errors.Join(runErr, fmt.Errorf("not publishing post, because meta key draft != false: %s", post.UrlPath))
 		}
-		if err := page.WritePost(out, post); err != nil {
-			runErr = errors.Join(runErr, err)
-			continue
-		}
-		runErr = errors.Join(runErr, out.Close())
 	}
 	for _, series := range p.series {
 		out, err := os.Create(filepath.Join(p.outDir, fmt.Sprintf("%s.html", series.UrlPath)))
@@ -484,6 +491,9 @@ func (p feedProcessor) Run() (runErr error) {
 	}
 
 	for _, post := range p.posts {
+		if !post.MakePublish {
+			continue
+		}
 		title := post.Title.Text()
 		desc := post.Description
 		author := post.Author.Name.Text()

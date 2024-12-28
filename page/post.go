@@ -39,6 +39,7 @@ func init() {
 type (
 	Attributes map[string]string
 	Post struct {
+		MakePublish bool
 		Site Site
 		UrlPath string
 		Author Author
@@ -467,6 +468,16 @@ func (s *Section) Append(r Renderable) {
 }
 
 func (v *MakeGenVisitor) VisitBlog(b *parser.Blog) {
+	if draft, ok := b.Meta["draft"]; ok {
+		if len(draft) > 1 {
+			v.Errors = errors.Join(v.Errors, errors.New("multiple definitions of meta key: draft"))
+		}
+		draftVal := stringFromTextSimple(draft[0])
+		if draftVal == "false" {
+			v.TemplateData.MakePublish = true
+		}
+	}
+
 	if urlPath, ok := b.Meta["url-path"]; ok {
 		if len(urlPath) > 1 {
 			v.Errors = errors.Join(v.Errors, errors.New("multiple definitions of meta key: url-path"))
