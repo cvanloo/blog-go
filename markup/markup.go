@@ -493,6 +493,7 @@ func (p feedProcessor) Run() (runErr error) {
 			revised = *post.Published.Revised
 		}
 		feed.Items = append(feed.Items, &feeds.Item{
+			Id:          post.Canonical(),
 			Title:       title,
 			Link:        &feeds.Link{Href: post.Canonical()},
 			Description: desc,
