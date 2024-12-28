@@ -279,6 +279,11 @@ nav#topbar {
     .dropdown-itemlist {
         width: 100%;
     }
+
+    a, a:visited, .link-like {
+        text-decoration: none;
+        color: light-dark(#059, #8A6EDD);
+    }
 }
 
 .dropdown {
@@ -376,6 +381,11 @@ div.title {
 
 .taglist {
     font-weight: bold;
+
+    a, a:visited {
+        text-decoration: none;
+        color: light-dark(#059, #8A6EDD);
+    }
 }
 
 article {
@@ -460,6 +470,11 @@ footer {
         a {
             flex: 1 1 0; /* make all items take up the same amount of space */
             align-content: center;
+        }
+
+        a, a:visited {
+            text-decoration: none;
+            color: light-dark(#059, #8A6EDD);
         }
     }
 }
