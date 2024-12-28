@@ -482,6 +482,7 @@ func newFeedProcessor(outDir string, posts []page.Post) feedProcessor {
 
 func (p feedProcessor) Run() (runErr error) {
 	now := time.Now()
+	// @todo: fill in based on Site config
 	feed := &feeds.Feed{
 		Title:       "",
 		Link:        &feeds.Link{Href: ""},
