@@ -136,6 +136,27 @@
                 {{end}}
                 {{end}}
             </article>
+
+            <form class="fsb-prompt">
+                <label>Share this page from your Fediverse server</label>
+                <div class="fsb-input-group mb-3">
+                    <span class="fsb-input-group-text">https://</span>
+                    <input required
+                           type="text"
+                           name="fediverse-domain"
+                           placeholder="mastodon.social"
+                           class="fsb-input fsb-domain"
+                           aria-label="Server domain">
+                    <button class="fsb-button" type="submit">
+                        <img src="/fediverse-share-button/icons/mastodon.svg" class="fsb-icon">
+                        Share
+                    </button>
+                </div>
+                <p class="fsb-support-note fsb-d-none">This server does not support sharing. Please visit <a class="fsb-support-note-link" target="_blank" href=""></a>.</p>
+            </form>
+            <link rel="stylesheet" href="/fediverse-share-button/styles.css">
+            <script src="/fediverse-share-button/script.js" defer class="fsb-script"></script>
+
             <footer>
                 <p id="eof">STOP)))))</p>
                 <!-- @todo: link to copyleft licence? -->
