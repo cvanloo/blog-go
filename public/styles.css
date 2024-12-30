@@ -751,7 +751,7 @@ figure {
     }
 }
 
-div.quote {
+figure.quote {
     position: relative;
 
     a.link-to-quote {
@@ -767,12 +767,10 @@ div.quote {
     }
 
     &:target {
+        border-color: light-dark(#059, #8A6EDD);
+
         a.link-to-quote {
             opacity: 1;
-        }
-
-        figure {
-            border-color: light-dark(#FC3A05, #A9FC05);
         }
     }
 }

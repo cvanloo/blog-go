@@ -1,13 +1,20 @@
-<figure>
+{{$hashID := index .Attributes "id"}}
+<figure {{range $key, $val := .Attributes}}{{$key}}="{{$val}}" {{end}}>
     <blockquote>{{Render .QuoteText}}</blockquote>
     {{if .Author}}
     {{if .Source}}
     <figcaption>
         {{Render .Author}}, <cite>{{Render .Source}}</cite>
+        {{if $hashID}}
+        <a href="#{{$hashID}}" class="link-to-quote" title="link to quote">↖</a>
+        {{end}}
     </figcaption>
     {{else}}
     <figcaption>
         {{Render .Author}}
+        {{if $hashID}}
+        <a href="#{{$hashID}}" class="link-to-quote" title="link to quote">↖</a>
+        {{end}}
     </figcaption>
     {{end}}
     {{end}}

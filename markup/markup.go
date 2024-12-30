@@ -139,6 +139,7 @@ type (
 		tags    map[string]page.ListingData
 		series  map[string]page.ListingData
 		posts   map[string]*page.Post
+		quotes  map[string]*page.Post
 		index   page.IndexData
 	}
 
@@ -147,6 +148,7 @@ type (
 		tags   []page.ListingData
 		series []page.ListingData
 		posts  []page.Post
+		quotes []page.Post
 		index  page.IndexData
 	}
 
@@ -288,6 +290,7 @@ func newTemplatePreProcessor(markups []markupResult) templatePreProcessor {
 		series:  map[string]page.ListingData{},
 		tags:    map[string]page.ListingData{},
 		posts:   map[string]*page.Post{},
+		quotes:   map[string]*page.Post{},
 		index:   page.IndexData{},
 	}
 }
@@ -303,6 +306,8 @@ func (p *templatePreProcessor) Run() (runErr error) {
 				runErr = errors.Join(runErr, fmt.Errorf("unknown template: %s", template))
 			case "post":
 				runErr = errors.Join(runErr, p.processPost(m))
+			case "post-quotes":
+				runErr = errors.Join(runErr, p.processQuotes(m))
 			}
 		}
 	}
@@ -401,6 +406,22 @@ func (p *templatePreProcessor) fixSeriesData() error {
 	return nil
 }
 
+func (p *templatePreProcessor) processQuotes(m markupResult) error {
+	templateData := page.Post{}
+	makeGen := &page.MakeQuotesVisitor{
+		page.MakeGenVisitor{
+			TemplateData: &templateData,
+		},
+	}
+	m.par.Accept(makeGen)
+	if makeGen.Errors != nil {
+		return fmt.Errorf("processing %s failed while producing template data: %w", m.src.Name, makeGen.Errors)
+	}
+	templateData.EstReading = int(m.est.Duration.Minutes())
+	p.quotes[templateData.UrlPath] = &templateData
+	return nil
+}
+
 func newTemplateGenProcessor(outDir string, t templatePreProcessor) templateGenProcessor {
 	var tags []page.ListingData
 	for _, tag := range t.tags {
@@ -414,11 +435,16 @@ func newTemplateGenProcessor(outDir string, t templatePreProcessor) templateGenP
 	for _, post := range t.posts {
 		posts = append(posts, *post)
 	}
+	var quotes []page.Post
+	for _, quote := range t.quotes {
+		quotes = append(quotes, *quote)
+	}
 	return templateGenProcessor{
 		outDir: outDir,
 		tags:   tags,
 		series: series,
 		posts:  posts,
+		quotes: quotes,
 		index:  t.index,
 	}
 }
@@ -439,6 +465,23 @@ func (p templateGenProcessor) Run() (runErr error) {
 		} else {
 			// @todo: maybe still generate the html, but save it into a draft/ folder?
 			runErr = errors.Join(runErr, fmt.Errorf("not publishing post, because meta key draft != false: %s", post.UrlPath))
+		}
+	}
+	for _, quote := range p.quotes {
+		if quote.MakePublish {
+			out, err := os.Create(filepath.Join(p.outDir, fmt.Sprintf("%s.html", quote.UrlPath))) // @todo: make UrlPath custom type
+			if err != nil {
+				runErr = errors.Join(runErr, err)
+				continue
+			}
+			if err := page.WritePost(out, quote); err != nil {
+				runErr = errors.Join(runErr, err)
+				continue
+			}
+			runErr = errors.Join(runErr, out.Close())
+		} else {
+			// @todo: maybe still generate the html, but save it into a draft/ folder?
+			runErr = errors.Join(runErr, fmt.Errorf("not publishing post, because meta key draft != false: %s", quote.UrlPath))
 		}
 	}
 	for _, series := range p.series {

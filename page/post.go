@@ -12,6 +12,8 @@ import (
 	"io"
 	"log"
 	"net/url"
+	"crypto/sha256"
+	"encoding/base64"
 
 	"github.com/cvanloo/blog-go/markup/parser"
 	. "github.com/cvanloo/blog-go/assert"
@@ -130,6 +132,7 @@ type (
 		Title, Alt StringRenderable
 	}
 	Blockquote struct {
+		Attributes
 		QuoteText, Author, Source StringRenderable
 	}
 	HorizontalRule struct{}
@@ -477,6 +480,10 @@ type (
 	}
 	Container interface {
 		Append(r Renderable)
+	}
+
+	MakeQuotesVisitor struct {
+		MakeGenVisitor
 	}
 )
 
@@ -982,6 +989,25 @@ func (a *HtmlAbstract) htmlAbstract(v *MakeGenVisitor, h *parser.Html, entering 
 }
 
 func (v *MakeGenVisitor) LeaveBlog(b *parser.Blog) {
+}
+
+func (v *MakeQuotesVisitor) VisitBlockQuote(b *parser.BlockQuote) {
+	text := stringRenderableFromTextRich(b.QuoteText)
+	author := stringRenderableFromTextSimple(b.Author)
+	source := stringRenderableFromTextRich(b.Source)
+	hashID := sha256.New()
+	hashID.Write([]byte(text.Text()))
+	hashID.Write([]byte(author.Text()))
+	hashID.Write([]byte(source.Text()))
+	v.currentContainer.Append(Blockquote{
+		Attributes: Attributes{
+			"id": base64.StdEncoding.EncodeToString(hashID.Sum(nil)),
+			"class": "quote",
+		},
+		QuoteText: text,
+		Author: author,
+		Source: source,
+	})
 }
 
 func stringFromTextSimple(t parser.TextSimple) string {
