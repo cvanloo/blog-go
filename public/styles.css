@@ -757,6 +757,7 @@ figure.quote {
     a.link-to-quote {
         position: absolute;
         right: 0;
+        bottom: 0;
         text-decoration: none;
         color: light-dark(#111, #B8B9B4);
         opacity: .25;
