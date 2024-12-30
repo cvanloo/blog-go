@@ -1,6 +1,14 @@
 <figure>
     <blockquote>{{Render .QuoteText}}</blockquote>
+    {{if .Author}}
+    {{if .Source}}
     <figcaption>
         {{Render .Author}}, <cite>{{Render .Source}}</cite>
     </figcaption>
+    {{else}}
+    <figcaption>
+        {{Render .Author}}
+    </figcaption>
+    {{end}}
+    {{end}}
 </figure>
