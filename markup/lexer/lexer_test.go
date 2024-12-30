@@ -729,7 +729,7 @@ Where are you going?
 Hello, [世界][^1]
 How are you doing?
 
-[^1]: 世界 (Sekai) is the Japanese word for 'World'
+[^1]: 世界 (Sekai) is the Japanese word for `+"`"+`World'
 `,
 			expected: []lexer.Token{
 				{Type: lexer.TokenSection1Begin, Text: "#"},
@@ -744,11 +744,10 @@ How are you doing?
 				{Type: lexer.TokenText, Text: "\nHow are you doing?"},
 				{Type: lexer.TokenParagraphEnd, Text: ""},
 				{Type: lexer.TokenSidenoteDef, Text: "1"},
-				{Type: lexer.TokenText, Text: "世界 (Sekai) is the Japanese word for 'World'"},
-				//{Type: lexer.TokenText, Text: "世界 (Sekai) is the Japanese word for "},
-				//{Type: lexer.TokenEnquoteSingleBegin, Text: "`"},
-				//{Type: lexer.TokenText, Text: "World"},
-				//{Type: lexer.TokenEnquoteSingleEnd, Text: "'"},
+				{Type: lexer.TokenText, Text: "世界 (Sekai) is the Japanese word for "},
+				{Type: lexer.TokenEnquoteSingleBegin, Text: "`"},
+				{Type: lexer.TokenText, Text: "World"},
+				{Type: lexer.TokenEnquoteSingleEnd, Text: "'"},
 				{Type: lexer.TokenSidenoteDefEnd, Text: ""},
 				{Type: lexer.TokenSection1End, Text: ""},
 				{Type: lexer.TokenEOF, Text: ""},
@@ -762,7 +761,7 @@ How are you doing?
 Hello, 世界[^1]
 How are you doing?
 
-[^1]: 世界 (Sekai) is the Japanese word for 'World'
+[^1]: 世界 (Sekai) is the Japanese word for `+"`"+`World'
 `,
 			expected: []lexer.Token{
 				{Type: lexer.TokenSection1Begin, Text: "#"},
@@ -777,11 +776,10 @@ How are you doing?
 				{Type: lexer.TokenText, Text: "\nHow are you doing?"},
 				{Type: lexer.TokenParagraphEnd, Text: ""},
 				{Type: lexer.TokenSidenoteDef, Text: "1"},
-				{Type: lexer.TokenText, Text: "世界 (Sekai) is the Japanese word for 'World'"},
-				//{Type: lexer.TokenText, Text: "世界 (Sekai) is the Japanese word for "},
-				//{Type: lexer.TokenEnquoteSingleBegin, Text: "`"},
-				//{Type: lexer.TokenText, Text: "World"},
-				//{Type: lexer.TokenEnquoteSingleEnd, Text: "'"},
+				{Type: lexer.TokenText, Text: "世界 (Sekai) is the Japanese word for "},
+				{Type: lexer.TokenEnquoteSingleBegin, Text: "`"},
+				{Type: lexer.TokenText, Text: "World"},
+				{Type: lexer.TokenEnquoteSingleEnd, Text: "'"},
 				{Type: lexer.TokenSidenoteDefEnd, Text: ""},
 				{Type: lexer.TokenSection1End, Text: ""},
 				{Type: lexer.TokenEOF, Text: ""},
@@ -808,7 +806,10 @@ How are you doing?
 				{Type: lexer.TokenText, Text: "("},
 				{Type: lexer.TokenText, Text: "Sekai"},
 				{Type: lexer.TokenText, Text: ")"},
-				{Type: lexer.TokenText, Text: " is the Japanese word for 'World'"},
+				{Type: lexer.TokenText, Text: " is the Japanese word for "},
+				{Type: lexer.TokenEnquoteSingleBegin, Text: "`"},
+				{Type: lexer.TokenText, Text: "World"},
+				{Type: lexer.TokenEnquoteSingleEnd, Text: "'"},
 				{Type: lexer.TokenLinkableEnd, Text: ""},
 				{Type: lexer.TokenText, Text: "\nHow are you doing?\n"},
 				{Type: lexer.TokenParagraphEnd, Text: ""},
@@ -821,7 +822,7 @@ How are you doing?
 			source: `
 # Section 1
 
-Hello, 世界(^世界 \(Sekai\) is the Japanese word for 'World')
+Hello, 世界(^世界 \(Sekai\) is the Japanese word for `+"`"+`World')
 How are you doing?
 `,
 			expected: []lexer.Token{
@@ -838,6 +839,9 @@ How are you doing?
 				{Type: lexer.TokenText, Text: "Sekai"},
 				{Type: lexer.TokenText, Text: ")"},
 				{Type: lexer.TokenText, Text: " is the Japanese word for 'World'"},
+				{Type: lexer.TokenEnquoteSingleBegin, Text: "`"},
+				{Type: lexer.TokenText, Text: "World"},
+				{Type: lexer.TokenEnquoteSingleEnd, Text: "'"},
 				{Type: lexer.TokenLinkableEnd, Text: ""},
 				{Type: lexer.TokenText, Text: "\nHow are you doing?\n"},
 				{Type: lexer.TokenParagraphEnd, Text: ""},
@@ -975,7 +979,9 @@ This looks like a [link,] doesn't it?
 				{Type: lexer.TokenText, Text: "link,"},
 				{Type: lexer.TokenLinkHref, Text: ""},
 				{Type: lexer.TokenLinkableEnd, Text: ""},
-				{Type: lexer.TokenText, Text: " doesn't it?"},
+				{Type: lexer.TokenText, Text: " doesn"},
+				{Type: lexer.TokenAmpSpecial, Text: "'"},
+				{Type: lexer.TokenText, Text: "t it?"},
 				{Type: lexer.TokenParagraphEnd, Text: ""},
 				{Type: lexer.TokenSection2Begin, Text: "##"},
 				{Type: lexer.TokenText, Text: "Section 2"},
@@ -986,7 +992,9 @@ This looks like a [link,] doesn't it?
 				{Type: lexer.TokenText, Text: "link,"},
 				{Type: lexer.TokenLinkHref, Text: ""},
 				{Type: lexer.TokenLinkableEnd, Text: ""},
-				{Type: lexer.TokenText, Text: " doesn't it?"},
+				{Type: lexer.TokenText, Text: " doesn"},
+				{Type: lexer.TokenAmpSpecial, Text: "'"},
+				{Type: lexer.TokenText, Text: "t it?"},
 				{Type: lexer.TokenParagraphEnd, Text: ""},
 				{Type: lexer.TokenSection2End, Text: ""},
 				{Type: lexer.TokenSection1End, Text: ""},
@@ -1236,7 +1244,9 @@ Btw, it's from this book:
 				{Type: lexer.TokenText, Text: "I remembered the book title too"},
 				{Type: lexer.TokenSection2Content, Text: ""},
 				{Type: lexer.TokenParagraphBegin, Text: ""},
-				{Type: lexer.TokenText, Text: "Btw, it's from this book:"},
+				{Type: lexer.TokenText, Text: "Btw, it"},
+				{Type: lexer.TokenAmpSpecial, Text: "'"},
+				{Type: lexer.TokenText, Text: "s from this book:"},
 				{Type: lexer.TokenParagraphEnd, Text: ""},
 				{Type: lexer.TokenBlockquoteBegin, Text: ""},
 				{Type: lexer.TokenText, Text: "If we stop dreaming big dreams, if we stop looking for a greater purpose,\n"},

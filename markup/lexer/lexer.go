@@ -185,7 +185,7 @@ type Predicate func() bool
 
 var (
 	AmpSpecials      = []string{"&hyphen;", "&dash;", "&ndash;", "&mdash;", "&ldquo;", "&rdquo;", "&prime;", "&Prime;", "&tprime;", "&qprime;", "&bprime;", "&laquo;", "&raquo;", "&nbsp;"}
-	AmpShortSpecials = []string{"---", "--", "...", "…", "~", "\u00A0"} // list longer char sequences first (--- must come before -- and -)
+	AmpShortSpecials = []string{"---", "--", "...", "…", "~", "\u00A0", "'"} // list longer char sequences first (--- must come before -- and -)
 	AmpAllSpecials   = append(AmpSpecials, AmpShortSpecials...)
 )
 

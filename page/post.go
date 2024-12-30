@@ -295,6 +295,8 @@ const (
 	AmpEmDash EscapedString = "&mdash;"
 	AmpEnDash EscapedString = "&ndash;"
 	AmpHyphen EscapedString = "&hyphen;"
+	AmpLeftSingleQuote EscapedString = "&lsquo;"
+	AmpRightSingleQuoteOrApostrophe EscapedString = "&rsquo;"
 	AmpLeftDoubleQuote EscapedString = "&ldquo;"
 	AmpRightDoubleQuote EscapedString = "&rdquo;"
 	AmpLeftAngledQuote EscapedString = "&laquo;"
@@ -1117,6 +1119,10 @@ func getAmpSpecial(s string) EscapedString {
 		return AmpLeftAngledQuote
 	case "&raquo;":
 		return AmpRightAngledQuote
+	case "&rsquo;", "'":
+		return AmpRightSingleQuoteOrApostrophe
+	case "&lsquo;":
+		return AmpLeftSingleQuote
 	}
 }
 
