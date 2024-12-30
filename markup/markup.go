@@ -451,7 +451,7 @@ func newTemplateGenProcessor(outDir string, t templatePreProcessor) templateGenP
 
 func (p templateGenProcessor) Run() (runErr error) {
 	for _, post := range p.posts {
-		if post.MakePublish {
+		if post.MakePublish || os.Getenv("TESTING") == "1" {
 			out, err := os.Create(filepath.Join(p.outDir, fmt.Sprintf("%s.html", post.UrlPath))) // @todo: make UrlPath custom type
 			if err != nil {
 				runErr = errors.Join(runErr, err)
