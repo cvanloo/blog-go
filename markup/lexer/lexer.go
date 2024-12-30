@@ -1538,6 +1538,7 @@ func (lx *Lexer) LexBlockQuotes() {
 		}
 		lx.LexTextUntil("\n")
 		lx.Expect("\n")
+		lx.Emit(TokenText) // @todo: better to include the newline in LexTextUntil... LexTextUntilAndIncluding?
 		lx.SkipWhitespaceNoNewLine()
 	}
 	lx.Emit(TokenBlockquoteEnd)
