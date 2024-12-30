@@ -1550,7 +1550,7 @@ func (lx *Lexer) LexBlockQuotes() {
 			// @todo: what we actually want is a LexTextUntilAndIncluding("\n")
 			var nlFound bool
 			lx.LexTextUntilPred(func() bool {
-				if lx.Peek1() == '\n' {
+				if !nlFound && lx.Peek1() == '\n' {
 					nlFound = true
 					return false
 				}

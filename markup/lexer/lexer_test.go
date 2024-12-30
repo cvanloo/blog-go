@@ -1330,6 +1330,30 @@ Btw, it's from this book:
 				{Type: lexer.TokenEOF, Text: ""},
 			},
 		},
+		{
+			name: "Two blockquotes without attribution after another",
+			source: `
+# Quotes and Citations
+
+> First block quote
+
+> Second block quote
+`,
+			expected: []lexer.Token{
+				{Type: lexer.TokenSection1Begin, Text: "#"},
+				{Type: lexer.TokenText, Text: "Quotes and Citations"},
+				{Type: lexer.TokenSection1Content, Text: ""},
+				{Type: lexer.TokenBlockquoteBegin, Text: ""},
+				{Type: lexer.TokenText, Text: "First block quote\n"},
+				{Type: lexer.TokenBlockquoteEnd, Text: ""},
+				{Type: lexer.TokenBlockquoteBegin, Text: ""},
+				{Type: lexer.TokenText, Text: "Second block quote\n"},
+				{Type: lexer.TokenBlockquoteEnd, Text: ""},
+				{Type: lexer.TokenSection1End, Text: ""},
+				{Type: lexer.TokenEOF, Text: ""},
+			},
+		},
+		// @todo: and also test the other combinations (with \, with attribution, both)
 	}
 	RunTests(t, testCases)
 }
