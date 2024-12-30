@@ -778,6 +778,7 @@ func Parse(lx LexResult) (blog *Blog, err error) {
 				state = ParsingImage
 			case lexer.TokenBlockquoteBegin:
 				levels.Push(&Level{ReturnToState: ParsingSection1Content})
+				currentBlockquote = &BlockQuote{}
 				state = ParsingBlockquote
 			case lexer.TokenHtmlTagOpen:
 				levels.Push(&Level{ReturnToState: ParsingSection1Content, Html: &Html{Name: lexeme.Text}})
@@ -856,6 +857,7 @@ func Parse(lx LexResult) (blog *Blog, err error) {
 				state = ParsingImage
 			case lexer.TokenBlockquoteBegin:
 				levels.Push(&Level{ReturnToState: ParsingSection2Content})
+				currentBlockquote = &BlockQuote{}
 				state = ParsingBlockquote
 			case lexer.TokenHtmlTagOpen:
 				levels.Push(&Level{ReturnToState: ParsingSection2Content, Html: &Html{Name: lexeme.Text}})
@@ -1319,6 +1321,33 @@ func Parse(lx LexResult) (blog *Blog, err error) {
 				if !(isTextNode(lexeme) && level.TextRich.Append(newTextNode(lexeme))) {
 					err = errors.Join(err, newError(lexeme, state, ErrInvalidToken))
 				}
+			case lexer.TokenEmphasisBegin:
+				levels.Push(&Level{ReturnToState: ParsingBlockquote})
+				state = ParsingEmphasis
+			case lexer.TokenStrongBegin:
+				levels.Push(&Level{ReturnToState: ParsingBlockquote})
+				state = ParsingStrong
+			case lexer.TokenEmphasisStrongBegin:
+				levels.Push(&Level{ReturnToState: ParsingBlockquote})
+				state = ParsingEmphasisStrong
+			case lexer.TokenEnquoteDoubleBegin:
+				levels.Push(&Level{ReturnToState: ParsingBlockquote})
+				state = ParsingEnquoteDouble
+			case lexer.TokenEnquoteAngledBegin:
+				levels.Push(&Level{ReturnToState: ParsingBlockquote})
+				state = ParsingEnquoteAngled
+			case lexer.TokenStrikethroughBegin:
+				levels.Push(&Level{ReturnToState: ParsingBlockquote})
+				state = ParsingStrikethrough
+			case lexer.TokenHtmlTagOpen:
+				levels.Push(&Level{ReturnToState: ParsingBlockquote, Html: &Html{Name: lexeme.Text}})
+				state = ParsingHtmlElement
+			case lexer.TokenLinkableBegin:
+				levels.Push(&Level{ReturnToState: ParsingBlockquote})
+				state = ParsingLinkable
+			case lexer.TokenMarkerBegin:
+				levels.Push(&Level{ReturnToState: ParsingBlockquote})
+				state = ParsingMarker
 			case lexer.TokenBlockquoteAttrAuthor:
 				currentBlockquote.QuoteText = level.TextRich
 				level.Clear()
