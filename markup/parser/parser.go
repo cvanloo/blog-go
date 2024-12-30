@@ -66,6 +66,7 @@ type (
 		VisitBlockQuote(*BlockQuote)
 		VisitCodeBlock(*CodeBlock)
 		VisitHorizontalRule(*HorizontalRule)
+		VisitLineBreak(*LineBreak)
 		VisitHtml(*Html)
 		LeaveHtml(*Html)
 	}
@@ -94,14 +95,16 @@ type (
 		Alt, Title TextSimple
 	}
 	BlockQuote struct {
-		QuoteText      TextRich
-		Author, Source TextSimple
+		QuoteText TextRich
+		Author    TextSimple
+		Source    TextRich
 	}
 	CodeBlock struct {
 		Attributes
 		Lines []string
 	}
 	HorizontalRule struct{}
+	LineBreak      struct{}
 	EnquoteDouble  TextRich
 	EnquoteAngled  TextRich
 	Emphasis       TextRich
@@ -113,9 +116,9 @@ type (
 	Text           string
 	AmpSpecial     string
 	Linkify        string
-	Html struct {
+	Html           struct {
 		Attributes
-		Name string
+		Name    string
 		Content []Node
 	}
 
@@ -176,7 +179,7 @@ func (t *TextRich) Append(n Node) bool {
 	switch n.(type) {
 	default:
 		return false
-	case *Text, *AmpSpecial, *Emphasis, *Strong, *EmphasisStrong, *Link, *Sidenote, *Strikethrough, *Marker, *Mono, *Linkify, *EnquoteDouble, *EnquoteAngled:
+	case *Text, *AmpSpecial, *Emphasis, *Strong, *EmphasisStrong, *Link, *Sidenote, *Strikethrough, *Marker, *Mono, *Linkify, *EnquoteDouble, *EnquoteAngled, *LineBreak:
 		*t = append(*t, n)
 		return true
 	}
@@ -186,7 +189,7 @@ func isTextNode(token lexer.Token) bool {
 	switch token.Type {
 	default:
 		return false
-	case lexer.TokenMono, lexer.TokenText, lexer.TokenAmpSpecial, lexer.TokenLinkify:
+	case lexer.TokenMono, lexer.TokenText, lexer.TokenAmpSpecial, lexer.TokenLinkify, lexer.TokenLineBreak:
 		// @todo: what else is a text node?
 		return true
 	}
@@ -204,6 +207,8 @@ func newTextNode(lexeme lexer.Token) Node {
 		return AsRef(Linkify(lexeme.Text))
 	case lexer.TokenAmpSpecial:
 		return AsRef(AmpSpecial(lexeme.Text))
+	case lexer.TokenLineBreak:
+		return AsRef(LineBreak{})
 	}
 	panic("unreachable")
 }
@@ -303,6 +308,10 @@ func (h *HorizontalRule) Accept(v Visitor) {
 	v.VisitHorizontalRule(h)
 }
 
+func (h *LineBreak) Accept(v Visitor) {
+	v.VisitLineBreak(h)
+}
+
 func (h *Html) Accept(v Visitor) {
 	v.VisitHtml(h)
 	for _, c := range h.Content {
@@ -378,6 +387,9 @@ func (v NopVisitor) VisitCodeBlock(*CodeBlock) {
 }
 
 func (v NopVisitor) VisitHorizontalRule(*HorizontalRule) {
+}
+
+func (v NopVisitor) VisitLineBreak(*LineBreak) {
 }
 
 func (v NopVisitor) VisitHtml(*Html) {
@@ -1377,11 +1389,14 @@ func Parse(lx LexResult) (blog *Blog, err error) {
 		case ParsingBlockquoteSource:
 			switch lexeme.Type {
 			default:
-				if !(isTextNode(lexeme) && level.TextSimple.Append(newTextNode(lexeme))) {
+				if !(isTextNode(lexeme) && level.TextRich.Append(newTextNode(lexeme))) {
 					err = errors.Join(err, newError(lexeme, state, ErrInvalidToken))
 				}
+			case lexer.TokenLinkableBegin:
+				levels.Push(&Level{ReturnToState: ParsingBlockquoteSource})
+				state = ParsingLinkable
 			case lexer.TokenBlockquoteAttrEnd:
-				currentBlockquote.Source = level.TextSimple
+				currentBlockquote.Source = level.TextRich
 				level.Clear()
 				state = ParsingBlockquoteAfterAttrEnd
 			}

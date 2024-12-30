@@ -1175,8 +1175,8 @@ I forgot who this quote is from:
 				{Type: lexer.TokenText, Text: "I forgot who this quote is from:\n"},
 				{Type: lexer.TokenParagraphEnd, Text: ""},
 				{Type: lexer.TokenBlockquoteBegin, Text: ""},
-				{Type: lexer.TokenText, Text: "If we stop dreaming big dreams, if we stop looking for a greater purpose,"},
-				{Type: lexer.TokenText, Text: "then we may as well be machines ourselves."},
+				{Type: lexer.TokenText, Text: "If we stop dreaming big dreams, if we stop looking for a greater purpose,\n"},
+				{Type: lexer.TokenText, Text: "then we may as well be machines ourselves.\n"},
 				{Type: lexer.TokenBlockquoteEnd, Text: ""},
 				{Type: lexer.TokenParagraphBegin, Text: ""},
 				{Type: lexer.TokenAmpSpecial, Text: "..."},
@@ -1205,8 +1205,8 @@ Oh, I remember now:
 				{Type: lexer.TokenText, Text: "Oh, I remember now:"},
 				{Type: lexer.TokenParagraphEnd, Text: ""},
 				{Type: lexer.TokenBlockquoteBegin, Text: ""},
-				{Type: lexer.TokenText, Text: "If we stop dreaming big dreams, if we stop looking for a greater purpose,"},
-				{Type: lexer.TokenText, Text: "then we may as well be machines ourselves."},
+				{Type: lexer.TokenText, Text: "If we stop dreaming big dreams, if we stop looking for a greater purpose,\n"},
+				{Type: lexer.TokenText, Text: "then we may as well be machines ourselves.\n"},
 				{Type: lexer.TokenBlockquoteAttrAuthor, Text: ""},
 				{Type: lexer.TokenText, Text: "Garry Kasparov"},
 				{Type: lexer.TokenBlockquoteAttrEnd, Text: ""},
@@ -1239,8 +1239,8 @@ Btw, it's from this book:
 				{Type: lexer.TokenText, Text: "Btw, it's from this book:"},
 				{Type: lexer.TokenParagraphEnd, Text: ""},
 				{Type: lexer.TokenBlockquoteBegin, Text: ""},
-				{Type: lexer.TokenText, Text: "If we stop dreaming big dreams, if we stop looking for a greater purpose,"},
-				{Type: lexer.TokenText, Text: "then we may as well be machines ourselves."},
+				{Type: lexer.TokenText, Text: "If we stop dreaming big dreams, if we stop looking for a greater purpose,\n"},
+				{Type: lexer.TokenText, Text: "then we may as well be machines ourselves.\n"},
 				{Type: lexer.TokenBlockquoteAttrAuthor, Text: ""},
 				{Type: lexer.TokenText, Text: "Garry Kasparov"},
 				{Type: lexer.TokenBlockquoteAttrSource, Text: ""},
@@ -1272,6 +1272,59 @@ Btw, it's from this book:
 				{Type: lexer.TokenEnquoteDoubleBegin, Text: "\""},
 				{Type: lexer.TokenText, Text: "fundamentally flawed."},
 				{Type: lexer.TokenEnquoteDoubleEnd, Text: "\""},
+				{Type: lexer.TokenText, Text: "\n"},
+				{Type: lexer.TokenBlockquoteEnd, Text: ""},
+				{Type: lexer.TokenSection1End, Text: ""},
+				{Type: lexer.TokenEOF, Text: ""},
+			},
+		},
+		{
+			name: "Blockquote containing empty lines",
+			source: `
+# Quotes and Citations
+
+> Free of virtue
+>
+> Free of sin
+>
+> Free the madness that lies within
+`,
+			expected: []lexer.Token{
+				{Type: lexer.TokenSection1Begin, Text: "#"},
+				{Type: lexer.TokenText, Text: "Quotes and Citations"},
+				{Type: lexer.TokenSection1Content, Text: ""},
+				{Type: lexer.TokenBlockquoteBegin, Text: ""},
+				{Type: lexer.TokenText, Text: "Free of virtue\n"},
+				{Type: lexer.TokenLineBreak, Text: ""},
+				{Type: lexer.TokenText, Text: "Free of sin\n"},
+				{Type: lexer.TokenLineBreak, Text: ""},
+				{Type: lexer.TokenText, Text: "Free the madness that lies within\n"},
+				{Type: lexer.TokenBlockquoteEnd, Text: ""},
+				{Type: lexer.TokenSection1End, Text: ""},
+				{Type: lexer.TokenEOF, Text: ""},
+			},
+		},
+		{
+			name: "Blockquote containing manual line breaks",
+			source: `
+# Quotes and Citations
+
+> Free of virtue\
+> Free of sin \
+> Free the madness that lies within
+`,
+			expected: []lexer.Token{
+				{Type: lexer.TokenSection1Begin, Text: "#"},
+				{Type: lexer.TokenText, Text: "Quotes and Citations"},
+				{Type: lexer.TokenSection1Content, Text: ""},
+				{Type: lexer.TokenBlockquoteBegin, Text: ""},
+				{Type: lexer.TokenText, Text: "Free of virtue"},
+				{Type: lexer.TokenLineBreak, Text: ""},
+				{Type: lexer.TokenText, Text: "\n"},
+				{Type: lexer.TokenText, Text: "Free of sin "}, // extra space not a problem
+				{Type: lexer.TokenLineBreak, Text: ""},
+				{Type: lexer.TokenText, Text: "\n"},
+				{Type: lexer.TokenText, Text: "Free the madness that lies within\n"},
 				{Type: lexer.TokenBlockquoteEnd, Text: ""},
 				{Type: lexer.TokenSection1End, Text: ""},
 				{Type: lexer.TokenEOF, Text: ""},

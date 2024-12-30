@@ -133,6 +133,7 @@ type (
 		QuoteText, Author, Source StringRenderable
 	}
 	HorizontalRule struct{}
+	LineBreak struct{}
 	RelevantBox struct {
 		Heading StringRenderable
 		Articles []ReadingItem
@@ -237,6 +238,14 @@ func (m Marker) Text() string {
 
 func (m Marker) Render() (template.HTML, error) {
 	return template.HTML(m.Text()), nil
+}
+
+func (l LineBreak) Text() string {
+	return "<br>"
+}
+
+func (l LineBreak) Render() (template.HTML, error) {
+	return template.HTML(l.Text()), nil
 }
 
 func (l Link) Render() (template.HTML, error) {
@@ -719,6 +728,10 @@ func (v *MakeGenVisitor) VisitStrikethrough(s *parser.Strikethrough) {
 	})
 }
 
+func (v *MakeGenVisitor) VisitLineBreak(h *parser.LineBreak) {
+	v.currentSOC = append(v.currentSOC, LineBreak{})
+}
+
 func (v *MakeGenVisitor) LeaveParagraph(p *parser.Paragraph) {
 	v.currentParagraph.Content = v.currentSOC
 	v.currentSOC = nil
@@ -730,7 +743,7 @@ func (v *MakeGenVisitor) VisitBlockQuote(b *parser.BlockQuote) {
 	v.currentContainer.Append(Blockquote{
 		QuoteText: stringRenderableFromTextRich(b.QuoteText),
 		Author: stringRenderableFromTextSimple(b.Author),
-		Source: stringRenderableFromTextSimple(b.Source),
+		Source: stringRenderableFromTextRich(b.Source),
 	})
 }
 
@@ -1041,6 +1054,8 @@ func stringRenderableFromTextRich(t parser.TextRich) StringOnlyContent {
 			soc = append(soc, EnquoteDouble{stringRenderableFromTextRich(parser.TextRich(*e))})
 		case *parser.EnquoteAngled:
 			soc = append(soc, EnquoteAngled{stringRenderableFromTextRich(parser.TextRich(*e))})
+		case *parser.LineBreak:
+			soc = append(soc, LineBreak{})
 		}
 	}
 	return soc

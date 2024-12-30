@@ -52,6 +52,7 @@ const (
 	TokenParagraphBegin
 	TokenParagraphEnd
 	TokenText
+	TokenLineBreak
 	TokenAmpSpecial
 	TokenMono
 	TokenEmphasisBegin
@@ -172,7 +173,7 @@ func (lx *Lexer) IsEscape() bool {
 	switch lx.Peek1() {
 	default:
 		return false
-	case '\\', '!', '`', '*', '_', '{', '}', '<', '>', '[', ']', '(', ')', '|', '#', '+', '-', '.':
+	case '\\', '!', '`', '*', '_', '{', '}', '<', '>', '[', ']', '(', ')', '|', '#', '+', '-', '.', '\n':
 		return true
 	case '&':
 		ok, _ := lx.IsAmpSpecial()
@@ -1211,6 +1212,8 @@ func (lx *Lexer) LexEscape() {
 	case '\\', '!', '`', '*', '_', '{', '}', '<', '>', '[', ']', '(', ')', '|', '#', '+', '-', '.', '&':
 		lx.Next1()
 		lx.Emit(TokenText)
+	case '\n':
+		lx.Emit(TokenLineBreak) // do not skip over \n since other lex functions still expect that ???? @todo
 	default:
 		panic("unreachable (programmer messed up)")
 	}
@@ -1263,7 +1266,7 @@ func (lx *Lexer) LexTextUntil(match string) {
 			//} else if lx.Peek1() == '`' {
 			//	lx.EmitIfNonEmpty(TokenText)
 			//	lx.LexEnquoteSingle()
-		} else if lx.Peek1() == '\\' {
+		} else if lx.IsEscape() {
 			lx.EmitIfNonEmpty(TokenText)
 			lx.LexEscape()
 		} else {
@@ -1320,7 +1323,7 @@ func (lx *Lexer) LexTextUntilSpec(spec CharSpec) {
 			//} else if lx.Peek1() == '`' {
 			//	lx.EmitIfNonEmpty(TokenText)
 			//	lx.LexEnquoteSingle()
-		} else if lx.Peek1() == '\\' {
+		} else if lx.IsEscape() {
 			lx.EmitIfNonEmpty(TokenText)
 			lx.LexEscape()
 		} else {
@@ -1377,7 +1380,7 @@ func (lx *Lexer) LexTextUntilPred(pred Predicate) {
 			//} else if lx.Peek1() == '`' {
 			//	lx.EmitIfNonEmpty(TokenText)
 			//	lx.LexEnquoteSingle()
-		} else if lx.Peek1() == '\\' {
+		} else if lx.IsEscape() {
 			lx.EmitIfNonEmpty(TokenText)
 			lx.LexEscape()
 		} else {
@@ -1520,12 +1523,16 @@ func (lx *Lexer) LexBlockQuotes() {
 			lx.SkipNext(2)
 			lx.Emit(TokenBlockquoteAttrAuthor)
 			lx.SkipWhitespaceNoNewLine()
-			lx.LexTextUntilSpec(CharInAny(",\n"))
+			lx.LexTextUntilSpec(CharInAny(",\n")) // @todo: actually, would be better to do LexParagraph until -- (attribution)
 			if lx.Peek1() == ',' {
 				lx.SkipNext1()
 				lx.SkipWhitespaceNoNewLine()
 				lx.Emit(TokenBlockquoteAttrSource)
-				lx.LexTextUntil("\n")
+				if lx.Peek1() == '[' {
+					lx.LexLinkOrSidenote() // @todo: actually only LexLink
+				} else {
+					lx.LexTextUntil("\n")
+				}
 			}
 			lx.Emit(TokenBlockquoteAttrEnd)
 			lx.ExpectAndSkip("\n")
@@ -1536,9 +1543,20 @@ func (lx *Lexer) LexBlockQuotes() {
 			}
 			return
 		}
-		lx.LexTextUntil("\n")
-		lx.Expect("\n")
-		lx.Emit(TokenText) // @todo: better to include the newline in LexTextUntil... LexTextUntilAndIncluding?
+		if lx.Peek1() == '\n' {
+			lx.Emit(TokenLineBreak)
+			lx.SkipNext1()
+		} else {
+			// @todo: what we actually want is a LexTextUntilAndIncluding("\n")
+			var nlFound bool
+			lx.LexTextUntilPred(func() bool {
+				if lx.Peek1() == '\n' {
+					nlFound = true
+					return false
+				}
+				return nlFound
+			})
+		}
 		lx.SkipWhitespaceNoNewLine()
 	}
 	lx.Emit(TokenBlockquoteEnd)
