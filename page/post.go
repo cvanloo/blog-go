@@ -1037,6 +1037,10 @@ func stringRenderableFromTextRich(t parser.TextRich) StringOnlyContent {
 			soc = append(soc, Link{
 				Href: string(*e),
 			})
+		case *parser.EnquoteDouble:
+			soc = append(soc, EnquoteDouble{stringRenderableFromTextRich(parser.TextRich(*e))})
+		case *parser.EnquoteAngled:
+			soc = append(soc, EnquoteAngled{stringRenderableFromTextRich(parser.TextRich(*e))})
 		}
 	}
 	return soc
