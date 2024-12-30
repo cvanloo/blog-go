@@ -790,7 +790,7 @@ How are you doing?
 			source: `
 # Section 1
 
-Hello, [世界](^世界 \(Sekai\) is the Japanese word for 'World')
+Hello, [世界](^世界 \(Sekai\) is the Japanese word for `+"`"+`World')
 How are you doing?
 `,
 			expected: []lexer.Token{
@@ -838,7 +838,7 @@ How are you doing?
 				{Type: lexer.TokenText, Text: "("},
 				{Type: lexer.TokenText, Text: "Sekai"},
 				{Type: lexer.TokenText, Text: ")"},
-				{Type: lexer.TokenText, Text: " is the Japanese word for 'World'"},
+				{Type: lexer.TokenText, Text: " is the Japanese word for "},
 				{Type: lexer.TokenEnquoteSingleBegin, Text: "`"},
 				{Type: lexer.TokenText, Text: "World"},
 				{Type: lexer.TokenEnquoteSingleEnd, Text: "'"},

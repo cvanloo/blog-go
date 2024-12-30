@@ -1185,13 +1185,10 @@ func (lx *Lexer) LexText() {
 			lx.LexLinkifyOrHtmlElement()
 		} else if lx.Peek1() == '`' {
 			lx.EmitIfNonEmpty(TokenText)
-			lx.LexMono()
+			lx.LexMonoOrEnquoteSingle()
 		} else if lx.Peek1() == '"' {
 			lx.EmitIfNonEmpty(TokenText)
 			lx.LexEnquoteDouble()
-			//} else if lx.Peek1() == '`' {
-			//	lx.EmitIfNonEmpty(TokenText)
-			//	lx.LexEnquoteSingle()
 		} else if lx.Peek1() == '[' {
 			lx.EmitIfNonEmpty(TokenText)
 			lx.LexLinkOrSidenote()
@@ -1259,13 +1256,10 @@ func (lx *Lexer) LexTextUntil(match string) {
 			lx.LexLinkify()
 		} else if lx.Peek1() == '`' {
 			lx.EmitIfNonEmpty(TokenText)
-			lx.LexMono()
+			lx.LexMonoOrEnquoteSingle()
 		} else if lx.Peek1() == '"' {
 			lx.EmitIfNonEmpty(TokenText)
 			lx.LexEnquoteDouble()
-			//} else if lx.Peek1() == '`' {
-			//	lx.EmitIfNonEmpty(TokenText)
-			//	lx.LexEnquoteSingle()
 		} else if lx.IsEscape() {
 			lx.EmitIfNonEmpty(TokenText)
 			lx.LexEscape()
@@ -1316,13 +1310,10 @@ func (lx *Lexer) LexTextUntilSpec(spec CharSpec) {
 			lx.LexLinkify()
 		} else if lx.Peek1() == '`' {
 			lx.EmitIfNonEmpty(TokenText)
-			lx.LexMono()
+			lx.LexMonoOrEnquoteSingle()
 		} else if lx.Peek1() == '"' {
 			lx.EmitIfNonEmpty(TokenText)
 			lx.LexEnquoteDouble()
-			//} else if lx.Peek1() == '`' {
-			//	lx.EmitIfNonEmpty(TokenText)
-			//	lx.LexEnquoteSingle()
 		} else if lx.IsEscape() {
 			lx.EmitIfNonEmpty(TokenText)
 			lx.LexEscape()
@@ -1373,13 +1364,10 @@ func (lx *Lexer) LexTextUntilPred(pred Predicate) {
 			lx.LexLinkify()
 		} else if lx.Peek1() == '`' {
 			lx.EmitIfNonEmpty(TokenText)
-			lx.LexMono()
+			lx.LexMonoOrEnquoteSingle()
 		} else if lx.Peek1() == '"' {
 			lx.EmitIfNonEmpty(TokenText)
 			lx.LexEnquoteDouble()
-			//} else if lx.Peek1() == '`' {
-			//	lx.EmitIfNonEmpty(TokenText)
-			//	lx.LexEnquoteSingle()
 		} else if lx.IsEscape() {
 			lx.EmitIfNonEmpty(TokenText)
 			lx.LexEscape()
@@ -1604,6 +1592,40 @@ func (lx *Lexer) LexDefinitionList() {
 		lx.LexTextUntil("\n")
 		lx.ExpectAndSkip("\n")
 		lx.Emit(TokenDefinitionExplanationEnd)
+	}
+}
+
+func (lx *Lexer) IsMonoOrEnquoteSingle() int {
+	Assert(lx.Peek1() == '`', "lexer state confused")
+	lpos := lx.Pos
+	lcon := lx.Consumed
+	defer func() {
+		lx.Pos = lpos
+		lx.Consumed = lcon
+	}()
+	// @todo: this could be a useful function: SearchForwardWithEscaped(r rune)
+	lx.Next1()
+	for !lx.IsEOF() {
+		if lx.Peek1() == '\\' && lx.IsEscape() {
+			lx.Next1()
+		} else if lx.Peek1() == '`' {
+			return 1
+		} else if lx.Peek1() == '\'' {
+			return 2
+		}
+		lx.Next1()
+	}
+	return 0
+}
+
+func (lx *Lexer) LexMonoOrEnquoteSingle() {
+	switch lx.IsMonoOrEnquoteSingle() {
+	default:
+		fallthrough // treat it as an (unclosed) mono by default
+	case 1:
+		lx.LexMono()
+	case 2:
+		lx.LexEnquoteSingle()
 	}
 }
 
