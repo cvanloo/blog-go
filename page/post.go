@@ -369,6 +369,8 @@ func (s *TOCSection) HasNextLevel() bool {
 }
 
 func (s Section) ID() string {
+	// @todo: template.HTMLEscapeString
+	// @todo: also, make sure that toc also gets the right id (it doesn't use MakeUniqueID atm)
 	if id, ok := s.Attributes["id"]; ok {
 		return id
 	}
