@@ -189,7 +189,7 @@ func isTextNode(token lexer.Token) bool {
 	switch token.Type {
 	default:
 		return false
-	case lexer.TokenMono, lexer.TokenText, lexer.TokenAmpSpecial, lexer.TokenLinkify, lexer.TokenLineBreak:
+	case lexer.TokenMono, lexer.TokenText, lexer.TokenAmpSpecial, lexer.TokenLinkify, lexer.TokenLineBreak, lexer.TokenImageAltText, lexer.TokenImageTitle:
 		// @todo: what else is a text node?
 		return true
 	}
@@ -209,6 +209,12 @@ func newTextNode(lexeme lexer.Token) Node {
 		return AsRef(AmpSpecial(lexeme.Text))
 	case lexer.TokenLineBreak:
 		return AsRef(LineBreak{})
+	case lexer.TokenImageAltText:
+		// @todo: really? ^
+		return AsRef(Text(lexeme.Text))
+	case lexer.TokenImageTitle:
+		// @todo: really? ^
+		return AsRef(Text(lexeme.Text))
 	}
 	panic("unreachable")
 }

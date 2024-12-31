@@ -14,6 +14,7 @@ import (
 	"net/url"
 	"crypto/sha256"
 	"encoding/base64"
+	"path/filepath"
 
 	"github.com/cvanloo/blog-go/markup/parser"
 	. "github.com/cvanloo/blog-go/assert"
@@ -369,8 +370,7 @@ func (s *TOCSection) HasNextLevel() bool {
 }
 
 func (s Section) ID() string {
-	// @todo: template.HTMLEscapeString
-	// @todo: also, make sure that toc also gets the right id (it doesn't use MakeUniqueID atm)
+	// @todo: .Text() will give us something like `it&rsquo;s` but we actually need `it's`
 	if id, ok := s.Attributes["id"]; ok {
 		return id
 	}
@@ -771,7 +771,7 @@ func (v *MakeGenVisitor) VisitHorizontalRule(h *parser.HorizontalRule) {
 
 func (v *MakeGenVisitor) VisitImage(i *parser.Image) {
 	v.currentContainer.Append(Image{
-		Name: i.Name,
+		Name: strings.TrimSuffix(filepath.Base(i.Name), filepath.Ext(i.Name)),
 		Alt: stringRenderableFromTextSimple(i.Alt),
 		Title: stringRenderableFromTextSimple(i.Title),
 	})

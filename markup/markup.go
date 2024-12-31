@@ -7,14 +7,16 @@ import (
 	"io/fs"
 	"log"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"slices"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 
-	"github.com/gorilla/feeds"
 	readingtime "github.com/begmaroman/reading-time"
+	"github.com/gorilla/feeds"
 
 	"github.com/cvanloo/blog-go/markup/lexer"
 	"github.com/cvanloo/blog-go/markup/parser"
@@ -95,13 +97,16 @@ func (m Markup) Run() (runErr error) {
 	runErr = errors.Join(runErr, mp.Run())
 
 	// @todo: only continue processing error free sources
-	if runErr != nil {
-		return runErr
-	}
+	//if runErr != nil {
+	//	return runErr
+	//}
 	// @todo: make sure url paths don't collide!
 
 	tp := newTemplatePreProcessor(mp.results)
 	runErr = errors.Join(runErr, tp.Run())
+
+	ap := newAssetsProcessor(m.OutDir, mp.results)
+	runErr = errors.Join(runErr, ap.Run())
 
 	gp := newTemplateGenProcessor(m.OutDir, tp)
 	runErr = errors.Join(runErr, gp.Run())
@@ -155,6 +160,11 @@ type (
 	feedProcessor struct {
 		outDir string
 		posts  []page.Post
+	}
+
+	assetsProcessor struct {
+		outDir string
+		markups []markupResult
 	}
 )
 
@@ -290,7 +300,7 @@ func newTemplatePreProcessor(markups []markupResult) templatePreProcessor {
 		series:  map[string]page.ListingData{},
 		tags:    map[string]page.ListingData{},
 		posts:   map[string]*page.Post{},
-		quotes:   map[string]*page.Post{},
+		quotes:  map[string]*page.Post{},
 		index:   page.IndexData{},
 	}
 }
@@ -328,14 +338,14 @@ func (p *templatePreProcessor) processPost(m markupResult) error {
 	p.posts[templateData.UrlPath] = &templateData
 	if templateData.MakePublish {
 		p.index.Listing = append(p.index.Listing, page.PostItem{
-			Title:      templateData.Title,
-			AltTitle:   templateData.AltTitle,
-			UrlPath:    templateData.UrlPath,
-			Tags:       templateData.Tags,
+			Title:       templateData.Title,
+			AltTitle:    templateData.AltTitle,
+			UrlPath:     templateData.UrlPath,
+			Tags:        templateData.Tags,
 			Description: templateData.Description,
-			Abstract:   templateData.Abstract,
-			EstReading: templateData.EstReading,
-			Published:  templateData.Published,
+			Abstract:    templateData.Abstract,
+			EstReading:  templateData.EstReading,
+			Published:   templateData.Published,
 		})
 		for _, tag := range templateData.Tags {
 			ti := p.tags[string(tag)]
@@ -345,14 +355,14 @@ func (p *templatePreProcessor) processPost(m markupResult) error {
 			}
 			ti.UrlPath = fmt.Sprintf(":%s", tag)
 			ti.Listing = append(ti.Listing, page.PostItem{
-				Title:      templateData.Title,
-				AltTitle:   templateData.AltTitle,
-				UrlPath:    templateData.UrlPath,
-				Tags:       templateData.Tags,
+				Title:       templateData.Title,
+				AltTitle:    templateData.AltTitle,
+				UrlPath:     templateData.UrlPath,
+				Tags:        templateData.Tags,
 				Description: templateData.Description,
-				Abstract:   templateData.Abstract,
-				EstReading: templateData.EstReading,
-				Published:  templateData.Published,
+				Abstract:    templateData.Abstract,
+				EstReading:  templateData.EstReading,
+				Published:   templateData.Published,
 			})
 			p.tags[string(tag)] = ti
 		}
@@ -362,14 +372,14 @@ func (p *templatePreProcessor) processPost(m markupResult) error {
 			si.Title = seriesName
 			si.UrlPath = seriesName.Text()
 			si.Listing = append(si.Listing, page.PostItem{
-				Title:      templateData.Title,
-				AltTitle:   templateData.AltTitle,
-				UrlPath:    templateData.UrlPath,
-				Tags:       templateData.Tags,
+				Title:       templateData.Title,
+				AltTitle:    templateData.AltTitle,
+				UrlPath:     templateData.UrlPath,
+				Tags:        templateData.Tags,
 				Description: templateData.Description,
-				Abstract:   templateData.Abstract,
-				EstReading: templateData.EstReading,
-				Published:  templateData.Published,
+				Abstract:    templateData.Abstract,
+				EstReading:  templateData.EstReading,
+				Published:   templateData.Published,
 			})
 			p.series[seriesName.Text()] = si
 		}
@@ -575,4 +585,117 @@ func (p feedProcessor) Run() (runErr error) {
 	runErr = errors.Join(runErr, os.WriteFile(filepath.Join(p.outDir, "feed.json"), []byte(json), 0666))
 
 	return runErr
+}
+
+func newAssetsProcessor(outDir string, markups []markupResult) assetsProcessor {
+	return assetsProcessor{
+		outDir: outDir,
+		markups: markups,
+	}
+}
+
+type AssetFinderVisitor struct {
+	parser.NopVisitor
+	Assets []string
+}
+
+func (v *AssetFinderVisitor) VisitImage(i *parser.Image) {
+	v.Assets = append(v.Assets, i.Name)
+}
+
+func (p assetsProcessor) Run() (runErr error) {
+	v := &AssetFinderVisitor{}
+	converter, err := convertUtility()
+	if err != nil {
+		return err
+	}
+	extensions := []string{".jxl", ".avif", ".jpg"}
+	outDir := filepath.Join(p.outDir, "/assets/")
+	if err := os.Mkdir(outDir, 0777); err != nil && !errors.Is(err, os.ErrExist) {
+		return err
+	}
+	for _, markup := range p.markups {
+		// @todo: can do this in parallel
+		post := markup.par
+		post.Accept(v)
+		for _, asset := range v.Assets {
+			src := filepath.Join(filepath.Dir(markup.src.Name), asset)
+			fi, err := os.Stat(src)
+			if err != nil {
+				runErr = errors.Join(runErr, fmt.Errorf("%s: missing asset: %v", markup.src.Name, err))
+				continue
+			}
+			if fi.IsDir() {
+				runErr = errors.Join(runErr, fmt.Errorf("%s: asset is a directory, expected an image: %v", markup.src.Name, err))
+				continue
+			}
+			switch converter {
+			case "magick":
+				for _, ext := range extensions {
+					targetBase := strings.ReplaceAll(filepath.Base(asset), filepath.Ext(asset), ext)
+					dst := filepath.Join(p.outDir, "/assets/", targetBase)
+					log.Printf("processing asset: %s -> %s", src, dst)
+					cmd := exec.Command("magick", src, dst)
+					if err := cmd.Start(); err != nil {
+						runErr = errors.Join(runErr, err)
+					} else if err := cmd.Wait(); err != nil {
+						if err, ok := err.(*exec.ExitError); ok {
+							runErr = errors.Join(runErr, fmt.Errorf("magick exited with status: %d", err.ExitCode()))
+						} else {
+							runErr = errors.Join(runErr, err)
+						}
+					}
+				}
+			case "convert":
+				for _, ext := range extensions {
+					targetBase := strings.ReplaceAll(filepath.Base(asset), filepath.Ext(asset), ext)
+					dst := filepath.Join(p.outDir, "/assets/", targetBase)
+					log.Printf("processing asset: %s -> %s", src, dst)
+					cmd := exec.Command("convert", src, dst)
+					if err := cmd.Start(); err != nil {
+						runErr = errors.Join(runErr, err)
+					} else if err := cmd.Wait(); err != nil {
+						if err, ok := err.(*exec.ExitError); ok {
+							runErr = errors.Join(runErr, fmt.Errorf("convert exited with status: %d", err.ExitCode()))
+						} else {
+							runErr = errors.Join(runErr, err)
+						}
+					}
+				}
+			case "ffmpeg":
+				for _, ext := range extensions {
+					targetBase := strings.ReplaceAll(filepath.Base(asset), filepath.Ext(asset), ext)
+					dst := filepath.Join(p.outDir, "/assets/", targetBase)
+					log.Printf("processing asset: %s -> %s", src, dst)
+					cmd := exec.Command("ffmpeg", "-i", src, dst)
+					if err := cmd.Start(); err != nil {
+						runErr = errors.Join(runErr, err)
+					} else if err := cmd.Wait(); err != nil {
+						if err, ok := err.(*exec.ExitError); ok {
+							runErr = errors.Join(runErr, fmt.Errorf("ffmpeg exited with status: %d", err.ExitCode()))
+						} else {
+							runErr = errors.Join(runErr, err)
+						}
+					}
+				}
+			default:
+				panic("unreachable, unless programmer fucked up")
+			}
+		}
+		v.Assets = nil
+	}
+	return runErr
+}
+
+func convertUtility() (string, error) {
+	if _, err := exec.LookPath("magick"); err != nil {
+		if _, err := exec.LookPath("convert"); err != nil {
+			if _, err := exec.LookPath("ffmpeg"); err != nil {
+				return "", errors.New("cannot convert images, since neither magick, convert, nor ffmpeg could be found in $PATH")
+			}
+			return "ffmpeg", nil
+		}
+		return "convert", nil
+	}
+	return "magick", nil
 }
