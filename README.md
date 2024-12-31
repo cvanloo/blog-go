@@ -14,6 +14,7 @@ docker run -it --rm --name blog-go -p 8000:80 docker-blog-go:latest
 - [x] Generator for static pages
 - [x] RSS/Atom feeds
 - [x] Dockerfile
-- [ ] Lexer: alternative syntax for double enquote: ``.....''
+- [ ] Lexer+Parser: alternative syntax for double enquote: ``.....''
+- [ ] Lexer+Parser: allow escaping of ) in links
 - [ ] Auto-deploy?
 - [ ] Webmention

@@ -688,17 +688,21 @@ func (lx *Lexer) LexAsMultiLineStringOrAmpSpecial() {
 // LexContent lexes the top level of a markdown document (after the meta block).
 // At this level only section 1, html tags and term, link, and sidenote definitions are allowed.
 func (lx *Lexer) LexContent() {
+	lx.SkipWhitespace()
 	for !lx.IsEOF() {
-		lx.SkipWhitespace()
 		if lx.Peek1() == '#' {
 			lx.LexSection1()
 		} else if lx.Peek1() == '<' {
 			lx.LexHtmlElement()
 		} else if lx.Peek1() == '[' {
 			lx.LexLinkOrSidenoteDefinition()
+		} else {
+			// @todo: term definitions
+			lx.Error(errors.New("content must start with section 1, html element, or link or sidenote definition"))
+			lx.NextUntilSpec(CharInAny("#<["))
+			lx.Skip()
 		}
-		// @todo: term definitions
-		// @todo: invalid stuff... (don't get stuck here forever)
+		lx.SkipWhitespace()
 	}
 	lx.Emit(TokenEOF)
 }
