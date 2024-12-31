@@ -1431,6 +1431,27 @@ func Parse(lx LexResult) (blog *Blog, err error) {
 				if !(isTextNode(lexeme) && level.TextRich.Append(newTextNode(lexeme))) {
 					err = errors.Join(err, newError(lexeme, state, ErrInvalidToken))
 				}
+			case lexer.TokenEmphasisBegin:
+				levels.Push(&Level{ReturnToState: ParsingSidenoteDefinition})
+				state = ParsingEmphasis
+			case lexer.TokenStrongBegin:
+				levels.Push(&Level{ReturnToState: ParsingSidenoteDefinition})
+				state = ParsingStrong
+			case lexer.TokenEmphasisStrongBegin:
+				levels.Push(&Level{ReturnToState: ParsingSidenoteDefinition})
+				state = ParsingEmphasisStrong
+			case lexer.TokenEnquoteDoubleBegin:
+				levels.Push(&Level{ReturnToState: ParsingSidenoteDefinition})
+				state = ParsingEnquoteDouble
+			case lexer.TokenEnquoteAngledBegin:
+				levels.Push(&Level{ReturnToState: ParsingSidenoteDefinition})
+				state = ParsingEnquoteAngled
+			case lexer.TokenStrikethroughBegin:
+				levels.Push(&Level{ReturnToState: ParsingSidenoteDefinition})
+				state = ParsingStrikethrough
+			case lexer.TokenMarkerBegin:
+				levels.Push(&Level{ReturnToState: ParsingSidenoteDefinition})
+				state = ParsingMarker
 			case lexer.TokenSidenoteDefEnd:
 				blog.SidenoteDefinitions[currentDefinition] = level.TextRich
 				levels.Pop()
