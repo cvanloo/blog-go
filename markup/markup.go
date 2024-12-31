@@ -596,20 +596,36 @@ func newAssetsProcessor(outDir string, markups []markupResult) assetsProcessor {
 
 type AssetFinderVisitor struct {
 	parser.NopVisitor
-	Assets []string
+	Images []string
+	Videos []string
+	Err error
 }
 
 func (v *AssetFinderVisitor) VisitImage(i *parser.Image) {
-	v.Assets = append(v.Assets, i.Name)
+	ext := filepath.Ext(i.Name)
+	switch ext {
+	default:
+		v.Err = errors.Join(v.Err, fmt.Errorf("unrecognized file extension: %s", ext))
+	case ".jpg", ".jpeg", ".jxl", ".avif", ".webp", ".png":
+		v.Images = append(v.Images, i.Name)
+	case ".mp4", ".mkv", ".webm":
+		v.Videos = append(v.Videos, i.Name)
+	}
 }
 
 func (p assetsProcessor) Run() (runErr error) {
+	if os.Getenv("MAKE_ASSETS") != "1" {
+		log.Println("not generating assets, because MAKE_ASSETS=1 is not set")
+		return
+	}
 	v := &AssetFinderVisitor{}
 	converter, err := convertUtility()
 	if err != nil {
 		return err
 	}
-	extensions := []string{".jxl", ".avif", ".jpg"}
+	if _, err := exec.LookPath("ffmpeg"); err != nil {
+		return err
+	}
 	outDir := filepath.Join(p.outDir, "/assets/")
 	if err := os.Mkdir(outDir, 0777); err != nil && !errors.Is(err, os.ErrExist) {
 		return err
@@ -618,7 +634,7 @@ func (p assetsProcessor) Run() (runErr error) {
 		// @todo: can do this in parallel
 		post := markup.par
 		post.Accept(v)
-		for _, asset := range v.Assets {
+		for _, asset := range v.Images {
 			src := filepath.Join(filepath.Dir(markup.src.Name), asset)
 			fi, err := os.Stat(src)
 			if err != nil {
@@ -629,6 +645,7 @@ func (p assetsProcessor) Run() (runErr error) {
 				runErr = errors.Join(runErr, fmt.Errorf("%s: asset is a directory, expected an image: %v", markup.src.Name, err))
 				continue
 			}
+			extensions := []string{".jxl", ".avif", ".jpg"}
 			switch converter {
 			case "magick":
 				for _, ext := range extensions {
@@ -682,7 +699,38 @@ func (p assetsProcessor) Run() (runErr error) {
 				panic("unreachable, unless programmer fucked up")
 			}
 		}
-		v.Assets = nil
+		for _, asset := range v.Videos {
+			extensions := []string{".mp4", ".webm"}
+			src := filepath.Join(filepath.Dir(markup.src.Name), asset)
+			fi, err := os.Stat(src)
+			if err != nil {
+				runErr = errors.Join(runErr, fmt.Errorf("%s: missing asset: %v", markup.src.Name, err))
+				continue
+			}
+			if fi.IsDir() {
+				runErr = errors.Join(runErr, fmt.Errorf("%s: asset is a directory, expected a video: %v", markup.src.Name, err))
+				continue
+			}
+			for _, ext := range extensions {
+				targetBase := strings.ReplaceAll(filepath.Base(asset), filepath.Ext(asset), ext)
+				dst := filepath.Join(p.outDir, "/assets/", targetBase)
+				log.Printf("processing asset: %s -> %s", src, dst)
+				cmd := exec.Command("ffmpeg", "-i", src, dst)
+				if err := cmd.Start(); err != nil {
+					runErr = errors.Join(runErr, err)
+				} else if err := cmd.Wait(); err != nil {
+					if err, ok := err.(*exec.ExitError); ok {
+						runErr = errors.Join(runErr, fmt.Errorf("ffmpeg exited with status: %d", err.ExitCode()))
+					} else {
+						runErr = errors.Join(runErr, err)
+					}
+				}
+			}
+		}
+		runErr = errors.Join(runErr, v.Err)
+		v.Images = nil
+		v.Videos = nil
+		v.Err = nil
 	}
 	return runErr
 }

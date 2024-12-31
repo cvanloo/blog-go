@@ -725,11 +725,11 @@ figure {
     max-width: var(--content-width);
     margin: 0 auto;
 
-    img {
+    img, video {
         width: 100%;
     }
 
-    picture + figcaption {
+    picture + figcaption, video + figcaption {
         text-align: center;
     }
 }

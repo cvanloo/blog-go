@@ -132,6 +132,10 @@ type (
 		Name string
 		Title, Alt StringRenderable
 	}
+	Video struct {
+		Name string
+		Title, Alt StringRenderable
+	}
 	Blockquote struct {
 		Attributes
 		QuoteText, Author, Source StringRenderable
@@ -407,6 +411,12 @@ func (cb CodeBlock) Render() (template.HTML, error) {
 func (i Image) Render() (template.HTML, error) {
 	bs := &bytes.Buffer{}
 	err := post.Execute(bs, "image.gohtml", i)
+	return template.HTML(bs.String()), err
+}
+
+func (v Video) Render() (template.HTML, error) {
+	bs := &bytes.Buffer{}
+	err := post.Execute(bs, "video.gohtml", v)
 	return template.HTML(bs.String()), err
 }
 
@@ -769,12 +779,25 @@ func (v *MakeGenVisitor) VisitHorizontalRule(h *parser.HorizontalRule) {
 	v.currentContainer.Append(HorizontalRule{})
 }
 
+// @todo: bad name, since it can also be a video now
 func (v *MakeGenVisitor) VisitImage(i *parser.Image) {
-	v.currentContainer.Append(Image{
-		Name: strings.TrimSuffix(filepath.Base(i.Name), filepath.Ext(i.Name)),
-		Alt: stringRenderableFromTextSimple(i.Alt),
-		Title: stringRenderableFromTextSimple(i.Title),
-	})
+	// @todo: we need to keep this synchronized with the one in markup.go
+	switch filepath.Ext(i.Name) {
+	default:
+		panic("unreachable")
+	case ".jpg", ".jpeg", ".jxl", ".avif", ".webp", ".png":
+		v.currentContainer.Append(Image{
+			Name: strings.TrimSuffix(filepath.Base(i.Name), filepath.Ext(i.Name)),
+			Alt: stringRenderableFromTextSimple(i.Alt),
+			Title: stringRenderableFromTextSimple(i.Title),
+		})
+	case ".mp4", ".mkv", ".webm":
+		v.currentContainer.Append(Video{
+			Name: strings.TrimSuffix(filepath.Base(i.Name), filepath.Ext(i.Name)),
+			Alt: stringRenderableFromTextSimple(i.Alt),
+			Title: stringRenderableFromTextSimple(i.Title),
+		})
+	}
 }
 
 func (v *MakeGenVisitor) LeaveSection(s *parser.Section) {
