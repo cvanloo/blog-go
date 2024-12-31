@@ -671,6 +671,7 @@ code.block span.line-number {
     top: 2rem;
     z-index: 76;
     padding: .4rem 0 .4rem 0;
+    text-align: start;
 
     label {
         font-family: var(--fonts-note);
