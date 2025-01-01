@@ -280,11 +280,11 @@ func (l Link) Text() string {
 	return strings.TrimSpace(bs.String())
 }
 
-func (l Link) NameOrHref() string {
+func (l Link) NameOrHref() template.HTML {
 	if l.Name != nil {
-		return l.Name.Text()
+		return template.HTML(l.Name.Text())
 	}
-	return l.Href
+	return template.HTML(l.Href)
 }
 
 func (e EscapedString) Render() (template.HTML, error) {
