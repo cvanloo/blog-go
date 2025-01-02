@@ -778,7 +778,7 @@ func (lx *Lexer) LexSection1Content() {
 				lx.LexBlockQuotes()
 			} else if lx.Peek1() == '#' {
 				return // this section ends, next section starts
-			} else if lx.Peek1() == '<' {
+			} else if lx.Peek1() == '<' && lx.Peek(5) != "<http" { // @todo: do this properly
 				lx.LexHtmlElement()
 			} else if lx.Peek1() == '[' {
 				lx.LexLinkOrSidenoteDefinition()
@@ -860,7 +860,7 @@ func (lx *Lexer) LexSection2Content() {
 				lx.LexBlockQuotes()
 			} else if lx.Peek1() == '#' {
 				return // this section ends, next section starts
-			} else if lx.Peek1() == '<' {
+			} else if lx.Peek1() == '<' && lx.Peek(5) != "<http" { // @todo: do this properly
 				lx.LexHtmlElement()
 			} else if lx.Peek1() == '[' {
 				lx.LexLinkOrSidenoteDefinition()
