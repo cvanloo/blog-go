@@ -1,6 +1,6 @@
 :80
 root * /srv
-try_files {path}.html {path} =404
+try_files {path}.html
 header {
 	Cache-Control max-age=5184000
 	+Link </api/webmention>; rel=webmention
