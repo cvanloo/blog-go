@@ -1,0 +1,11 @@
+<figure>
+    <video controls title="{{Render .Title}}">
+        <source src="/assets/{{.Name}}.webm" type="video/webm">
+        <source src="/assets/{{.Name}}.mp4" type="video/mp4">
+        <p>{{Render .Alt}}</p>
+        Download the <a href="/assets/{{.Name}}.webm">WEBM</a> or <a href="/assets/{{.Name}}.mp4">MP4</a> video.
+    </video>
+    <figcaption>
+        {{Render .Title}}
+    </figcaption>
+</figure>
