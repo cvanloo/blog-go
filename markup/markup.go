@@ -656,14 +656,15 @@ func (p assetsProcessor) Run() (runErr error) {
 					dst := filepath.Join(p.outDir, "/assets/", targetBase)
 					log.Printf("processing asset: %s -> %s", src, dst)
 					cmd := exec.Command("magick", src, "-strip", dst)
-					if out, err := cmd.CombinedOutput(); err != nil {
+					out, err := cmd.CombinedOutput()
+					if err != nil {
 						if err, ok := err.(*exec.ExitError); ok {
 							runErr = errors.Join(runErr, fmt.Errorf("magick exited with status: %d", err.ExitCode()))
 						} else {
 							runErr = errors.Join(runErr, err)
 						}
-						log.Println(string(out))
 					}
+					log.Println(string(out))
 				}
 			case "convert":
 				for _, ext := range extensions {
@@ -671,14 +672,15 @@ func (p assetsProcessor) Run() (runErr error) {
 					dst := filepath.Join(p.outDir, "/assets/", targetBase)
 					log.Printf("processing asset: %s -> %s", src, dst)
 					cmd := exec.Command("convert", src, "-strip", dst)
-					if out, err := cmd.CombinedOutput(); err != nil {
+					out, err := cmd.CombinedOutput()
+					if err != nil {
 						if err, ok := err.(*exec.ExitError); ok {
 							runErr = errors.Join(runErr, fmt.Errorf("convert exited with status: %d", err.ExitCode()))
 						} else {
 							runErr = errors.Join(runErr, err)
 						}
-						log.Println(string(out))
 					}
+					log.Println(string(out))
 				}
 			case "ffmpeg":
 				for _, ext := range extensions {
@@ -686,15 +688,15 @@ func (p assetsProcessor) Run() (runErr error) {
 					dst := filepath.Join(p.outDir, "/assets/", targetBase)
 					log.Printf("processing asset: %s -> %s", src, dst)
 					cmd := exec.Command("ffmpeg", "-i", src, "-map_metadata", "-1", dst)
-					if err := cmd.Start(); err != nil {
-						runErr = errors.Join(runErr, err)
-					} else if err := cmd.Wait(); err != nil {
+					out, err := cmd.CombinedOutput()
+					if err != nil {
 						if err, ok := err.(*exec.ExitError); ok {
 							runErr = errors.Join(runErr, fmt.Errorf("ffmpeg exited with status: %d", err.ExitCode()))
 						} else {
 							runErr = errors.Join(runErr, err)
 						}
 					}
+					log.Println(string(out))
 				}
 			default:
 				panic("unreachable, unless programmer fucked up")
