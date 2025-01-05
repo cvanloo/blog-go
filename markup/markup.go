@@ -626,6 +626,9 @@ func (p assetsProcessor) Run() (runErr error) {
 	if _, err := exec.LookPath("ffmpeg"); err != nil {
 		return err
 	}
+	//if _, err := exec.LookPath("exiftool"); err != nil {
+	//	return err
+	//}
 	outDir := filepath.Join(p.outDir, "/assets/")
 	if err := os.Mkdir(outDir, 0777); err != nil && !errors.Is(err, os.ErrExist) {
 		return err
@@ -652,15 +655,14 @@ func (p assetsProcessor) Run() (runErr error) {
 					targetBase := strings.ReplaceAll(filepath.Base(asset), filepath.Ext(asset), ext)
 					dst := filepath.Join(p.outDir, "/assets/", targetBase)
 					log.Printf("processing asset: %s -> %s", src, dst)
-					cmd := exec.Command("magick", src, dst)
-					if err := cmd.Start(); err != nil {
-						runErr = errors.Join(runErr, err)
-					} else if err := cmd.Wait(); err != nil {
+					cmd := exec.Command("magick", src, "-strip", dst)
+					if out, err := cmd.CombinedOutput(); err != nil {
 						if err, ok := err.(*exec.ExitError); ok {
 							runErr = errors.Join(runErr, fmt.Errorf("magick exited with status: %d", err.ExitCode()))
 						} else {
 							runErr = errors.Join(runErr, err)
 						}
+						log.Println(string(out))
 					}
 				}
 			case "convert":
@@ -668,15 +670,14 @@ func (p assetsProcessor) Run() (runErr error) {
 					targetBase := strings.ReplaceAll(filepath.Base(asset), filepath.Ext(asset), ext)
 					dst := filepath.Join(p.outDir, "/assets/", targetBase)
 					log.Printf("processing asset: %s -> %s", src, dst)
-					cmd := exec.Command("convert", src, dst)
-					if err := cmd.Start(); err != nil {
-						runErr = errors.Join(runErr, err)
-					} else if err := cmd.Wait(); err != nil {
+					cmd := exec.Command("convert", src, "-strip", dst)
+					if out, err := cmd.CombinedOutput(); err != nil {
 						if err, ok := err.(*exec.ExitError); ok {
 							runErr = errors.Join(runErr, fmt.Errorf("convert exited with status: %d", err.ExitCode()))
 						} else {
 							runErr = errors.Join(runErr, err)
 						}
+						log.Println(string(out))
 					}
 				}
 			case "ffmpeg":
@@ -684,7 +685,7 @@ func (p assetsProcessor) Run() (runErr error) {
 					targetBase := strings.ReplaceAll(filepath.Base(asset), filepath.Ext(asset), ext)
 					dst := filepath.Join(p.outDir, "/assets/", targetBase)
 					log.Printf("processing asset: %s -> %s", src, dst)
-					cmd := exec.Command("ffmpeg", "-i", src, dst)
+					cmd := exec.Command("ffmpeg", "-i", src, "-map_metadata", "-1", dst)
 					if err := cmd.Start(); err != nil {
 						runErr = errors.Join(runErr, err)
 					} else if err := cmd.Wait(); err != nil {
