@@ -9,7 +9,7 @@ COPY page ./page
 COPY config ./config
 COPY public ./public
 COPY 日記 ./日記
-RUN go run ./cmd/koneko/koneko.go -env ./日記/.env -source ./日記 -out ./public
+RUN MAKE_ASSETS=1 go run ./cmd/koneko/koneko.go -env ./日記/.env -source ./日記 -out ./public
 
 FROM caddy:2.9-alpine
 COPY --from=build /usr/src/app/public/ /srv
