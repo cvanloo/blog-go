@@ -111,7 +111,7 @@ func (m Markup) Run() (runErr error) {
 	gp := newTemplateGenProcessor(m.OutDir, tp)
 	runErr = errors.Join(runErr, gp.Run())
 
-	fp := newFeedProcessor(m.OutDir, gp.posts)
+	fp := newFeedProcessor(m.SiteInfo, m.OutDir, gp.posts)
 	runErr = errors.Join(runErr, fp.Run())
 
 	return runErr
@@ -158,6 +158,7 @@ type (
 	}
 
 	feedProcessor struct {
+		siteInfo page.Site
 		outDir string
 		posts  []page.Post
 	}
@@ -531,8 +532,9 @@ func (p templateGenProcessor) Run() (runErr error) {
 	return runErr
 }
 
-func newFeedProcessor(outDir string, posts []page.Post) feedProcessor {
+func newFeedProcessor(siteInfo page.Site, outDir string, posts []page.Post) feedProcessor {
 	return feedProcessor{
+		siteInfo: siteInfo,
 		outDir: outDir,
 		posts:  posts,
 	}
@@ -540,12 +542,11 @@ func newFeedProcessor(outDir string, posts []page.Post) feedProcessor {
 
 func (p feedProcessor) Run() (runErr error) {
 	now := time.Now()
-	// @todo: fill in based on Site config
 	feed := &feeds.Feed{
-		Title:       "",
-		Link:        &feeds.Link{Href: ""},
-		Description: "",
-		Author:      &feeds.Author{Name: ""},
+		Title:       p.siteInfo.Name,
+		Link:        &feeds.Link{Href: p.siteInfo.Address.String()},
+		Description: p.siteInfo.DefaultTagline.Text(), // @todo: DefaultTagline.TextOnly()
+		Author:      &feeds.Author{Name: p.siteInfo.Owner.Text()}, // @todo: Owner.TextOnly()
 		Created:     now,
 	}
 
