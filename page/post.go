@@ -213,7 +213,9 @@ func (m Mono) Render() (template.HTML, error) {
 }
 
 func (m Mono) Text() string {
-	return fmt.Sprintf("<code>%s</code>", m)
+	bs := &bytes.Buffer{}
+	PanicIf(post.Execute(bs, "mono.gohtml", m))
+	return strings.TrimSpace(bs.String())
 }
 
 func (q EnquoteDouble) Render() (template.HTML, error) {
