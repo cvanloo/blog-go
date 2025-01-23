@@ -117,6 +117,21 @@ func (m Markup) Run() (runErr error) {
 	return runErr
 }
 
+func (m Markup) MakeAssets() (runErr error) {
+	page.SiteInfo = m.SiteInfo // @todo
+
+	mp := newMarkupProcessor(m.IncludeExt, m.ExcludeExt, m.SourcePaths, m.Sources)
+	runErr = errors.Join(runErr, mp.Run())
+
+	tp := newTemplatePreProcessor(mp.results)
+	runErr = errors.Join(runErr, tp.Run())
+
+	ap := newAssetsProcessor(m.OutDir, mp.results)
+	runErr = errors.Join(runErr, ap.Run())
+
+	return runErr
+}
+
 type (
 	ProcessingStep interface {
 		Run() error
@@ -711,6 +726,10 @@ func (p assetsProcessor) generateAssets() (runErr error) {
 				for _, ext := range extensions {
 					targetBase := strings.ReplaceAll(filepath.Base(asset), filepath.Ext(asset), ext)
 					dst := filepath.Join(p.outDir, "/assets/", targetBase)
+					if dst == src {
+						log.Printf("skipping asset because it already exists: %s", dst)
+						continue
+					}
 					log.Printf("processing asset: %s -> %s", src, dst)
 					cmd := exec.Command("magick", src, "-strip", dst)
 					out, err := cmd.CombinedOutput()
@@ -727,6 +746,10 @@ func (p assetsProcessor) generateAssets() (runErr error) {
 				for _, ext := range extensions {
 					targetBase := strings.ReplaceAll(filepath.Base(asset), filepath.Ext(asset), ext)
 					dst := filepath.Join(p.outDir, "/assets/", targetBase)
+					if dst == src {
+						log.Printf("skipping asset because it already exists: %s", dst)
+						continue
+					}
 					log.Printf("processing asset: %s -> %s", src, dst)
 					cmd := exec.Command("convert", src, "-strip", dst)
 					out, err := cmd.CombinedOutput()
@@ -743,6 +766,10 @@ func (p assetsProcessor) generateAssets() (runErr error) {
 				for _, ext := range extensions {
 					targetBase := strings.ReplaceAll(filepath.Base(asset), filepath.Ext(asset), ext)
 					dst := filepath.Join(p.outDir, "/assets/", targetBase)
+					if dst == src {
+						log.Printf("skipping asset because it already exists: %s", dst)
+						continue
+					}
 					log.Printf("processing asset: %s -> %s", src, dst)
 					cmd := exec.Command("ffmpeg", "-i", src, "-map_metadata", "-1", dst)
 					out, err := cmd.CombinedOutput()
@@ -774,6 +801,10 @@ func (p assetsProcessor) generateAssets() (runErr error) {
 			for _, ext := range extensions {
 				targetBase := strings.ReplaceAll(filepath.Base(asset), filepath.Ext(asset), ext)
 				dst := filepath.Join(p.outDir, "/assets/", targetBase)
+				if dst == src {
+					log.Printf("skipping asset because src is the same as dst: %s", dst)
+					continue
+				}
 				log.Printf("processing asset: %s -> %s", src, dst)
 				cmd := exec.Command("ffmpeg", "-i", src, dst)
 				if err := cmd.Start(); err != nil {

@@ -38,15 +38,8 @@ func (af *ArrayFlag) Set(value string) error {
 }
 
 var (
-	source ArrayFlag
-	out = flag.String("out", ".", "Directory to write static sites to.")
-	envPath = flag.String("env", ".env", "Path to the environment file.")
+	source  ArrayFlag
 )
-
-func init() {
-	flag.Var(&source, "source", "Input files. If given a directory, it will be processed recursively. A hyphen (the default) will read from stdin.")
-	flag.Parse()
-}
 
 type SiteConfig struct {
 	Address string `cfg:"mandatory=true"`
@@ -67,37 +60,77 @@ func main() {
 
 func app() int {
 	fmt.Println("こんにちは、子猫ちゃん")
-	if err := godotenv.Load(*envPath); err != nil {
-		log.Println(err)
-		return -1
-	}
-	var cfg SiteConfig
-	if err := config.Load(&cfg); err != nil {
-		log.Println(err)
-		return -1
-	}
-	siteInfo, err := initializeSite(cfg)
-	if err != nil {
-		log.Println(err)
-		return -1
-	}
-	fi, err := os.Stat(*out)
-	if err != nil {
-		log.Println(err)
-		return -1
-	}
-	if !fi.IsDir() {
-		log.Printf("%s is not a directory", *out)
-		return -1
-	}
-	m := markup.New(
-		markup.SiteInfo(siteInfo),
-		markup.IncludeExtensions(strings.Split(cfg.Extensions, ",")...),
-		markup.SourcePaths(source),
-		markup.OutDir(*out),
-	)
-	if err := m.Run(); err != nil {
-		fmt.Println(err)
+	switch {
+	case len(os.Args) >= 2 && os.Args[1] == "make-assets":
+		os.Setenv("MAKE_ASSETS", "1")
+		argSet := flag.NewFlagSet("make-assets", flag.ExitOnError)
+		argSet.Var(&source, "source", "Input files. If given a directory, it will be processed recursively. A hyphen (the default) will read from stdin.")
+		out := argSet.String("out", ".", "Directory to write static sites to.") 
+		envPath := argSet.String("env", ".env", "Path to the environment file.")
+		argSet.Parse(os.Args[2:])
+		if err := godotenv.Load(*envPath); err != nil {
+			log.Println(err)
+			return -1
+		}
+		var cfg SiteConfig
+		if err := config.Load(&cfg); err != nil {
+			log.Println(err)
+			return -1
+		}
+		siteInfo, err := initializeSite(cfg)
+		if err != nil {
+			log.Println(err)
+			return -1
+		}
+		m := markup.New(
+			markup.SiteInfo(siteInfo),
+			markup.IncludeExtensions(strings.Split(cfg.Extensions, ",")...),
+			markup.SourcePaths(source),
+			markup.OutDir(*out),
+		)
+		if err := m.MakeAssets(); err != nil {
+			fmt.Println(err)
+			return 1
+		}
+	default:
+		argSet := flag.NewFlagSet("generate-blog", flag.ExitOnError)
+		argSet.Var(&source, "source", "Input files. If given a directory, it will be processed recursively. A hyphen (the default) will read from stdin.")
+		out := argSet.String("out", ".", "Directory to write static sites to.") 
+		envPath := argSet.String("env", ".env", "Path to the environment file.")
+		argSet.Parse(os.Args[1:])
+		if err := godotenv.Load(*envPath); err != nil {
+			log.Println(err)
+			return -1
+		}
+		var cfg SiteConfig
+		if err := config.Load(&cfg); err != nil {
+			log.Println(err)
+			return -1
+		}
+		siteInfo, err := initializeSite(cfg)
+		if err != nil {
+			log.Println(err)
+			return -1
+		}
+		fi, err := os.Stat(*out)
+		if err != nil {
+			log.Println(err)
+			return -1
+		}
+		if !fi.IsDir() {
+			log.Printf("%s is not a directory", *out)
+			return -1
+		}
+		m := markup.New(
+			markup.SiteInfo(siteInfo),
+			markup.IncludeExtensions(strings.Split(cfg.Extensions, ",")...),
+			markup.SourcePaths(source),
+			markup.OutDir(*out),
+		)
+		if err := m.Run(); err != nil {
+			fmt.Println(err)
+			return 1
+		}
 	}
 	return 0
 }
