@@ -17,4 +17,4 @@ docker run -it --rm --name blog-go -p 8000:80 docker-blog-go:latest
 - [ ] Lexer+Parser: alternative syntax for double enquote: ``.....''
 - [ ] Lexer+Parser: allow escaping of ) in links
 - [ ] Auto-deploy?
-- [ ] Webmention
+- [ ] Webmention: specify endpoint

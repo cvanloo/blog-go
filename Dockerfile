@@ -12,7 +12,9 @@ COPY page ./page
 COPY config ./config
 COPY public ./public
 COPY 日記 ./日記
-RUN MAKE_ASSETS=1 go run ./cmd/koneko/koneko.go -env ./日記/.env -source ./日記 -out ./public
+#RUN MAKE_ASSETS=1 go run ./cmd/koneko/koneko.go -env ./日記/.env -source ./日記 -out ./public
+COPY ./日記/assets ./public/assets
+RUN go run ./cmd/koneko/koneko.go -env ./日記/.env -source ./日記 -out ./public
 RUN ls -lAhF public
 RUN ls -lAhF public/assets
 

@@ -617,8 +617,64 @@ func (v *AssetFinderVisitor) VisitImage(i *parser.Image) {
 func (p assetsProcessor) Run() (runErr error) {
 	if os.Getenv("MAKE_ASSETS") != "1" {
 		log.Println("not generating assets, because MAKE_ASSETS=1 is not set")
-		return
+		return p.verifyAssets()
 	}
+	return p.generateAssets()
+}
+
+var ExtensionsImage = []string{".jxl", ".avif", ".jpg"}
+var ExtensionsVideo = []string{".mp4", ".webm"}
+
+func (p assetsProcessor) verifyAssets() (runErr error) {
+	v := &AssetFinderVisitor{}
+	for _, markup := range p.markups {
+		post := markup.par
+		post.Accept(v)
+		runErr = errors.Join(runErr, v.Err)
+		v.Err = nil
+	}
+	if len(v.Images) + len(v.Videos) > 0 {
+		outDir := filepath.Join(p.outDir, "/assets/")
+		fi, err := os.Stat(outDir)
+		if err != nil {
+			runErr = errors.Join(runErr, fmt.Errorf("asset directory does not exist: %w", err))
+		} else if !fi.IsDir() {
+			runErr = errors.Join(runErr, errors.New("asset directory is unexpectedly a file"))
+		} else {
+			neededAssets := map[string]bool{}
+			for _, asset := range v.Images {
+				for _, ext := range ExtensionsImage {
+					targetBase := strings.ReplaceAll(filepath.Base(asset), filepath.Ext(asset), ext)
+					dst := filepath.Join(p.outDir, "/assets/", targetBase)
+					neededAssets[dst] = false
+				}
+			}
+			for _, asset := range v.Videos {
+				for _, ext := range ExtensionsVideo {
+					targetBase := strings.ReplaceAll(filepath.Base(asset), filepath.Ext(asset), ext)
+					dst := filepath.Join(p.outDir, "/assets/", targetBase)
+					neededAssets[dst] = false
+				}
+			}
+			filepath.WalkDir(outDir, func(path string, d fs.DirEntry, err error) error {
+				if err != nil {
+					runErr = errors.Join(runErr, err)
+					return nil
+				}
+				neededAssets[filepath.Clean(path)] = true
+				return nil
+			})
+			for assetPath, foundInAssetDir := range neededAssets {
+				if !foundInAssetDir {
+					log.Printf("missing asset: %s", assetPath)
+				}
+			}
+		}
+	}
+	return runErr
+}
+
+func (p assetsProcessor) generateAssets() (runErr error) {
 	v := &AssetFinderVisitor{}
 	converter, err := convertUtility()
 	if err != nil {
@@ -649,7 +705,7 @@ func (p assetsProcessor) Run() (runErr error) {
 				runErr = errors.Join(runErr, fmt.Errorf("%s: asset is a directory, expected an image: %v", markup.src.Name, err))
 				continue
 			}
-			extensions := []string{".jxl", ".avif", ".jpg"}
+			extensions := ExtensionsImage
 			switch converter {
 			case "magick":
 				for _, ext := range extensions {
@@ -704,7 +760,7 @@ func (p assetsProcessor) Run() (runErr error) {
 			}
 		}
 		for _, asset := range v.Videos {
-			extensions := []string{".mp4", ".webm"}
+			extensions := ExtensionsVideo
 			src := filepath.Join(filepath.Dir(markup.src.Name), asset)
 			fi, err := os.Stat(src)
 			if err != nil {
