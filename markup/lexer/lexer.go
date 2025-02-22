@@ -173,7 +173,7 @@ func (lx *Lexer) IsEscape() bool {
 	switch lx.Peek1() {
 	default:
 		return false
-	case '\\', '!', '`', '*', '_', '{', '}', '<', '>', '[', ']', '(', ')', '|', '#', '+', '-', '.', '\n':
+	case '\\', '~', '!', '`', '*', '_', '{', '}', '<', '>', '[', ']', '(', ')', '|', '#', '+', '-', '.', '\n':
 		return true
 	case '&':
 		ok, _ := lx.IsAmpSpecial()
@@ -1210,7 +1210,7 @@ func (lx *Lexer) LexEscape() {
 	Assert(lx.Peek1() == '\\' && lx.IsEscape(), "lexer state confused")
 	lx.SkipNext1()
 	switch lx.Peek1() {
-	case '\\', '!', '`', '*', '_', '{', '}', '<', '>', '[', ']', '(', ')', '|', '#', '+', '-', '.', '&':
+	case '\\', '~', '!', '`', '*', '_', '{', '}', '<', '>', '[', ']', '(', ')', '|', '#', '+', '-', '.', '&':
 		lx.Next1()
 		lx.Emit(TokenText)
 	case '\n':
