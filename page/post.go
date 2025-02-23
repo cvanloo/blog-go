@@ -85,7 +85,7 @@ type (
 	Section struct {
 		Attributes
 		Level int
-		Heading StringRenderable
+		Heading StringSanitizedRenderable
 		Content []Renderable
 	}
 	Paragraph struct {
@@ -171,6 +171,16 @@ func (soc StringOnlyContent) Text() string {
 	return builder.String()
 }
 
+func (soc StringOnlyContent) SanitizedText() string {
+	var builder strings.Builder
+	for _, s := range soc {
+		if s, ok := s.(StringSanitizedRenderable); ok {
+			builder.WriteString(s.SanitizedText())
+		}
+	}
+	return builder.String()
+}
+
 func (soc StringOnlyContent) String() string {
 	log.Printf("warning: String() called on StringOnlyContent, you probably want to use Render from within the html template: %#v", soc)
 	return fmt.Sprintf("%#v", soc)
@@ -181,6 +191,10 @@ func (t Text) Render() (template.HTML, error) {
 }
 
 func (t Text) Text() string {
+	return string(t)
+}
+
+func (t Text) SanitizedText() string {
 	return string(t)
 }
 
@@ -380,7 +394,7 @@ func (s Section) ID() string {
 	if id, ok := s.Attributes["id"]; ok {
 		return id
 	}
-	return strings.ReplaceAll(strings.ToLower(s.Heading.Text()), " ", "-")
+	return strings.ReplaceAll(strings.ToLower(s.Heading.SanitizedText()), " ", "-")
 }
 
 func (s Section) SectionLevel1() bool {

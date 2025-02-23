@@ -48,7 +48,11 @@ type (
 	}
 	StringRenderable interface {
 		Renderable
-		Text() (string)
+		Text() string
+	}
+	StringSanitizedRenderable interface {
+		StringRenderable
+		SanitizedText() string
 	}
 	Identifiable interface {
 		ID() string
