@@ -422,11 +422,17 @@ func (v *FixReferencesVisitor) VisitLink(l *Link) {
 }
 
 func (v *FixReferencesVisitor) VisitSidenote(sn *Sidenote) {
-	content, hasContent := v.SidenoteDefinitions[sn.Ref]
-	if hasContent {
-		sn.Content = content
+	if sn.Ref == "" {
+		if len(sn.Content) <= 0 {
+			v.Errors = errors.Join(v.Errors, fmt.Errorf("inline sidenote has empty content")) // @todo: we really need to keep information of where in the source these elements are coming from!
+		}
 	} else {
-		v.Errors = errors.Join(v.Errors, fmt.Errorf("missing content definition for sidenote with id: %s", sn.Ref))
+		content, hasContent := v.SidenoteDefinitions[sn.Ref]
+		if hasContent {
+			sn.Content = content
+		} else {
+			v.Errors = errors.Join(v.Errors, fmt.Errorf("missing content definition for sidenote with id: %s", sn.Ref))
+		}
 	}
 }
 
