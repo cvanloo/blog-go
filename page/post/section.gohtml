@@ -1,5 +1,5 @@
 {{$id := MakeUniqueID .}}
-<section id="{{urlquery $id}}">
+<section id="{{UrlEscapeLower $id}}">
     {{if .SectionLevel1 }}
     <h2><a href="#{{$id}}">{{Render .Heading}}</a></h2>
     {{end}}

@@ -7,6 +7,7 @@ import (
 	"sync"
 	"html/template"
 	"net/url"
+	"strings"
 )
 
 var SiteInfo Site
@@ -149,4 +150,45 @@ func CopyrightYears(start time.Time) template.HTML {
 
 func (t Tag) String() string {
 	return string(t)
+}
+
+func UrlEscapeLower(s string) string {
+	// adapted @from: https://github.com/golang/go/blob/fba83cdfc6c4818af5b773afa39e457d16a6db7a/src/html/template/url.go#L87
+	b := &strings.Builder{}
+	written := 0
+	for i, n := 0, len(s); i < n; i++ {
+		c := s[i]
+		switch c {
+		//case '!', '#', '$', '&', '*', '+', ',', '/', ':', ';', '=', '?', '@', '[', ']':
+
+		// Unreserved according to RFC 3986 sec 2.3
+		// "For consistency, percent-encoded octets in the ranges of
+		// ALPHA (%41-%5A and %61-%7A), DIGIT (%30-%39), hyphen (%2D),
+		// period (%2E), underscore (%5F), or tilde (%7E) should not be
+		// created by URI producers
+		case '-', '.', '_', '~':
+			continue
+		//case '%':
+		//	// When normalizing do not re-encode valid escapes.
+		//	if norm && i+2 < len(s) && isHex(s[i+1]) && isHex(s[i+2]) {
+		//		continue
+		//	}
+		default:
+			// Unreserved according to RFC 3986 sec 2.3
+			if 'a' <= c && c <= 'z' {
+				continue
+			}
+			if 'A' <= c && c <= 'Z' {
+				continue
+			}
+			if '0' <= c && c <= '9' {
+				continue
+			}
+		}
+		b.WriteString(s[written:i])
+		fmt.Fprintf(b, "%%%02x", c)
+		written = i + 1
+	}
+	b.WriteString(s[written:])
+	return b.String()
 }

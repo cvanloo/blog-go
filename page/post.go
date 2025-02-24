@@ -34,6 +34,7 @@ func init() {
 		"ObfuscateText": ObfuscateText,
 		"CopyrightYear": CopyrightYear,
 		"CopyrightYears": CopyrightYears,
+		"UrlEscapeLower": UrlEscapeLower,
 	})
 	template.Must(post.ParseFS(postTemplates, "post/*.gohtml"))
 	log.Printf("post: %s", post.DefinedTemplates())

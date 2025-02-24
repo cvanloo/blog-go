@@ -23,6 +23,7 @@ func init() {
 		"ObfuscateText": ObfuscateText,
 		"CopyrightYear": CopyrightYear,
 		"CopyrightYears": CopyrightYears,
+		"UrlEscapeLower": UrlEscapeLower,
 	})
 	template.Must(listing.ParseFS(listingTemplates, "*.gohtml"))
 	log.Printf("listing: %s", listing.DefinedTemplates())

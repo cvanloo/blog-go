@@ -23,6 +23,7 @@ func init() {
 		"ObfuscateText": ObfuscateText,
 		"CopyrightYear": CopyrightYear,
 		"CopyrightYears": CopyrightYears,
+		"UrlEscapeLower": UrlEscapeLower,
 	})
 	template.Must(index.ParseFS(indexTemplates, "*.gohtml"))
 	log.Printf("index: %s", index.DefinedTemplates())
