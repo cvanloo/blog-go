@@ -764,9 +764,7 @@ func (lx *Lexer) LexSection1Content() {
 			if lx.IsEOF() {
 				break
 			}
-			if lx.IsTermDefinition() { // @todo: i don't like this
-				lx.LexDefinitionList()
-			} else if lx.IsHorizontalRule() {
+			if lx.IsHorizontalRule() {
 				lx.LexHorizontalRule()
 			} else if lx.Peek(3) == "```" {
 				lx.LexCodeBlock()
@@ -781,7 +779,10 @@ func (lx *Lexer) LexSection1Content() {
 			} else if lx.Peek1() == '<' && lx.Peek(5) != "<http" { // @todo: do this properly
 				lx.LexHtmlElement()
 			} else if lx.Peek1() == '[' {
+				// @fixme: this could also be a paragraph that starts out with a link!
 				lx.LexLinkOrSidenoteDefinition()
+			} else if lx.IsTermDefinition() { // @todo: i don't like this
+				lx.LexDefinitionList()
 			} else {
 				lx.LexParagraph()
 			}
@@ -846,9 +847,7 @@ func (lx *Lexer) LexSection2Content() {
 			if lx.IsEOF() {
 				break
 			}
-			if lx.IsTermDefinition() { // @todo: i don't like this
-				lx.LexDefinitionList()
-			} else if lx.IsHorizontalRule() {
+			if lx.IsHorizontalRule() {
 				lx.LexHorizontalRule()
 			} else if lx.Peek(3) == "```" {
 				lx.LexCodeBlock()
@@ -864,6 +863,8 @@ func (lx *Lexer) LexSection2Content() {
 				lx.LexHtmlElement()
 			} else if lx.Peek1() == '[' {
 				lx.LexLinkOrSidenoteDefinition()
+			} else if lx.IsTermDefinition() { // @todo: i don't like this
+				lx.LexDefinitionList()
 			} else {
 				lx.LexParagraph()
 			}
