@@ -663,7 +663,8 @@ code.block span.line-number {
 }
 
 #toc {
-    --toc-width: 16rem;
+    --toc-width: 12rem;
+    --toc-width-more-space: 16rem;
     --toc-margin: 4.8rem;
 
     position: sticky;
@@ -676,7 +677,7 @@ code.block span.line-number {
         font-family: var(--fonts-note);
     }
 
-    @media screen and (min-width: 190ch) {
+    @media screen and (min-width: 180ch) {
         float: right;
         width: var(--toc-width);
         margin-right: calc(-1*var(--toc-width) - 1*var(--toc-margin));
@@ -684,7 +685,16 @@ code.block span.line-number {
         overflow-y: auto;
     }
 
-    @media screen and (max-width: 189ch) {
+    @media screen and (min-width: 190ch) {
+        width: var(--toc-width-more-space);
+        margin-right: calc(-1*var(--toc-width-more-space) - 1*var(--toc-margin));
+    }
+
+    @media screen and (min-width: 180ch) and (max-width: 189ch) {
+        font-size: 0.9em;
+    }
+
+    @media screen and (max-width: 179ch) {
         max-width: unset;
         left: 0;
         right: 0;
