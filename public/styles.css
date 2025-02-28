@@ -299,17 +299,16 @@ nav#topbar {
         z-index: 77;
     }
 
-    &:hover .dropdown-itemlist {
+    &:hover .dropdown-itemlist,
+    &:focus-within .dropdown-itemlist {
         display: flex;
         flex-direction: column;
-        align-items: left;
     }
 
     @media (hover: none) {
         input:checked ~ .dropdown-itemlist {
             display: flex;
             flex-direction: column;
-            align-items: left;
         }
     }
 }
