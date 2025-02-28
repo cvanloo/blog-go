@@ -1279,6 +1279,9 @@ func Parse(lx LexResult) (blog *Blog, err error) {
 				if !(isTextNode(lexeme) && level.TextRich.Append(newTextNode(lexeme))) {
 					err = errors.Join(err, newError(lexeme, state, ErrInvalidToken))
 				}
+			case lexer.TokenEnquoteDoubleBegin:
+				levels.Push(&Level{ReturnToState: ParsingSidenoteContent})
+				state = ParsingEnquoteDouble
 			case lexer.TokenLinkableEnd:
 				levels.Pop()
 				parent := levels.Top()
