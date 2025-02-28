@@ -352,7 +352,7 @@ func (p *templatePreProcessor) processPost(m markupResult) error {
 	}
 	templateData.EstReading = int(m.est.Duration.Minutes())
 	p.posts[templateData.UrlPath] = &templateData
-	if templateData.MakePublish {
+	if templateData.MakePublish || os.Getenv("TESTING") == "1" {
 		p.index.Listing = append(p.index.Listing, page.PostItem{
 			Title:       templateData.Title,
 			AltTitle:    templateData.AltTitle,
@@ -494,7 +494,7 @@ func (p templateGenProcessor) Run() (runErr error) {
 		}
 	}
 	for _, quote := range p.quotes {
-		if quote.MakePublish {
+		if quote.MakePublish || os.Getenv("TESTING") == "1" {
 			out, err := os.Create(filepath.Join(p.outDir, fmt.Sprintf("%s.html", quote.UrlPath))) // @todo: make UrlPath custom type
 			if err != nil {
 				runErr = errors.Join(runErr, err)
@@ -566,7 +566,7 @@ func (p feedProcessor) Run() (runErr error) {
 	}
 
 	for _, post := range p.posts {
-		if !post.MakePublish {
+		if !(post.MakePublish || os.Getenv("TESTING") == "1") {
 			continue
 		}
 		title := post.Title.Text()
