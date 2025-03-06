@@ -21,7 +21,7 @@ koneko: .FORCE
 
 image: .FORCE
 	#docker build --no-cache -t docker-blog-go .
-	docker build -t docker-blog-go .
+	docker build --build-arg TESTING=1 --no-cache -t docker-blog-go .
 
 docker: image
 	docker run -it --rm --name blog-go -p 8000:80 docker-blog-go:latest

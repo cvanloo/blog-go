@@ -1,4 +1,6 @@
 FROM golang:1.23.3-alpine3.20 AS build
+ARG TESTING=0
+ARG MAKE_ASSETS=0
 #RUN apk add imagemagick ffmpeg libjxl libavif libheif
 #RUN magick --version
 #RUN magick -list format
@@ -14,7 +16,9 @@ COPY public ./public
 COPY 日記 ./日記
 #RUN MAKE_ASSETS=1 go run ./cmd/koneko/koneko.go -env ./日記/.env -source ./日記 -out ./public
 COPY ./日記/assets ./public/assets
-RUN go run ./cmd/koneko/koneko.go -env ./日記/.env -source ./日記 -out ./public || :
+RUN go build ./cmd/koneko/koneko.go
+RUN ./koneko -env ./日記/.env -source ./日記 -out ./public || :
+#RUN go run ./cmd/koneko/koneko.go -env ./日記/.env -source ./日記 -out ./public || :
 RUN ls -lAhF public
 RUN ls -lAhF public/assets
 
