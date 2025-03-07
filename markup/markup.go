@@ -565,6 +565,12 @@ func (p feedProcessor) Run() (runErr error) {
 		Created:     now,
 	}
 
+	sort.Slice(p.posts, func(i, j int) bool {
+		p1 := p.posts[i].Published.Published
+		p2 := p.posts[j].Published.Published
+		return p1.Compare(p2) < 0
+	})
+
 	for _, post := range p.posts {
 		if !(post.MakePublish || os.Getenv("TESTING") == "1") {
 			continue
