@@ -32,7 +32,7 @@ lang: en
 # こんにちは、世界！ {#s1}
 
 Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.
-Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
+There is this really cool J-Rock band called <Ruby furi="あまいぼうりょく">甘い暴力</Ruby>, you should check them out.
 Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.
 
 Ut enim ad minim veniam, quis nostrud---exercitation ullamco---laboris nisi ut aliquip ex ea commodo consequat.
@@ -79,7 +79,14 @@ var LexerTestTokens = MockTokens{
 	{Type: lexer.TokenAttributeListEnd, Text: "}"},
 	{Type: lexer.TokenSection1Content, Text: ""},
 	{Type: lexer.TokenParagraphBegin, Text: ""},
-	{Type: lexer.TokenText, Text: "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.\nUt enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.\nDuis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur."},
+	{Type: lexer.TokenText, Text: "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.\nThere is this really cool J-Rock band called "},
+	{Type: lexer.TokenHtmlTagOpen, Text: "Ruby"},
+	{Type: lexer.TokenHtmlTagAttrKey, Text: "furi"},
+	{Type: lexer.TokenHtmlTagAttrVal, Text: "あまいぼうりょく"},
+	{Type: lexer.TokenHtmlTagContent, Text: ""},
+	{Type: lexer.TokenText, Text: "甘い暴力"},
+	{Type: lexer.TokenHtmlTagClose, Text: ""},
+	{Type: lexer.TokenText, Text: ", you should check them out.\nDuis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur."},
 	{Type: lexer.TokenParagraphEnd, Text: ""},
 	{Type: lexer.TokenParagraphBegin, Text: ""},
 	{Type: lexer.TokenText, Text: "Ut enim ad minim veniam, quis nostrud"},
@@ -176,7 +183,17 @@ var BlogParserTestStruct = &parser.Blog{
 			Content: []parser.Node{
 				&parser.Paragraph{
 					Content: []parser.Node{
-						AsRef(parser.Text("Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.\nUt enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.\nDuis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.")),
+						AsRef(parser.Text("Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.\nThere is this really cool J-Rock band called ")),
+						&parser.Html{
+							Attributes: parser.Attributes{
+								"furi": "あまいぼうりょく",
+							},
+							Name: "Ruby",
+							Content: []parser.Node{
+								AsRef(parser.Text("甘い暴力")),
+							},
+						},
+						AsRef(parser.Text(", you should check them out.\nDuis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.")),
 					},
 				},
 				&parser.Paragraph{
@@ -299,7 +316,17 @@ var BlogParserFixedTestStruct = &parser.Blog{
 			Content: []parser.Node{
 				&parser.Paragraph{
 					Content: []parser.Node{
-						AsRef(parser.Text("Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.\nUt enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.\nDuis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.")),
+						AsRef(parser.Text("Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.\nThere is this really cool J-Rock band called ")),
+						&parser.Html{
+							Attributes: parser.Attributes{
+								"furi": "あまいぼうりょく",
+							},
+							Name: "Ruby",
+							Content: []parser.Node{
+								AsRef(parser.Text("甘い暴力")),
+							},
+						},
+						AsRef(parser.Text(", you should check them out.\nDuis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.")),
 					},
 				},
 				&parser.Paragraph{
@@ -425,7 +452,14 @@ var BlogGenTestStruct = page.Post{
 			Heading: page.StringOnlyContent{page.Text("こんにちは、世界！ ")},
 			Content: []page.Renderable{
 				page.Paragraph{
-					Content: page.StringOnlyContent{page.Text("Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.\nUt enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.\nDuis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.")},
+					Content: page.StringOnlyContent{
+						page.Text("Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.\nThere is this really cool J-Rock band called "),
+						page.Ruby{
+							Kanji: page.StringOnlyContent{page.Text("甘い暴力")},
+							Furigana: page.StringOnlyContent{page.Text("あまいぼうりょく")},
+						},
+						page.Text(", you should check them out.\nDuis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur."),
+					},
 				},
 				page.Paragraph{
 					Content: page.StringOnlyContent{

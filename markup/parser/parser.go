@@ -1526,7 +1526,9 @@ func Parse(lx LexResult) (blog *Blog, err error) {
 		case ParsingHtmlElementContent:
 			switch lexeme.Type {
 			default:
-				err = errors.Join(err, newError(lexeme, state, ErrInvalidToken))
+				if !(isTextNode(lexeme) && level.TextRich.Append(newTextNode(lexeme))) {
+					err = errors.Join(err, newError(lexeme, state, ErrInvalidToken))
+				}
 			case lexer.TokenParagraphBegin:
 				levels.Push(&Level{ReturnToState: ParsingHtmlElementContent})
 				state = ParsingParagraph
@@ -1536,8 +1538,13 @@ func Parse(lx LexResult) (blog *Blog, err error) {
 			case lexer.TokenHtmlTagClose:
 				levels.Pop()
 				parent := levels.Top()
-				level.Html.Content = level.Content
-				parent.Content = append(parent.Content, level.Html)
+				if len(level.TextRich) > 0 { // inline html element
+					level.Html.Content = level.TextRich
+					parent.TextRich = append(parent.TextRich, level.Html)
+				} else {
+					level.Html.Content = level.Content
+					parent.Content = append(parent.Content, level.Html)
+				}
 				state = level.ReturnToState
 			}
 		}

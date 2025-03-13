@@ -130,7 +130,7 @@ type (
 		Word, Content StringRenderable
 	}
 	Ruby struct {
-		Kanji, Furigana StringOnlyContent
+		Kanji, Furigana StringRenderable
 	}
 	Image struct {
 		Name string
@@ -872,10 +872,9 @@ type (
 		err error
 	}
 	HtmlRuby struct {
-		kanji StringOnlyContent
-		furi StringOnlyContent
-		container Container
-		err error
+		parentSOC StringOnlyContent
+		furi      StringRenderable
+		err       error
 	}
 )
 
@@ -1046,10 +1045,10 @@ func (v *MakeGenVisitor) htmlTopLevel(_ *MakeGenVisitor, h *parser.Html, enterin
 				v.Errors = errors.Join(v.Errors, errors.New("ruby element missing its furi attribute"))
 			}
 			r := &HtmlRuby{
-				container: v.currentContainer,
-				furi: StringOnlyContent{furi},
+				parentSOC: v.currentSOC,
+				furi:      furi,
 			}
-			v.currentContainer = r
+			v.currentSOC = nil
 			v.htmlState = r.htmlRuby
 		}
 	} else {
@@ -1074,20 +1073,12 @@ func (r *HtmlRuby) htmlRuby(v *MakeGenVisitor, h *parser.Html, entering bool) {
 		v.Errors = errors.Join(v.Errors, fmt.Errorf("<Ruby> cannot contain any child html elements: %s", h.Name))
 	} else {
 		v.Errors = errors.Join(v.Errors, r.err)
-		r.container.Append(Ruby{
-			Kanji: r.kanji,
+		r.parentSOC = append(r.parentSOC, Ruby{
+			Kanji:    v.currentSOC,
 			Furigana: r.furi,
 		})
-		v.currentContainer = r.container
+		v.currentSOC = r.parentSOC
 		v.htmlState = v.htmlTopLevel
-	}
-}
-
-func (ruby *HtmlRuby) Append(r Renderable) {
-	if r, ok := r.(StringRenderable); ok {
-		ruby.kanji = append(ruby.kanji, r)
-	} else {
-		ruby.err = errors.Join(ruby.err, fmt.Errorf("<Ruby> cannot contain content other than rich text"))
 	}
 }
 

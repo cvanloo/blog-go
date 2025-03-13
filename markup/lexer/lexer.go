@@ -693,7 +693,7 @@ func (lx *Lexer) LexContent() {
 		if lx.Peek1() == '#' {
 			lx.LexSection1()
 		} else if lx.Peek1() == '<' {
-			lx.LexHtmlElement()
+			lx.LexHtmlElement(false)
 		} else if lx.Peek1() == '[' {
 			lx.LexLinkOrSidenoteDefinition()
 		} else {
@@ -777,7 +777,7 @@ func (lx *Lexer) LexSection1Content() {
 			} else if lx.Peek1() == '#' {
 				return // this section ends, next section starts
 			} else if lx.Peek1() == '<' && lx.Peek(5) != "<http" { // @todo: do this properly
-				lx.LexHtmlElement()
+				lx.LexHtmlElement(false)
 			} else if lx.Peek1() == '[' {
 				// @fixme: this could also be a paragraph that starts out with a link!
 				lx.LexLinkOrSidenoteDefinition()
@@ -860,7 +860,7 @@ func (lx *Lexer) LexSection2Content() {
 			} else if lx.Peek1() == '#' {
 				return // this section ends, next section starts
 			} else if lx.Peek1() == '<' && lx.Peek(5) != "<http" { // @todo: do this properly
-				lx.LexHtmlElement()
+				lx.LexHtmlElement(false)
 			} else if lx.Peek1() == '[' {
 				lx.LexLinkOrSidenoteDefinition()
 			} else if lx.IsTermDefinition() { // @todo: i don't like this
@@ -1187,7 +1187,7 @@ func (lx *Lexer) LexText() {
 			lx.LexEmphasis()
 		} else if lx.Peek1() == '<' {
 			lx.EmitIfNonEmpty(TokenText)
-			lx.LexLinkifyOrHtmlElement()
+			lx.LexLinkifyOrHtmlElementInline()
 		} else if lx.Peek1() == '`' {
 			lx.EmitIfNonEmpty(TokenText)
 			lx.LexMonoOrEnquoteSingle()
@@ -1383,12 +1383,12 @@ func (lx *Lexer) LexTextUntilPred(pred Predicate) {
 	lx.EmitIfNonEmpty(TokenText)
 }
 
-func (lx *Lexer) LexLinkifyOrHtmlElement() {
+func (lx *Lexer) LexLinkifyOrHtmlElementInline() {
 	Assert(lx.Peek1() == '<', "lexer state confused")
 	if lx.MatchAtPos("<http://") || lx.MatchAtPos("<https://") || lx.MatchAtPos("<mailto:") { // @todo: what about other protocols?
 		lx.LexLinkify()
 	} else {
-		lx.LexHtmlElement()
+		lx.LexHtmlElement(true)
 	}
 }
 
@@ -1732,7 +1732,7 @@ func (lx *Lexer) LexMarker() {
 // an attribute does not need to have a value
 //
 //	<tag-name attr>
-func (lx *Lexer) LexHtmlElement() {
+func (lx *Lexer) LexHtmlElement(inline bool) {
 	Assert(lx.Peek1() == '<', "lexer state confused")
 	lx.SkipNext1()
 	tag := lx.NextValids(CharInSpec{SpecAscii, CharInAny("-_")})
@@ -1747,7 +1747,7 @@ func (lx *Lexer) LexHtmlElement() {
 		lx.LexHtmlElementAttributes()
 		lx.ExpectAndSkip(">")
 	}
-	lx.LexHtmlElementContent(tag)
+	lx.LexHtmlElementContent(tag, inline)
 }
 
 func (lx *Lexer) LexHtmlElementAttributes() {
@@ -1772,7 +1772,7 @@ func (lx *Lexer) LexHtmlElementAttributes() {
 	}
 }
 
-func (lx *Lexer) LexHtmlElementContent(tag string) {
+func (lx *Lexer) LexHtmlElementContent(tag string, inline bool) {
 	lx.Emit(TokenHtmlTagContent)
 	if lx.HasCloseTag(tag) {
 		lx.SkipWhitespace()
@@ -1790,12 +1790,20 @@ func (lx *Lexer) LexHtmlElementContent(tag string) {
 			}
 			if lx.Peek1() == '<' {
 				if lx.MatchAtPos("<http://") || lx.MatchAtPos("<https://") || lx.MatchAtPos("<mailto:") {
-					lx.LexParagraph()
+					if inline {
+						lx.LexText()
+					} else {
+						lx.LexParagraph()
+					}
 				} else {
-					lx.LexHtmlElement()
+					lx.LexHtmlElement(inline)
 				}
 			} else {
-				lx.LexParagraph()
+				if inline {
+					lx.LexText()
+				} else {
+					lx.LexParagraph()
+				}
 			}
 			lx.SkipWhitespace()
 		}
