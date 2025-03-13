@@ -129,6 +129,9 @@ type (
 		// @todo: For the title attribute we can't have <b> and stuff...
 		Word, Content StringRenderable
 	}
+	Ruby struct {
+		Kanji, Furigana StringOnlyContent
+	}
 	Image struct {
 		Name string
 		Title, Alt StringRenderable
@@ -263,6 +266,16 @@ func (m Marker) Text() string {
 
 func (m Marker) Render() (template.HTML, error) {
 	return template.HTML(m.Text()), nil
+}
+
+func (r Ruby) Text() string {
+	bs := &bytes.Buffer{}
+	PanicIf(post.Execute(bs, "ruby.gohtml", r))
+	return strings.TrimSpace(bs.String())
+}
+
+func (r Ruby) Render() (template.HTML, error) {
+	return template.HTML(r.Text()), nil
 }
 
 func (l LineBreak) Text() string {
@@ -858,6 +871,12 @@ type (
 		currentItem *ReadingItem
 		err error
 	}
+	HtmlRuby struct {
+		kanji StringOnlyContent
+		furi StringOnlyContent
+		container Container
+		err error
+	}
 )
 
 func (h *HtmlInvalid) Append(r Renderable) {
@@ -1014,6 +1033,24 @@ func (v *MakeGenVisitor) htmlTopLevel(_ *MakeGenVisitor, h *parser.Html, enterin
 			}
 			v.currentContainer = r
 			v.htmlState = r.htmlRelevantBox
+		case "Ruby":
+			var furi StringRenderable
+			if furiAttr, ok := h.Attributes["furi"]; ok {
+				furiRich, err := parseStringAsTextRich(furiAttr)
+				if err != nil {
+					v.Errors = errors.Join(v.Errors, fmt.Errorf("invalid value for furi: %w", err))
+				} else {
+					furi = stringRenderableFromTextRich(furiRich)
+				}
+			} else {
+				v.Errors = errors.Join(v.Errors, errors.New("ruby element missing its furi attribute"))
+			}
+			r := &HtmlRuby{
+				container: v.currentContainer,
+				furi: StringOnlyContent{furi},
+			}
+			v.currentContainer = r
+			v.htmlState = r.htmlRuby
 		}
 	} else {
 		// invalid
@@ -1029,6 +1066,28 @@ func (a *HtmlAbstract) htmlAbstract(v *MakeGenVisitor, h *parser.Html, entering 
 		v.Errors = errors.Join(v.Errors, a.err)
 		v.TemplateData.Abstract = a.content
 		v.htmlState = v.htmlTopLevel
+	}
+}
+
+func (r *HtmlRuby) htmlRuby(v *MakeGenVisitor, h *parser.Html, entering bool) {
+	if entering {
+		v.Errors = errors.Join(v.Errors, fmt.Errorf("<Ruby> cannot contain any child html elements: %s", h.Name))
+	} else {
+		v.Errors = errors.Join(v.Errors, r.err)
+		r.container.Append(Ruby{
+			Kanji: r.kanji,
+			Furigana: r.furi,
+		})
+		v.currentContainer = r.container
+		v.htmlState = v.htmlTopLevel
+	}
+}
+
+func (ruby *HtmlRuby) Append(r Renderable) {
+	if r, ok := r.(StringRenderable); ok {
+		ruby.kanji = append(ruby.kanji, r)
+	} else {
+		ruby.err = errors.Join(ruby.err, fmt.Errorf("<Ruby> cannot contain content other than rich text"))
 	}
 }
 
