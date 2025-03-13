@@ -1,23 +1,23 @@
 package page
 
 import (
-	"errors"
-	"time"
-	"fmt"
-	"strconv"
-	"strings"
-	"embed"
-	"html/template"
 	"bytes"
+	"crypto/sha256"
+	"embed"
+	"encoding/base64"
+	"errors"
+	"fmt"
+	"html/template"
 	"io"
 	"log"
 	"net/url"
-	"crypto/sha256"
-	"encoding/base64"
 	"path/filepath"
+	"strconv"
+	"strings"
+	"time"
 
-	"github.com/cvanloo/blog-go/markup/parser"
 	. "github.com/cvanloo/blog-go/assert"
+	"github.com/cvanloo/blog-go/markup/parser"
 )
 
 //go:embed post
@@ -29,10 +29,10 @@ var (
 
 func init() {
 	post.Funcs(template.FuncMap{
-		"Render": Render,
-		"MakeUniqueID": MakeUniqueID,
-		"ObfuscateText": ObfuscateText,
-		"CopyrightYear": CopyrightYear,
+		"Render":         Render,
+		"MakeUniqueID":   MakeUniqueID,
+		"ObfuscateText":  ObfuscateText,
+		"CopyrightYear":  CopyrightYear,
 		"CopyrightYears": CopyrightYears,
 		"UrlEscapeLower": UrlEscapeLower,
 	})
@@ -42,61 +42,61 @@ func init() {
 
 type (
 	Attributes map[string]string
-	Post struct {
-		MakePublish bool
-		Site Site
-		UrlPath string
-		Author Author
-		Lang string
-		Title, AltTitle StringRenderable
-		Description string
-		Abstract []Renderable
-		Published Revision
-		EstReading int
-		Tags []Tag
-		Series *Series
+	Post       struct {
+		MakePublish           bool
+		Site                  Site
+		UrlPath               string
+		Author                Author
+		Lang                  string
+		Title, AltTitle       StringRenderable
+		Description           string
+		Abstract              []Renderable
+		Published             Revision
+		EstReading            int
+		Tags                  []Tag
+		Series                *Series
 		EnableRevisionWarning bool
-		TOC TableOfContents
-		Sections []Section
-		Relevant *RelevantBox // @todo: implement: need html custom functions first
+		TOC                   TableOfContents
+		Sections              []Section
+		Relevant              *RelevantBox // @todo: implement: need html custom functions first
 	}
 	Author struct {
-		Name StringRenderable
-		Email StringRenderable
-		RelMe StringRenderable // https://tech.lgbt/@attaboy
+		Name        StringRenderable
+		Email       StringRenderable
+		RelMe       StringRenderable // https://tech.lgbt/@attaboy
 		FediCreator StringRenderable // @attaboy@tech.lgbt
 	}
 	Series struct {
-		Name StringRenderable
-		Link string
+		Name       StringRenderable
+		Link       string
 		Prev, Next *SeriesItem
 	}
 	SeriesItem struct {
 		Title StringRenderable
-		Link string
+		Link  string
 	}
 	TableOfContents struct {
 		Sections []TOCSection
 	}
 	TOCSection struct {
-		ID string
-		Heading StringRenderable
+		ID        string
+		Heading   StringRenderable
 		NextLevel []TOCSection
 	}
 	Section struct {
 		Attributes
-		Level int
+		Level   int
 		Heading StringSanitizedRenderable
 		Content []Renderable
 	}
 	Paragraph struct {
 		Content StringRenderable
 	}
-	Text string
-	Mono string
-	EscapedString string
+	Text              string
+	Mono              string
+	EscapedString     string
 	StringOnlyContent []StringRenderable
-	Strong struct {
+	Strong            struct {
 		StringOnlyContent
 	}
 	Emphasis struct {
@@ -133,11 +133,11 @@ type (
 		Kanji, Furigana StringRenderable
 	}
 	Image struct {
-		Name string
+		Name       string
 		Title, Alt StringRenderable
 	}
 	Video struct {
-		Name string
+		Name       string
 		Title, Alt StringRenderable
 	}
 	Blockquote struct {
@@ -145,16 +145,16 @@ type (
 		QuoteText, Author, Source StringRenderable
 	}
 	HorizontalRule struct{}
-	LineBreak struct{}
-	RelevantBox struct {
-		Heading StringRenderable
+	LineBreak      struct{}
+	RelevantBox    struct {
+		Heading  StringRenderable
 		Articles []ReadingItem
 	}
 	ReadingItem struct {
 		Link, AuthorLink string
-		Title, Author StringRenderable
-		Abstract []Renderable
-		Date time.Time
+		Title, Author    StringRenderable
+		Abstract         []Renderable
+		Date             time.Time
 	}
 )
 
@@ -326,22 +326,22 @@ func (e EscapedString) Text() string {
 }
 
 const (
-	AmpNoBreakSpace EscapedString = "&nbsp;"
-	AmpEmDash EscapedString = "&mdash;"
-	AmpEnDash EscapedString = "&ndash;"
-	AmpHyphen EscapedString = "&hyphen;"
-	AmpLeftSingleQuote EscapedString = "&lsquo;"
+	AmpNoBreakSpace                 EscapedString = "&nbsp;"
+	AmpEmDash                       EscapedString = "&mdash;"
+	AmpEnDash                       EscapedString = "&ndash;"
+	AmpHyphen                       EscapedString = "&hyphen;"
+	AmpLeftSingleQuote              EscapedString = "&lsquo;"
 	AmpRightSingleQuoteOrApostrophe EscapedString = "&rsquo;"
-	AmpLeftDoubleQuote EscapedString = "&ldquo;"
-	AmpRightDoubleQuote EscapedString = "&rdquo;"
-	AmpLeftAngledQuote EscapedString = "&laquo;"
-	AmpRightAngledQuote EscapedString = "&raquo;"
-	AmpEllipsis EscapedString = "…"
-	AmpPrime EscapedString = "&prime;"
-	AmpDoublePrime EscapedString = "&Prime;"
-	AmpTripplePrime EscapedString = "&tprime;"
-	AmpQuadruplePrime EscapedString = "&qprime;"
-	AmpReversedPrime EscapedString = "&bprime;"
+	AmpLeftDoubleQuote              EscapedString = "&ldquo;"
+	AmpRightDoubleQuote             EscapedString = "&rdquo;"
+	AmpLeftAngledQuote              EscapedString = "&laquo;"
+	AmpRightAngledQuote             EscapedString = "&raquo;"
+	AmpEllipsis                     EscapedString = "…"
+	AmpPrime                        EscapedString = "&prime;"
+	AmpDoublePrime                  EscapedString = "&Prime;"
+	AmpTripplePrime                 EscapedString = "&tprime;"
+	AmpQuadruplePrime               EscapedString = "&qprime;"
+	AmpReversedPrime                EscapedString = "&bprime;"
 )
 
 func (sn Sidenote) Render() (template.HTML, error) {
@@ -495,7 +495,7 @@ func (p Post) ObfuscatedAuthorCredit() (template.HTML, error) {
 func (p Post) ObfuscatedEmail() template.HTML {
 	const (
 		janetStart = `janet -e '(print (string/from-bytes (splice (map (fn [c] (if (<= 97 c 122) (+ 97 (mod (+ c -97 13) 26)) c)) &quot;`
-		janetEnd = `&quot;))))'`
+		janetEnd   = `&quot;))))'`
 	)
 	rot13 := func(text string) string {
 		out := []rune(text)
@@ -512,15 +512,15 @@ func (p Post) ObfuscatedEmail() template.HTML {
 type (
 	MakeGenVisitor struct {
 		//parser.NopVisitor
-		TemplateData *Post
-		Errors       error
-		currentSection1 *Section
-		currentSection2 *Section
+		TemplateData     *Post
+		Errors           error
+		currentSection1  *Section
+		currentSection2  *Section
 		currentParagraph *Paragraph
-		currentSOC StringOnlyContent
+		currentSOC       StringOnlyContent
 
 		currentContainer Container
-		htmlState HtmlState
+		htmlState        HtmlState
 	}
 	Container interface {
 		Append(r Renderable)
@@ -685,25 +685,25 @@ func (v *MakeGenVisitor) VisitSection(s *parser.Section) {
 	case 1:
 		v.currentSection1 = &Section{
 			Attributes: Attributes(s.Attributes),
-			Level: s.Level,
-			Heading: stringRenderableFromTextRich(s.Heading),
+			Level:      s.Level,
+			Heading:    stringRenderableFromTextRich(s.Heading),
 		}
 		v.currentContainer = v.currentSection1
 		v.TemplateData.TOC.Sections = append(v.TemplateData.TOC.Sections, TOCSection{
-			ID: v.currentSection1.ID(),
+			ID:      v.currentSection1.ID(),
 			Heading: v.currentSection1.Heading,
 		})
 	case 2:
 		v.currentSection2 = &Section{
 			Attributes: Attributes(s.Attributes),
-			Level: s.Level,
-			Heading: stringRenderableFromTextRich(s.Heading),
+			Level:      s.Level,
+			Heading:    stringRenderableFromTextRich(s.Heading),
 		}
 		v.currentContainer = v.currentSection2
 		{
 			l := len(v.TemplateData.TOC.Sections)
 			v.TemplateData.TOC.Sections[l-1].NextLevel = append(v.TemplateData.TOC.Sections[l-1].NextLevel, TOCSection{
-				ID: v.currentSection2.ID(),
+				ID:      v.currentSection2.ID(),
 				Heading: v.currentSection2.Heading,
 			})
 		}
@@ -727,7 +727,7 @@ func (v *MakeGenVisitor) VisitLink(l *parser.Link) {
 
 func (v *MakeGenVisitor) VisitSidenote(s *parser.Sidenote) {
 	v.currentSOC = append(v.currentSOC, Sidenote{
-		Word: stringRenderableFromTextRich(s.Word),
+		Word:    stringRenderableFromTextRich(s.Word),
 		Content: stringRenderableFromTextRich(s.Content),
 	})
 }
@@ -793,15 +793,15 @@ func (v *MakeGenVisitor) LeaveParagraph(p *parser.Paragraph) {
 func (v *MakeGenVisitor) VisitBlockQuote(b *parser.BlockQuote) {
 	v.currentContainer.Append(Blockquote{
 		QuoteText: stringRenderableFromTextRich(b.QuoteText),
-		Author: stringRenderableFromTextSimple(b.Author),
-		Source: stringRenderableFromTextRich(b.Source),
+		Author:    stringRenderableFromTextSimple(b.Author),
+		Source:    stringRenderableFromTextRich(b.Source),
 	})
 }
 
 func (v *MakeGenVisitor) VisitCodeBlock(c *parser.CodeBlock) {
 	v.currentContainer.Append(CodeBlock{
 		Attributes: Attributes(c.Attributes),
-		Lines: c.Lines,
+		Lines:      c.Lines,
 	})
 }
 
@@ -817,14 +817,14 @@ func (v *MakeGenVisitor) VisitImage(i *parser.Image) {
 		panic("unreachable")
 	case ".jpg", ".jpeg", ".jxl", ".avif", ".webp", ".png":
 		v.currentContainer.Append(Image{
-			Name: strings.TrimSuffix(filepath.Base(i.Name), filepath.Ext(i.Name)),
-			Alt: stringRenderableFromTextSimple(i.Alt),
+			Name:  strings.TrimSuffix(filepath.Base(i.Name), filepath.Ext(i.Name)),
+			Alt:   stringRenderableFromTextSimple(i.Alt),
 			Title: stringRenderableFromTextSimple(i.Title),
 		})
 	case ".mp4", ".mkv", ".webm":
 		v.currentContainer.Append(Video{
-			Name: strings.TrimSuffix(filepath.Base(i.Name), filepath.Ext(i.Name)),
-			Alt: stringRenderableFromTextSimple(i.Alt),
+			Name:  strings.TrimSuffix(filepath.Base(i.Name), filepath.Ext(i.Name)),
+			Alt:   stringRenderableFromTextSimple(i.Alt),
 			Title: stringRenderableFromTextSimple(i.Title),
 		})
 	}
@@ -857,19 +857,20 @@ func (v *MakeGenVisitor) LeaveHtml(h *parser.Html) {
 }
 
 var ErrInvalidHtmlPos = errors.New("html element not allowed in this position")
+
 type (
-	HtmlState func(v *MakeGenVisitor, h *parser.Html, entering bool)
+	HtmlState   func(v *MakeGenVisitor, h *parser.Html, entering bool)
 	HtmlInvalid struct {
 		nestingCount int
 	}
-	HtmlAbstract struct{
+	HtmlAbstract struct {
 		content []Renderable
-		err error
+		err     error
 	}
 	HtmlRelevantBox struct {
 		relevantBox *RelevantBox
 		currentItem *ReadingItem
-		err error
+		err         error
 	}
 	HtmlRuby struct {
 		parentSOC StringOnlyContent
@@ -941,9 +942,9 @@ func (r *HtmlRelevantBox) htmlRelevantBox(v *MakeGenVisitor, h *parser.Html, ent
 				}
 			}
 			r.currentItem = &ReadingItem{
-				Link: href,
+				Link:  href,
 				Title: parsedTitle,
-				Date: parsedDate,
+				Date:  parsedDate,
 			}
 			v.htmlState = r.htmlRelevantItem
 		}
@@ -1095,12 +1096,12 @@ func (v *MakeQuotesVisitor) VisitBlockQuote(b *parser.BlockQuote) {
 	hashID.Write([]byte(source.Text()))
 	v.currentContainer.Append(Blockquote{
 		Attributes: Attributes{
-			"id": base64.StdEncoding.EncodeToString(hashID.Sum(nil)),
+			"id":    base64.StdEncoding.EncodeToString(hashID.Sum(nil)),
 			"class": "quote",
 		},
 		QuoteText: text,
-		Author: author,
-		Source: source,
+		Author:    author,
+		Source:    source,
 	})
 }
 
@@ -1157,7 +1158,7 @@ func stringRenderableFromTextRich(t parser.TextRich) StringOnlyContent {
 			})
 		case *parser.Sidenote:
 			soc = append(soc, Sidenote{
-				Word: stringRenderableFromTextRich(e.Word),
+				Word:    stringRenderableFromTextRich(e.Word),
 				Content: stringRenderableFromTextRich(e.Content),
 			})
 		case *parser.Strikethrough:

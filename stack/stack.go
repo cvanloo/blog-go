@@ -8,7 +8,7 @@ type (
 	Stack[T any] []T
 	Maybe[T any] struct {
 		HasValue bool
-		Value T
+		Value    T
 	}
 )
 

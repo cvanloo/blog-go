@@ -7,12 +7,12 @@
 package main
 
 import (
-	"fmt"
 	"flag"
-	"os"
-	"strings"
+	"fmt"
 	"log"
 	"net/url"
+	"os"
+	"strings"
 	"time"
 
 	"github.com/joho/godotenv"
@@ -38,20 +38,20 @@ func (af *ArrayFlag) Set(value string) error {
 }
 
 var (
-	source  ArrayFlag
+	source ArrayFlag
 )
 
 type SiteConfig struct {
-	Address string `cfg:"mandatory=true"`
-	Sitename string `cfg:"mandatory=true"`
-	Birthday string `cfg:"mandatory=true"`
+	Address        string `cfg:"mandatory=true"`
+	Sitename       string `cfg:"mandatory=true"`
+	Birthday       string `cfg:"mandatory=true"`
 	DefaultTagline string `cfg:"mandatory=true;name=DEFAULT_TAGLINE"`
-	Relme string
-	Fedicreator string
-	Author string `cfg:"mandatory=true"`
-	Email string
-	Lang string `cfg:"default=en"`
-	Extensions string `cfg:"default=.md,.ᗢ"`
+	Relme          string
+	Fedicreator    string
+	Author         string `cfg:"mandatory=true"`
+	Email          string
+	Lang           string `cfg:"default=en"`
+	Extensions     string `cfg:"default=.md,.ᗢ"`
 }
 
 func main() {
@@ -65,7 +65,7 @@ func app() int {
 		os.Setenv("MAKE_ASSETS", "1")
 		argSet := flag.NewFlagSet("make-assets", flag.ExitOnError)
 		argSet.Var(&source, "source", "Input files. If given a directory, it will be processed recursively. A hyphen (the default) will read from stdin.")
-		out := argSet.String("out", ".", "Directory to write static sites to.") 
+		out := argSet.String("out", ".", "Directory to write static sites to.")
 		envPath := argSet.String("env", ".env", "Path to the environment file.")
 		argSet.Parse(os.Args[2:])
 		if err := godotenv.Load(*envPath); err != nil {
@@ -95,7 +95,7 @@ func app() int {
 	default:
 		argSet := flag.NewFlagSet("generate-blog", flag.ExitOnError)
 		argSet.Var(&source, "source", "Input files. If given a directory, it will be processed recursively. A hyphen (the default) will read from stdin.")
-		out := argSet.String("out", ".", "Directory to write static sites to.") 
+		out := argSet.String("out", ".", "Directory to write static sites to.")
 		envPath := argSet.String("env", ".env", "Path to the environment file.")
 		argSet.Parse(os.Args[1:])
 		if err := godotenv.Load(*envPath); err != nil {

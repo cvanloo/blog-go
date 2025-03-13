@@ -1,41 +1,41 @@
 package page
 
 import (
-	"io"
 	"fmt"
-	"time"
-	"sync"
 	"html/template"
+	"io"
 	"net/url"
 	"strings"
+	"sync"
+	"time"
 )
 
 var SiteInfo Site
 
 type (
 	Site struct {
-		Address *url.URL // https://blog.vanloo.ch/
-		Name string // save-lisp-and-die
+		Address        *url.URL         // https://blog.vanloo.ch/
+		Name           string           // save-lisp-and-die
 		DefaultTagline StringRenderable // A blog about programming <weird> computers using <weird> languages.
-		RelMe string // https://tech.lgbt/@attaboy
-		FediCreator string // @attaboy@tech.lgbt
-		Owner StringRenderable // Colin van~Loo
-		Email string
-		Birthday time.Time // 2024
+		RelMe          string           // https://tech.lgbt/@attaboy
+		FediCreator    string           // @attaboy@tech.lgbt
+		Owner          StringRenderable // Colin van~Loo
+		Email          string
+		Birthday       time.Time // 2024
 	}
 	Revision struct {
 		Published time.Time
-		Revised *time.Time
+		Revised   *time.Time
 	}
 	PostListing []PostItem
-	PostItem struct {
+	PostItem    struct {
 		Title, AltTitle StringRenderable
-		UrlPath string
-		Tags []Tag
-		Description string
-		Abstract []Renderable
-		EstReading int
-		Published Revision
+		UrlPath         string
+		Tags            []Tag
+		Description     string
+		Abstract        []Renderable
+		EstReading      int
+		Published       Revision
 	}
 	Tag string
 )
@@ -88,15 +88,16 @@ func MakeUniqueID(element any) (string, error) {
 }
 
 var (
-	mu sync.Mutex
+	mu        sync.Mutex
 	currentID int
-	seenIDs = map[string]struct{}{}
+	seenIDs   = map[string]struct{}{}
 )
 
 func NextID() int {
 	currentID++
 	return currentID
 }
+
 // @todo: end
 
 func (t *Template) Execute(w io.Writer, name string, data any) error {
@@ -122,7 +123,7 @@ func (r Revision) String() string {
 func ObfuscateText(s string) template.HTML {
 	const (
 		janetStart = `janet -e '(print (string/from-bytes (splice (map (fn [c] (if (<= 97 c 122) (+ 97 (mod (+ c -97 13) 26)) c)) &quot;`
-		janetEnd = `&quot;))))'`
+		janetEnd   = `&quot;))))'`
 	)
 	rot13 := func(text string) string {
 		out := []rune(text)

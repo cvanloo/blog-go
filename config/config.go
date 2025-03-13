@@ -1,16 +1,16 @@
 package config
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"reflect"
 	"strings"
-	"errors"
 )
 
 type TagData struct {
-	Name string
-	Default string
+	Name      string
+	Default   string
 	Mandatory bool
 }
 

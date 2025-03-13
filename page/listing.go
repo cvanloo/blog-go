@@ -1,11 +1,11 @@
 package page
 
 import (
-	"fmt"
-	"log"
-	"io"
-	"html/template"
 	"embed"
+	"fmt"
+	"html/template"
+	"io"
+	"log"
 	"sort"
 )
 
@@ -18,10 +18,10 @@ var (
 
 func init() {
 	listing.Funcs(template.FuncMap{
-		"Render": Render,
-		"MakeUniqueID": MakeUniqueID,
-		"ObfuscateText": ObfuscateText,
-		"CopyrightYear": CopyrightYear,
+		"Render":         Render,
+		"MakeUniqueID":   MakeUniqueID,
+		"ObfuscateText":  ObfuscateText,
+		"CopyrightYear":  CopyrightYear,
 		"CopyrightYears": CopyrightYears,
 		"UrlEscapeLower": UrlEscapeLower,
 	})
@@ -31,11 +31,11 @@ func init() {
 
 type (
 	ListingData struct {
-		Site Site
-		UrlPath string
-		Title StringRenderable
+		Site     Site
+		UrlPath  string
+		Title    StringRenderable
 		Abstract []Renderable
-		Listing PostListing
+		Listing  PostListing
 	}
 )
 

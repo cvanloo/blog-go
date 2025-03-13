@@ -1,11 +1,11 @@
 package page
 
 import (
-	"log"
-	"html/template"
 	"embed"
-	"io"
 	"fmt"
+	"html/template"
+	"io"
+	"log"
 	"sort"
 )
 
@@ -18,10 +18,10 @@ var (
 
 func init() {
 	index.Funcs(template.FuncMap{
-		"Render": Render,
-		"MakeUniqueID": MakeUniqueID,
-		"ObfuscateText": ObfuscateText,
-		"CopyrightYear": CopyrightYear,
+		"Render":         Render,
+		"MakeUniqueID":   MakeUniqueID,
+		"ObfuscateText":  ObfuscateText,
+		"CopyrightYear":  CopyrightYear,
 		"CopyrightYears": CopyrightYears,
 		"UrlEscapeLower": UrlEscapeLower,
 	})
@@ -31,7 +31,7 @@ func init() {
 
 type (
 	IndexData struct {
-		Site Site
+		Site    Site
 		Listing PostListing
 	}
 	Weird string

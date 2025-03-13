@@ -3,10 +3,10 @@ package markup
 import (
 	//"time"
 
+	. "github.com/cvanloo/blog-go/assert"
 	"github.com/cvanloo/blog-go/markup/lexer"
 	"github.com/cvanloo/blog-go/markup/parser"
 	"github.com/cvanloo/blog-go/page"
-	. "github.com/cvanloo/blog-go/assert"
 )
 
 type MockTokens []lexer.Token
@@ -241,7 +241,7 @@ var BlogParserTestStruct = &parser.Blog{
 							Content: []parser.Node{
 								AsRef(parser.Text("Lorem ")),
 								&parser.Sidenote{
-									Ref: "1",
+									Ref:  "1",
 									Word: parser.TextRich{AsRef(parser.Text("epsum"))},
 								},
 								AsRef(parser.Text(" dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.\nUt enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.")),
@@ -261,7 +261,7 @@ var BlogParserTestStruct = &parser.Blog{
 					Content: []parser.Node{
 						AsRef(parser.Text("Ut enim ad minim ")),
 						&parser.Link{
-							Ref: "0",
+							Ref:  "0",
 							Name: parser.TextRich{AsRef(parser.Text("veniam"))},
 						},
 						AsRef(parser.Text(", quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.")),
@@ -374,8 +374,8 @@ var BlogParserFixedTestStruct = &parser.Blog{
 							Content: []parser.Node{
 								AsRef(parser.Text("Lorem ")),
 								&parser.Sidenote{
-									Ref: "1",
-									Word: parser.TextRich{AsRef(parser.Text("epsum"))},
+									Ref:     "1",
+									Word:    parser.TextRich{AsRef(parser.Text("epsum"))},
 									Content: parser.TextRich{AsRef(parser.Text("See what I did there?"))},
 								},
 								AsRef(parser.Text(" dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.\nUt enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.")),
@@ -395,7 +395,7 @@ var BlogParserFixedTestStruct = &parser.Blog{
 					Content: []parser.Node{
 						AsRef(parser.Text("Ut enim ad minim ")),
 						&parser.Link{
-							Ref: "0",
+							Ref:  "0",
 							Name: parser.TextRich{AsRef(parser.Text("veniam"))},
 							Href: "https://example.com/",
 						},
@@ -416,7 +416,7 @@ var BlogParserFixedTestStruct = &parser.Blog{
 
 var BlogGenTestStruct = page.Post{
 	UrlPath: "hello",
-	Title: page.StringOnlyContent{page.Text("Hello, World!")},
+	Title:   page.StringOnlyContent{page.Text("Hello, World!")},
 	Author: page.Author{
 		Name: page.StringOnlyContent{page.Text("Colin van"), page.AmpNoBreakSpace, page.Text("Loo")},
 	},
@@ -424,21 +424,21 @@ var BlogGenTestStruct = page.Post{
 	TOC: page.TableOfContents{
 		Sections: []page.TOCSection{
 			{
-				ID: "s1",
+				ID:      "s1",
 				Heading: page.StringOnlyContent{page.Text("こんにちは、世界！ ")},
 				NextLevel: []page.TOCSection{
 					{
-						ID: "lorem-ipsum",
+						ID:      "lorem-ipsum",
 						Heading: page.StringOnlyContent{page.Text("Lorem Ipsum")},
 					},
 					{
-						ID: "s2.2",
+						ID:      "s2.2",
 						Heading: page.StringOnlyContent{page.Text("Lorem Epsum ")},
 					},
 				},
 			},
 			{
-				ID: "さようなら",
+				ID:      "さようなら",
 				Heading: page.StringOnlyContent{page.Text("さようなら")},
 			},
 		},
@@ -455,7 +455,7 @@ var BlogGenTestStruct = page.Post{
 					Content: page.StringOnlyContent{
 						page.Text("Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.\nThere is this really cool J-Rock band called "),
 						page.Ruby{
-							Kanji: page.StringOnlyContent{page.Text("甘い暴力")},
+							Kanji:    page.StringOnlyContent{page.Text("甘い暴力")},
 							Furigana: page.StringOnlyContent{page.Text("あまいぼうりょく")},
 						},
 						page.Text(", you should check them out.\nDuis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur."),
@@ -471,7 +471,7 @@ var BlogGenTestStruct = page.Post{
 					},
 				},
 				page.Section{
-					Level: 2,
+					Level:   2,
 					Heading: page.StringOnlyContent{page.Text("Lorem Ipsum")},
 					Content: []page.Renderable{
 						page.Paragraph{
@@ -500,7 +500,7 @@ var BlogGenTestStruct = page.Post{
 							Content: page.StringOnlyContent{
 								page.Text("Lorem "),
 								page.Sidenote{
-									Word: page.StringOnlyContent{page.Text("epsum")},
+									Word:    page.StringOnlyContent{page.Text("epsum")},
 									Content: page.StringOnlyContent{page.Text("See what I did there?")},
 								},
 								page.Text(" dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.\nUt enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat."),
@@ -511,7 +511,7 @@ var BlogGenTestStruct = page.Post{
 			},
 		},
 		{
-			Level: 1,
+			Level:   1,
 			Heading: page.StringOnlyContent{page.Text("さようなら")},
 			Content: []page.Renderable{
 				page.Paragraph{

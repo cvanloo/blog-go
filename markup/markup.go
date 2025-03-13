@@ -174,12 +174,12 @@ type (
 
 	feedProcessor struct {
 		siteInfo page.Site
-		outDir string
-		posts  []page.Post
+		outDir   string
+		posts    []page.Post
 	}
 
 	assetsProcessor struct {
-		outDir string
+		outDir  string
 		markups []markupResult
 	}
 )
@@ -550,8 +550,8 @@ func (p templateGenProcessor) Run() (runErr error) {
 func newFeedProcessor(siteInfo page.Site, outDir string, posts []page.Post) feedProcessor {
 	return feedProcessor{
 		siteInfo: siteInfo,
-		outDir: outDir,
-		posts:  posts,
+		outDir:   outDir,
+		posts:    posts,
 	}
 }
 
@@ -560,7 +560,7 @@ func (p feedProcessor) Run() (runErr error) {
 	feed := &feeds.Feed{
 		Title:       p.siteInfo.Name,
 		Link:        &feeds.Link{Href: p.siteInfo.Address.String()},
-		Description: p.siteInfo.DefaultTagline.Text(), // @todo: DefaultTagline.TextOnly()
+		Description: p.siteInfo.DefaultTagline.Text(),             // @todo: DefaultTagline.TextOnly()
 		Author:      &feeds.Author{Name: p.siteInfo.Owner.Text()}, // @todo: Owner.TextOnly()
 		Created:     now,
 	}
@@ -611,7 +611,7 @@ func (p feedProcessor) Run() (runErr error) {
 
 func newAssetsProcessor(outDir string, markups []markupResult) assetsProcessor {
 	return assetsProcessor{
-		outDir: outDir,
+		outDir:  outDir,
 		markups: markups,
 	}
 }
@@ -620,7 +620,7 @@ type AssetFinderVisitor struct {
 	parser.NopVisitor
 	Images []string
 	Videos []string
-	Err error
+	Err    error
 }
 
 func (v *AssetFinderVisitor) VisitImage(i *parser.Image) {
@@ -654,7 +654,7 @@ func (p assetsProcessor) verifyAssets() (runErr error) {
 		runErr = errors.Join(runErr, v.Err)
 		v.Err = nil
 	}
-	if len(v.Images) + len(v.Videos) > 0 {
+	if len(v.Images)+len(v.Videos) > 0 {
 		outDir := filepath.Join(p.outDir, "/assets/")
 		fi, err := os.Stat(outDir)
 		if err != nil {

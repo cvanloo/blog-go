@@ -729,7 +729,7 @@ Where are you going?
 Hello, [世界][^1]
 How are you doing?
 
-[^1]: 世界 (Sekai) is the Japanese word for `+"`"+`World'
+[^1]: 世界 (Sekai) is the Japanese word for ` + "`" + `World'
 `,
 			expected: []lexer.Token{
 				{Type: lexer.TokenSection1Begin, Text: "#"},
@@ -761,7 +761,7 @@ How are you doing?
 Hello, 世界[^1]
 How are you doing?
 
-[^1]: 世界 (Sekai) is the Japanese word for `+"`"+`World'
+[^1]: 世界 (Sekai) is the Japanese word for ` + "`" + `World'
 `,
 			expected: []lexer.Token{
 				{Type: lexer.TokenSection1Begin, Text: "#"},
@@ -790,7 +790,7 @@ How are you doing?
 			source: `
 # Section 1
 
-Hello, [世界](^世界 \(Sekai\) is the Japanese word for `+"`"+`World')
+Hello, [世界](^世界 \(Sekai\) is the Japanese word for ` + "`" + `World')
 How are you doing?
 `,
 			expected: []lexer.Token{
@@ -822,7 +822,7 @@ How are you doing?
 			source: `
 # Section 1
 
-Hello, 世界(^世界 \(Sekai\) is the Japanese word for `+"`"+`World')
+Hello, 世界(^世界 \(Sekai\) is the Japanese word for ` + "`" + `World')
 How are you doing?
 `,
 			expected: []lexer.Token{
@@ -1446,7 +1446,7 @@ func TestLexEscape(t *testing.T) {
 
 The following \&nbsp; turns into a non-break space.
 
-Here you have it in mono space: `+"`"+`&nbsp;`+"`"+`
+Here you have it in mono space: ` + "`" + `&nbsp;` + "`" + `
 `,
 			expected: []lexer.Token{
 				{Type: lexer.TokenSection1Begin, Text: "#"},
