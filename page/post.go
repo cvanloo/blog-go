@@ -53,6 +53,7 @@ type (
 		Abstract              []Renderable
 		Published             Revision
 		EstReading            int
+		WordCount             int
 		Tags                  []Tag
 		Series                *Series
 		EnableRevisionWarning bool

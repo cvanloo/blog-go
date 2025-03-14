@@ -351,6 +351,7 @@ func (p *templatePreProcessor) processPost(m markupResult) error {
 		return fmt.Errorf("processing %s failed while producing template data: %w", m.src.Name, makeGen.Errors)
 	}
 	templateData.EstReading = int(m.est.Duration.Minutes())
+	templateData.WordCount = m.est.Words
 	p.posts[templateData.UrlPath] = &templateData
 	if templateData.MakePublish || os.Getenv("TESTING") == "1" {
 		p.index.Listing = append(p.index.Listing, page.PostItem{
