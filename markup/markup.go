@@ -362,6 +362,7 @@ func (p *templatePreProcessor) processPost(m markupResult) error {
 			Description: templateData.Description,
 			Abstract:    templateData.Abstract,
 			EstReading:  templateData.EstReading,
+			WordCount:   templateData.WordCount,
 			Published:   templateData.Published,
 		})
 		for _, tag := range templateData.Tags {
@@ -379,6 +380,7 @@ func (p *templatePreProcessor) processPost(m markupResult) error {
 				Description: templateData.Description,
 				Abstract:    templateData.Abstract,
 				EstReading:  templateData.EstReading,
+				WordCount:   templateData.WordCount,
 				Published:   templateData.Published,
 			})
 			p.tags[string(tag)] = ti
@@ -396,6 +398,7 @@ func (p *templatePreProcessor) processPost(m markupResult) error {
 				Description: templateData.Description,
 				Abstract:    templateData.Abstract,
 				EstReading:  templateData.EstReading,
+				WordCount:   templateData.WordCount,
 				Published:   templateData.Published,
 			})
 			p.series[seriesName.Text()] = si

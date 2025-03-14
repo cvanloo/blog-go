@@ -35,6 +35,7 @@ type (
 		Description     string
 		Abstract        []Renderable
 		EstReading      int
+		WordCount       int
 		Published       Revision
 	}
 	Tag string

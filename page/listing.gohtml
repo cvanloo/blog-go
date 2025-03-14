@@ -58,7 +58,7 @@
                     <aside class="content-info">
                         <div class="info-line">
                             <p><small>{{.Published}}</small></p>
-                            <p><small>~{{.EstReading}}&prime;</small></p>
+                            <p title="{{.WordCount}} words"><small>~{{.EstReading}}&prime;</small></p>
                         </div>
                         <div class="info-line taglist">
                         {{range .Tags}}<p><a href="/:{{.}}">:{{.}}</a></p>
