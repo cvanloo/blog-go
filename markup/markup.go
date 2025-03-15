@@ -448,6 +448,7 @@ func (p *templatePreProcessor) processQuotes(m markupResult) error {
 		return fmt.Errorf("processing %s failed while producing template data: %w", m.src.Name, makeGen.Errors)
 	}
 	templateData.EstReading = int(m.est.Duration.Minutes())
+	templateData.WordCount = m.est.Words
 	p.quotes[templateData.UrlPath] = &templateData
 	return nil
 }
