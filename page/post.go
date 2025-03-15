@@ -507,7 +507,11 @@ func (p Post) ObfuscatedEmail() template.HTML {
 		}
 		return string(out)
 	}
-	return template.HTML(janetStart + rot13(p.Author.Email.Text()) + janetEnd)
+	emailParts := strings.Split(p.Author.Email.Text(), "@")
+	Assert(len(emailParts) == 2, "invalid email address") // @todo: should validate this user input in some earlier stage
+	alias := emailParts[0] + fmt.Sprintf("+%s", url.QueryEscape(p.UrlPath))
+	domain := emailParts[1]
+	return template.HTML(janetStart + rot13(alias) + "@" + rot13(domain) + janetEnd)
 }
 
 type (
