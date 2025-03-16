@@ -14,6 +14,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"net/http"
 
 	readingtime "github.com/begmaroman/reading-time"
 	"github.com/gorilla/feeds"
@@ -130,6 +131,10 @@ func (m Markup) MakeAssets() (runErr error) {
 	runErr = errors.Join(runErr, ap.Run())
 
 	return runErr
+}
+
+func (m Markup) Serve() (runErr error) {
+	return http.ListenAndServe(":8000", LiveServer{Config: m}.Handler())
 }
 
 type (
@@ -848,4 +853,15 @@ func convertUtility() (string, error) {
 		return "convert", nil
 	}
 	return "magick", nil
+}
+
+type LiveServer struct {
+	Config Markup
+}
+
+func (l LiveServer) Handler() http.Handler {
+	mux := &http.ServeMux{}
+	mux.Handle("/", http.FileServer(http.Dir("public"))) // @todo: try markdown first, then public
+	mux.Handle("/assets", nil)                           // @todo: generate asset (also save them in-memory temporarily)
+	return mux
 }
