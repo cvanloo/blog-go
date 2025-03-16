@@ -20,7 +20,7 @@ type TestCase struct {
 }
 
 var TestCases = []TestCase{
-	{
+	{ // @fixme: this is broken in the html
 		Comment: "Allow for links inside sidenote content (content as separate definition).",
 		Source: `
 # Section 1
