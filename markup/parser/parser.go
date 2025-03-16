@@ -1461,6 +1461,9 @@ func Parse(lx LexResult) (blog *Blog, err error) {
 			case lexer.TokenMarkerBegin:
 				levels.Push(&Level{ReturnToState: ParsingSidenoteDefinition})
 				state = ParsingMarker
+			case lexer.TokenLinkableBegin:
+				levels.Push(&Level{ReturnToState: ParsingSidenoteDefinition})
+				state = ParsingLinkable
 			case lexer.TokenSidenoteDefEnd:
 				blog.SidenoteDefinitions[currentDefinition] = level.TextRich
 				levels.Pop()

@@ -1224,6 +1224,7 @@ func (lx *Lexer) LexEscape() {
 // LexTextUntil lexes text elements, namely:
 // - strings
 // - <https://example.com/> form links
+// - [link text](href)
 // - *emphasis*, **strong**, ***emphasis strong***
 // - _emphasis_, __strong__, ___emphasis strong___
 // - &...; specials and ~ (nbsp), -- (en dash), --- (em dash), - (hyphen)
@@ -1265,6 +1266,9 @@ func (lx *Lexer) LexTextUntil(match string) {
 		} else if lx.Peek1() == '"' {
 			lx.EmitIfNonEmpty(TokenText)
 			lx.LexEnquoteDouble()
+		} else if lx.Peek1() == '[' {
+			lx.EmitIfNonEmpty(TokenText)
+			lx.LexLinkOrSidenote()
 		} else if lx.IsEscape() {
 			lx.EmitIfNonEmpty(TokenText)
 			lx.LexEscape()
