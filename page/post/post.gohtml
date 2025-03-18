@@ -87,7 +87,7 @@
                 {{if .HasPrev}}
                     <div class="series-prev">
                         <p>← Previous in Series</p>
-                        <a href="{{.Prev.Link}}">{{Render .Prev.Title}}</a>
+                        <a title="{{Render .Prev.Title}}" href="{{.Prev.Link}}">{{Render .Prev.Title}}</a>
                     </div>
                 {{end}}
                 <div class="series-title">
@@ -97,7 +97,7 @@
                 {{if .HasNext}}
                     <div class="series-next">
                         <p>Next in Series →</p>
-                        <a href="{{.Next.Link}}">{{Render .Next.Title}}</a>
+                        <a title="{{Render .Next.Title}}" href="{{.Next.Link}}">{{Render .Next.Title}}</a>
                     </div>
                 {{end}}
                 </div>
