@@ -864,6 +864,30 @@ figure.quote {
     color: light-dark(#FC3A05, #A9FC05);
 }
 
+div.note {
+	border: 3px solid light-dark(#333, #636361);
+    border-radius: 15px;
+    padding: 0 1em 1em 1em;
+    margin: 2em auto;
+
+    @media screen and (min-width: 90ch) {
+        box-shadow: 12px 10px 2px 1px light-dark(#FFCCCC, #2E2E2C);
+    }
+}
+
+div.note-info {
+	border: 3px solid light-dark(#5c72ff, #4a64ff);
+	background-color: light-dark(#dbdcff, #030510);
+
+	p.title {
+		color: light-dark(#5c72ff, #4a64ff);
+	}
+
+    @media screen and (min-width: 90ch) {
+        box-shadow: 12px 10px 2px 1px light-dark(rgb(239, 240, 255), rgb(15, 19, 43));
+    }
+}
+
 #Abstract {
     border: 3px solid light-dark(#333, #636361);
     border-radius: 15px;
