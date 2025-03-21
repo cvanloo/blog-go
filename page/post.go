@@ -51,6 +51,7 @@ type (
 		Title, AltTitle       StringRenderable
 		Description           string
 		Abstract              []Renderable
+		TopLevelContent       []Renderable
 		Published             Revision
 		EstReading            int
 		WordCount             int
@@ -129,6 +130,10 @@ type (
 	Sidenote struct {
 		// @todo: For the title attribute we can't have <b> and stuff...
 		Word, Content StringRenderable
+	}
+	Note struct {
+		Type string
+		Content []Renderable
 	}
 	Ruby struct {
 		Kanji, Furigana StringRenderable
@@ -267,6 +272,19 @@ func (m Marker) Text() string {
 
 func (m Marker) Render() (template.HTML, error) {
 	return template.HTML(m.Text()), nil
+}
+
+func (n Note) Render() (template.HTML, error) {
+	bs := &bytes.Buffer{}
+	PanicIf(post.Execute(bs, "note.gohtml", n))
+	return template.HTML(bs.String()), nil
+}
+
+func (n Note) TypeOrDefault() string {
+	if n.Type == "" {
+		return "info"
+	}
+	return strings.ToLower(n.Type)
 }
 
 func (r Ruby) Text() string {
@@ -854,6 +872,9 @@ func (v *MakeGenVisitor) VisitHtml(h *parser.Html) {
 	if v.htmlState == nil {
 		v.htmlState = v.htmlTopLevel
 	}
+	if v.currentContainer == nil {
+		v.currentContainer = HtmlTopLevel{Gen: v}
+	}
 	v.htmlState(v, h, true)
 }
 
@@ -882,7 +903,19 @@ type (
 		furi      StringRenderable
 		err       error
 	}
+	HtmlNote struct {
+		parentContainer Container
+		noteItem  Note
+		err       error
+	}
+	HtmlTopLevel struct {
+		Gen *MakeGenVisitor
+	}
 )
+
+func (h HtmlTopLevel) Append(r Renderable) {
+	h.Gen.TemplateData.TopLevelContent = append(h.Gen.TemplateData.TopLevelContent, r)
+}
 
 func (h *HtmlInvalid) Append(r Renderable) {
 	// ignore
@@ -900,6 +933,10 @@ func (h *HtmlRelevantBox) Append(r Renderable) {
 		// @todo: maybe don't allow just anything here... (only paragraphs, no sections...) [:abstract-content:]
 		h.currentItem.Abstract = append(h.currentItem.Abstract, r)
 	}
+}
+
+func (h *HtmlNote) Append(r Renderable) {
+	h.noteItem.Content = append(h.noteItem.Content, r)
 }
 
 func (i *HtmlInvalid) htmlInvalid(v *MakeGenVisitor, h *parser.Html, entering bool) {
@@ -1038,6 +1075,16 @@ func (v *MakeGenVisitor) htmlTopLevel(_ *MakeGenVisitor, h *parser.Html, enterin
 			}
 			v.currentContainer = r
 			v.htmlState = r.htmlRelevantBox
+		case "Note":
+			noteType := h.Attributes["type"]
+			n := &HtmlNote{
+				parentContainer: v.currentContainer,
+				noteItem: Note{
+					Type: noteType,
+				},
+			}
+			v.currentContainer = n
+			v.htmlState = n.htmlNote
 		case "Ruby":
 			var furi StringRenderable
 			if furiAttr, ok := h.Attributes["furi"]; ok {
@@ -1068,8 +1115,20 @@ func (a *HtmlAbstract) htmlAbstract(v *MakeGenVisitor, h *parser.Html, entering 
 		// invalid
 		v.Errors = errors.Join(v.Errors, fmt.Errorf("<Abstract> cannot contain any child html elements: %s", h.Name))
 	} else {
+		v.currentContainer = nil
 		v.Errors = errors.Join(v.Errors, a.err)
 		v.TemplateData.Abstract = a.content
+		v.htmlState = v.htmlTopLevel
+	}
+}
+
+func (n *HtmlNote) htmlNote(v *MakeGenVisitor, h *parser.Html, entering bool) {
+	if entering {
+		v.Errors = errors.Join(v.Errors, fmt.Errorf("<Ruby> cannot contain any child html elements: %s", h.Name))
+	} else {
+		v.Errors = errors.Join(v.Errors, n.err)
+		n.parentContainer.Append(n.noteItem)
+		v.currentContainer = n.parentContainer
 		v.htmlState = v.htmlTopLevel
 	}
 }

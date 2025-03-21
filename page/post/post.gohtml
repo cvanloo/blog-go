@@ -115,6 +115,9 @@
                     {{range .Abstract}}{{Render .}}{{end}}
                 </section>
                 {{end}}
+				{{range .TopLevelContent}}
+				{{Render .}}
+				{{end}}
                 {{range .Sections}}
                 {{Render .}}
                 {{end}}
